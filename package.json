@@ -1,0 +1,40 @@
+{
+  "name": "hollerith2",
+  "version": "1.0.0",
+  "description": "Next version of hollerith, the Binary Phrase DB",
+  "main": "lib/main.js",
+  "dependencies": {
+    "bytewise": "^0.8.0",
+    "cnd": "^0.1.9",
+    "coffeenode-docopt": "^0.1.0",
+    "coffeenode-suspend": "^0.1.10",
+    "level": "^0.18.0",
+    "morton": "^1.0.2",
+    "pipedreams2": "^0.2.14"
+  },
+  "devDependencies": {
+    "gulp": "^3.8.11",
+    "gulp-coffee": "^2.3.1",
+    "gulp-sourcemaps": "^1.5.2",
+    "guy-test": "^0.1.12"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/loveencounterflow/hollerith2.git"
+  },
+  "keywords": [
+    "level",
+    "leveldb",
+    "sublevel",
+    "db"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/loveencounterflow/hollerith2/issues"
+  },
+  "homepage": "https://github.com/loveencounterflow/hollerith2#readme"
+}
