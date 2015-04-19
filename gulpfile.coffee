@@ -5,13 +5,13 @@
 # njs_fs                    = require 'fs-extra'
 # join                      = njs_path.join
 #...........................................................................................................
-# CND                       = require 'cnd'
-# rpr                       = CND.rpr
-# badge                     = 'MKTS/gulp'
-# warn                      = CND.get_logger 'warn',    badge
-# help                      = CND.get_logger 'help',    badge
-# debug                     = CND.get_logger 'debug',    badge
-# info                      = CND.get_logger 'info',    badge
+CND                       = require 'cnd'
+rpr                       = CND.rpr
+badge                     = 'MKTS/gulp'
+warn                      = CND.get_logger 'warn',    badge
+help                      = CND.get_logger 'help',    badge
+debug                     = CND.get_logger 'debug',    badge
+info                      = CND.get_logger 'info',    badge
 # echo                      = CND.echo.bind CND
 #...........................................................................................................
 gulp                      = require 'gulp'
@@ -40,4 +40,10 @@ gulp.task 'build-coffee', ->
     .pipe coffee().on 'error', ( error ) -> throw error
     .pipe sourcemaps.write()
     .pipe gulp.dest 'lib'
+
+#-----------------------------------------------------------------------------------------------------------
+gulp.task 'test', [ 'build-coffee', ], ->
+  tests = require './lib/tests'
+  tests._main()
+  return 'x'
 

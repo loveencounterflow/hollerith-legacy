@@ -2,6 +2,10 @@
 
 
 ############################################################################################################
+njs_path                  = require 'path'
+# njs_fs                    = require 'fs'
+join                      = njs_path.join
+#...........................................................................................................
 CND                       = require 'cnd'
 rpr                       = CND.rpr
 badge                     = 'HOLLERITH/test'
@@ -79,14 +83,14 @@ D.new_indexer = ( idx = 0 ) -> ( data ) => [ idx++, data, ]
     yield substrate.put ( HOLLERITH._encode db, -Infinity ), zero, resume
     yield substrate.put ( HOLLERITH._encode db, { foo: 1, bar: 1, } ), zero, resume
     yield substrate.put ( HOLLERITH._encode db, { bar: 1, foo: 1, } ), zero, resume
-    for idx in [ 1000 ... 1005 ]
+    for idx in [ 2000 ... 2005 ]
       for fact_name in [ 'strokeorder', 'components', 'reading', ]
         value   = idx
         glyph   = String.fromCodePoint 0x4e00 + idx
         # so_key  = "so|glyph:#{glyph}|#{fact_name}:#{value}"
         # os_key  = "os|#{fact_name}:#{value}|glyph:#{glyph}"
-        so_key  = HOLLERITH._encode db, [ '<', [ 'glyph', glyph,   ], [ fact_name, value, ], null, ]
-        os_key  = HOLLERITH._encode db, [ '>', [ fact_name, value, ], [ 'glyph', glyph,   ], null, ]
+        so_key  = HOLLERITH._encode db, [ 'so', [ 'glyph', glyph,   ], [ fact_name, value, ], null, ]
+        os_key  = HOLLERITH._encode db, [ 'os', [ fact_name, value, ], [ 'glyph', glyph,   ], null, ]
         # so_key  = HOLLERITH._encode db, [ 'so', [ 'glyph', glyph,   ], [ fact_name, value, ], null, ]
         # os_key  = HOLLERITH._encode db, [ 'os', [ fact_name, value, ], [ 'glyph', glyph,   ], null, ]
         yield substrate.put os_key, zero, resume
@@ -141,10 +145,11 @@ unless module.parent?
   #---------------------------------------------------------------------------------------------------------
   options =
     #.......................................................................................................
-    # 'route':                njs_path.join __dirname, './db'
+    'route':                njs_path.join __dirname, '../dbs/demo'
     # 'route':                '/Volumes/Storage/io/jizura-datasources/data/leveldb'
-    'route':            '/tmp/leveldb'
+    # 'route':            '/tmp/leveldb'
   #---------------------------------------------------------------------------------------------------------
+  debug '©AoOAS', options
   @main()
   #---------------------------------------------------------------------------------------------------------
   f = ->

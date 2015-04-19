@@ -73,6 +73,15 @@ _new_level_db             = require 'level'
 @_encode = ( db, key ) -> _btws_encode key
 @_decode = ( db, key ) -> _btws_decode key
 
+#-----------------------------------------------------------------------------------------------------------
+@_rpr_of_key = ( db, key ) ->
+  if ( @_type_from_key db, key ) is 'list'
+    [ phrasetype, first, second, idx, ] = key
+    idx_rpr = if idx? then rpr idx else ''
+    ### TAINT should escape metachrs `|`, ':' ###
+    ### TAINT should use `rpr` on parts of speech (e.g. object value could be a number etc.) ###
+    return "#{phrasetype}|#{first.join ':'}|#{second.join ':'}|#{idx_rpr}"
+  return "#{rpr key}"
 
 #===========================================================================================================
 # READING
@@ -120,7 +129,7 @@ _new_level_db             = require 'level'
 # KEY AND PREFIXES
 #-----------------------------------------------------------------------------------------------------------
 @new_key = ( db, phrasetype, key_0, value_0, key_1, value_1, idx ) ->
-  throw new Error "illegal phrasetype: #{rpr key}" unless phrasetype in [ '<', '>', ]
+  throw new Error "illegal phrasetype: #{rpr phrasetype}" unless phrasetype in [ 'so', 'os', ]
   return [ phrasetype, [ key_0, value_0, ], [ key_1, value_1, ], ( idx ? null ), ]
 
 #-----------------------------------------------------------------------------------------------------------

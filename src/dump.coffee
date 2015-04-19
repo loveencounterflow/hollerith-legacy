@@ -2,6 +2,10 @@
 
 
 ############################################################################################################
+njs_path                  = require 'path'
+# njs_fs                    = require 'fs'
+join                      = njs_path.join
+#...........................................................................................................
 CND                       = require 'cnd'
 rpr                       = CND.rpr
 badge                     = 'HOLLERITH/dump'
@@ -70,21 +74,11 @@ HOLLERITH                 = require './main'
   if Array.isArray key
     throw new Error "illegal key: #{rpr key}" unless 3 <= key.length <= 4
     [ phrasetype, first, second, idx, ] = key
-    throw new Error "illegal phrasetype: #{rpr key}" unless phrasetype in [ '<', '>', ]
+    throw new Error "illegal phrasetype: #{rpr key}" unless phrasetype in [ 'so', 'os', ]
     throw new Error "illegal key: #{rpr key}" unless ( Array.isArray first  ) and  first.length is 2
     throw new Error "illegal key: #{rpr key}" unless ( Array.isArray second ) and second.length is 2
     return 'list'
   return 'other'
-
-#-----------------------------------------------------------------------------------------------------------
-@_rpr_of_key = ( db, key ) ->
-  if ( @_type_from_key db, key ) is 'list'
-    [ phrasetype, first, second, idx, ] = key
-    idx_rpr = if idx? then rpr idx else ''
-    ### TAINT should escape metachrs `|`, ':' ###
-    ### TAINT should use `rpr` on parts of speech (e.g. object value could be a number etc.) ###
-    return "#{phrasetype}#{first.join ':'}|#{second.join ':'}|#{idx_rpr}"
-  return "#{rpr key}"
 
 #-----------------------------------------------------------------------------------------------------------
 ### TAINT code duplication ###
@@ -97,7 +91,7 @@ HOLLERITH                 = require './main'
     if key?
       count += +1
       if count < limit
-        key_rpr = @_rpr_of_key db, HOLLERITH._decode db, key
+        key_rpr = HOLLERITH._rpr_of_key db, HOLLERITH._decode db, key
         if colors
           log ( CND.grey ƒ count ), ( CND.plum key_rpr ), ( CND.grey key.slice 0, 10 )
         else
@@ -124,7 +118,7 @@ HOLLERITH                 = require './main'
     if key?
       key_count += +1
       if key_count < limit
-        key_rpr = @_rpr_of_key db, HOLLERITH._decode db, key
+        key_rpr = HOLLERITH._rpr_of_key db, HOLLERITH._decode db, key
         [ prefix, suffix_idx, ] = @_first_chrs_of key_rpr, chrs
         unless prefixes[ prefix ]?
           prefix_count       += +1
@@ -171,11 +165,6 @@ HOLLERITH                 = require './main'
 
 ############################################################################################################
 unless module.parent?
-  #---------------------------------------------------------------------------------------------------------
-  hollerith_settings =
-    'route':            '/tmp/leveldb'
-      # 'route':            '/tmp/levelgraph'
-      # 'route':            '/Volumes/Storage/io/jizura-datasources/data/leveldb'
 
   #---------------------------------------------------------------------------------------------------------
   docopt    = ( require 'coffeenode-docopt' ).docopt
@@ -183,8 +172,8 @@ unless module.parent?
   filename  = ( require 'path' ).basename __filename
          # #{filename} pos [--sample] [<prefix>]
   usage     = """
-  Usage: #{filename} [--limit=N]
-         #{filename} ( [<prefix>] | keys [<prefix>] | prefixes [<chrs>] ) [--limit=N]
+  Usage: #{filename} <db-route> [--limit=N]
+         #{filename} <db-route> ( [<prefix>] | keys [<prefix>] | prefixes [<chrs>] ) [--limit=N]
 
   Options:
     -l, --limit
@@ -213,29 +202,32 @@ unless module.parent?
     colors:           if process.stdout.isTTY then true else false
     chrs:             3
   #.........................................................................................................
-  dump_settings[ 'limit'  ] = ( parseInt limit, 10 ) if ( limit = cli_options[ '--limit' ] )
-  dump_settings[ 'mode'   ] = 'prefixes' if cli_options[ 'prefixes' ]
-  dump_settings[ 'chrs'   ] = ( parseInt  chrs, 10 ) if (  chrs = cli_options[  '<chrs>' ] )
-  dump_settings[ 'prefix' ] = prefix if ( prefix = cli_options[ '<prefix>' ] )?
+  dump_settings[ 'route'    ] = join __dirname, '..', cli_options[ '<db-route>' ]
+  dump_settings[ 'limit'    ] = ( parseInt limit, 10 ) if ( limit = cli_options[ '--limit' ] )
+  dump_settings[ 'mode'     ] = 'prefixes' if cli_options[ 'prefixes' ]
+  dump_settings[ 'chrs'     ] = ( parseInt  chrs, 10 ) if (  chrs = cli_options[  '<chrs>' ] )
+  dump_settings[ 'prefix'   ] = prefix if ( prefix = cli_options[ '<prefix>' ] )?
   #---------------------------------------------------------------------------------------------------------
-  db                  = HOLLERITH.new_db hollerith_settings[ 'route' ]
-  # debug '©bEIeE', cli_options
-  # help '©bEIeE', dump_settings
+  db = HOLLERITH.new_db dump_settings[ 'route' ]
+  debug '©bEIeE', cli_options
+  help '©bEIeE', dump_settings
   @dump db, dump_settings
-  debug '©lJ8nb', HOLLERITH._encode null, 1
-  debug '©lJ8nb', HOLLERITH._encode null, [ 1, ]
-  debug '©lJ8nb', HOLLERITH._encode null, [ 1, undefined, ]
-  log()
-  debug '©lJ8nb', HOLLERITH._encode null, '1'
-  debug '©lJ8nb', HOLLERITH._encode null, [ '1', ]
-  debug '©lJ8nb', HOLLERITH._query_from_prefix null, 1
-  debug '©lJ8nb', HOLLERITH._query_from_prefix null, [ 1, ]
-  debug '©lJ8nb', HOLLERITH._query_from_prefix null, '1'
-  debug '©lJ8nb', HOLLERITH._query_from_prefix null, [ '1', ]
-  debug '©lJ8nb', HOLLERITH._encode null, '\x00'
-  debug '©lJ8nb', HOLLERITH._encode null, '\x01'
-  debug '©lJ8nb', HOLLERITH._encode null, '\x02'
-  log()
+
+  # debug '©lJ8nb', HOLLERITH._encode null, 1
+  # debug '©lJ8nb', HOLLERITH._encode null, [ 1, ]
+  # debug '©lJ8nb', HOLLERITH._encode null, [ 1, undefined, ]
+  # log()
+  # debug '©lJ8nb', HOLLERITH._encode null, '1'
+  # debug '©lJ8nb', HOLLERITH._encode null, [ '1', ]
+  # debug '©lJ8nb', HOLLERITH._query_from_prefix null, 1
+  # debug '©lJ8nb', HOLLERITH._query_from_prefix null, [ 1, ]
+  # debug '©lJ8nb', HOLLERITH._query_from_prefix null, '1'
+  # debug '©lJ8nb', HOLLERITH._query_from_prefix null, [ '1', ]
+  # debug '©lJ8nb', HOLLERITH._encode null, '\x00'
+  # debug '©lJ8nb', HOLLERITH._encode null, '\x01'
+  # debug '©lJ8nb', HOLLERITH._encode null, '\x02'
+  # log()
+
   # for cid in [ 0x00 .. 0xff ]
   #   debug '©lJ8nb', ( '0x' + ( if cid <= 0xf then '0' else '' ) + cid.toString 16 ), HOLLERITH._encode null, [ String.fromCodePoint cid, ]
   # debug '©vfkkx', HOLLERITH._decode null, HOLLERITH.encode null, +Infinity
