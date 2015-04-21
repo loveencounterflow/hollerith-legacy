@@ -70,17 +70,6 @@ HOLLERITH                 = require './main'
   return [ text[ .. idx ], idx + 1, ]
 
 #-----------------------------------------------------------------------------------------------------------
-@_type_from_key = ( db, key ) ->
-  if Array.isArray key
-    throw new Error "illegal key: #{rpr key}" unless 3 <= key.length <= 4
-    [ phrasetype, first, second, idx, ] = key
-    throw new Error "illegal phrasetype: #{rpr key}" unless phrasetype in [ 'so', 'os', ]
-    throw new Error "illegal key: #{rpr key}" unless ( Array.isArray first  ) and  first.length is 2
-    throw new Error "illegal key: #{rpr key}" unless ( Array.isArray second ) and second.length is 2
-    return 'list'
-  return 'other'
-
-#-----------------------------------------------------------------------------------------------------------
 ### TAINT code duplication ###
 @_$dump_keys = ( db, input, settings ) ->
   { limit, colors, chrs, } = settings
@@ -146,9 +135,8 @@ HOLLERITH                 = require './main'
   switch settings[ 'mode' ]
     when 'keys'
       if prefix?
-        query = HOLLERITH._query_from_prefix db, [ prefix, ]
-        # query = { gte: ( HOLLERITH._encode db, [ prefix, ] ), lte: ( HOLLERITH._encode db, [ prefix, undefined, ] ), }
-        urge '©g1y6J', HOLLERITH._encode db, [ prefix, ]
+        # debug '©7fHvz', rpr prefix
+        query = HOLLERITH.new_query db, prefix
         urge '©g1y6J', query[ 'gte' ]
         urge '©g1y6J', query[ 'lte' ]
         input = db[ '%self' ].createKeyStream query
@@ -202,15 +190,16 @@ unless module.parent?
     colors:           if process.stdout.isTTY then true else false
     chrs:             3
   #.........................................................................................................
-  dump_settings[ 'route'    ] = join __dirname, '..', cli_options[ '<db-route>' ]
+  dump_settings[ 'route'    ] = cli_options[ '<db-route>' ]
   dump_settings[ 'limit'    ] = ( parseInt limit, 10 ) if ( limit = cli_options[ '--limit' ] )
   dump_settings[ 'mode'     ] = 'prefixes' if cli_options[ 'prefixes' ]
   dump_settings[ 'chrs'     ] = ( parseInt  chrs, 10 ) if (  chrs = cli_options[  '<chrs>' ] )
   dump_settings[ 'prefix'   ] = prefix if ( prefix = cli_options[ '<prefix>' ] )?
   #---------------------------------------------------------------------------------------------------------
   db = HOLLERITH.new_db dump_settings[ 'route' ]
-  debug '©bEIeE', cli_options
-  help '©bEIeE', dump_settings
+  # debug '©bEIeE', cli_options
+  # help '©bEIeE', dump_settings
+  help "using LevelDB at #{dump_settings[ 'route' ]}"
   @dump db, dump_settings
 
   # debug '©lJ8nb', HOLLERITH._encode null, 1
