@@ -8,7 +8,7 @@
 #...........................................................................................................
 CND                       = require 'cnd'
 rpr                       = CND.rpr
-badge                     = 'test-hollerith'
+badge                     = 'HOLLERITH/main'
 log                       = CND.get_logger 'plain',     badge
 debug                     = CND.get_logger 'debug',     badge
 warn                      = CND.get_logger 'warn',      badge
@@ -33,7 +33,8 @@ leveldown                 = require 'level/node_modules/leveldown'
 #...........................................................................................................
 suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
-
+#...........................................................................................................
+LODASH                    = require 'lodash'
 
 
 #-----------------------------------------------------------------------------------------------------------
@@ -71,34 +72,8 @@ step                      = suspend.step
     yield db[ '%self' ].close resume
     yield leveldown.destroy route, resume
     yield db[ '%self' ].open resume
-    help "erased and re-opened LevelDB at #{route}"
+    # help "erased and re-opened LevelDB at #{route}"
     handler null
-
-
-#===========================================================================================================
-# CODEC
-#-----------------------------------------------------------------------------------------------------------
-@_encode = ( db, key ) -> _btws_encode key
-@_decode = ( db, key ) -> _btws_decode key
-
-#-----------------------------------------------------------------------------------------------------------
-@_rpr_of_key = ( db, key ) ->
-  if ( @_type_from_key db, key ) is 'list'
-    [ phrasetype, k0, v0, k1, v1, idx, ] = key
-    idx_rpr = if idx? then rpr idx else ''
-    ### TAINT should escape metachrs `|`, ':' ###
-    ### TAINT should use `rpr` on parts of speech (e.g. object value could be a number etc.) ###
-    return "#{phrasetype}|#{k0}:#{v0}|#{k1}:#{v1}|#{idx_rpr}"
-  return "#{rpr key}"
-
-#-----------------------------------------------------------------------------------------------------------
-@_type_from_key = ( db, key ) ->
-  if Array.isArray key
-    throw new Error "illegal key: #{rpr key}" unless key.length is 6
-    [ phrasetype, first, second, idx, ] = key
-    throw new Error "illegal phrasetype: #{rpr key}" unless phrasetype in [ 'so', 'os', ]
-    return 'list'
-  return 'other'
 
 
 #===========================================================================================================
@@ -159,9 +134,12 @@ step                      = suspend.step
 #===========================================================================================================
 # READING
 #-----------------------------------------------------------------------------------------------------------
-@read = ( db, prefix = null ) ->
-  return db[ '%self' ].createKeyStream() unless prefix?
-  return db[ '%self' ].createKeyStream @_query_from_prefix
+@read = ( db, hint = null ) ->
+  if hint? then R = db[ '%self' ].createKeyStream @new_query db, hint
+  else          R = db[ '%self' ].createKeyStream()
+  #.........................................................................................................
+  R = R.pipe $ ( bkey, send ) => send @_decode db, bkey
+  return R
 
 #-----------------------------------------------------------------------------------------------------------
 @read_sub = ( db, settings, read ) ->
@@ -198,8 +176,13 @@ step                      = suspend.step
         return false
 
 
+
 #===========================================================================================================
 # KEY AND PREFIXES
+#-----------------------------------------------------------------------------------------------------------
+@_encode = ( db, key ) -> _btws_encode key
+@_decode = ( db, key ) -> _btws_decode key
+
 #-----------------------------------------------------------------------------------------------------------
 ### NB Argument ordering for these function is always subject before object, regardless of the phrasetype
 and the ordering in the resulting key. ###
@@ -250,10 +233,37 @@ and the ordering in the resulting key. ###
   return [ phrasetype, sk, sv, ok, ov, idx, ]
 
 #-----------------------------------------------------------------------------------------------------------
+@url_from_key = ( db, key ) ->
+  if ( @_type_from_key db, key ) is 'list'
+    [ phrasetype, k0, v0, k1, v1, idx, ] = key
+    idx_rpr = if idx? then rpr idx else ''
+    ### TAINT should escape metachrs `|`, ':' ###
+    ### TAINT should use `rpr` on parts of speech (e.g. object value could be a number etc.) ###
+    return "#{phrasetype}|#{k0}:#{v0}|#{k1}:#{v1}|#{idx_rpr}"
+  return "#{rpr key}"
+
+#-----------------------------------------------------------------------------------------------------------
+@$url_from_key = ( db ) -> $ ( key, send ) => send @url_from_key db, key
+@$key_from_url = ( db ) -> $ ( url, send ) => send @key_from_url db, key
+
+#-----------------------------------------------------------------------------------------------------------
+@_type_from_key = ( db, key ) ->
+  if Array.isArray key
+    throw new Error "illegal key: #{rpr key}" unless key.length is 6
+    [ phrasetype, first, second, idx, ] = key
+    throw new Error "illegal phrasetype: #{rpr key}" unless phrasetype in [ 'so', 'os', ]
+    return 'list'
+  return 'other'
+
+
+#===========================================================================================================
+# PREFIXES / QUERIES
+#-----------------------------------------------------------------------------------------------------------
 @new_query = ( db, hint ) ->
   switch type = CND.type_of hint
-    when 'text' then return @_query_from_partial_url db, hint
-    when 'list' then return @_query_from_partial_key db, hint
+    when 'text'                   then return @_query_from_partial_url db, hint
+    when 'list'                   then return @_query_from_partial_key db, hint
+    when 'pod', 'HOLLERITH/query' then return LODASH.cloneDeep hint
   throw new Error "expected a partial URL (a text) or key (a list), got a #{type}"
 
 #-----------------------------------------------------------------------------------------------------------

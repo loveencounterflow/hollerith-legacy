@@ -164,50 +164,130 @@ BYTEWISE                  = require 'bytewise'
   T.eq [ t_0, sk_0, sv_0, ok_0, ov_0, idx_0, ], [ t_1, sk_1, sv_1, ok_1, ov_1, idx_1, ]
   done()
 
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "ordering and value recovery" ] = ( T, done ) ->
-#   matchers    = []
-#   probes_idx  = 0
-#   #.........................................................................................................
-#   for probe in @_feed_test_data.probes[ probes_idx ]
-#     [ sk, sv, ok, ov, ] = probe
-#     matchers.push [ 'os', ok, ov, sk, sv, 0, ]
-#     matchers.push [ 'so', sk, sv, ok, ov, 0, ]
-#   @_sort_list matchers
-#   #.........................................................................................................
-#   idx = -1
-#   step ( resume ) =>
-#     yield @_feed_test_data db, probes_idx, resume
-#     input = db[ '%self' ].createKeyStream()
-#     input
-#       .pipe $ ( key, send ) =>
-#         key = BYTEWISE.decode key
-#         idx += +1
-#         T.eq key, matchers[ idx ]
-#       .pipe D.$on_end => done()
-
 #-----------------------------------------------------------------------------------------------------------
-@[ "prefixes and searching" ] = ( T, done ) ->
+@[ "ordering and value recovery 0" ] = ( T, done ) ->
   matchers    = []
-  probes_idx  = 1
+  probes_idx  = 0
   #.........................................................................................................
-  # for probe in @_feed_test_data.probes[ probes_idx ]
-  #   matchers.push [ 'os', ok, ov, sk, sv, 0, ]
-  #   matchers.push [ 'so', sk, sv, ok, ov, 0, ]
-  # @_sort_list matchers
+  for probe in @_feed_test_data.probes[ probes_idx ]
+    [ sk, sv, ok, ov, ] = probe
+    matchers.push [ 'os', ok, ov, sk, sv, 0, ]
+    matchers.push [ 'so', sk, sv, ok, ov, 0, ]
+  @_sort_list matchers
   #.........................................................................................................
   idx = -1
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
-    query = HOLLERITH._query_from_partial_key db, [ 'os', 'strokeorder', '352514', ]
-    debug '©X1ucZ', query
-    input = db[ '%self' ].createKeyStream query
+    input = db[ '%self' ].createKeyStream()
     input
       .pipe $ ( key, send ) =>
-        debug '©NBTeU', key = BYTEWISE.decode key
+        key = BYTEWISE.decode key
         idx += +1
-        # T.eq key, matchers[ idx ]
+        T.eq key, matchers[ idx ]
       .pipe D.$on_end => done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "ordering and value recovery 1" ] = ( T, done ) ->
+  probes_idx  = 1
+  #.........................................................................................................
+  matchers    = [
+    'os|cp/fncr:u-cjk-xb/20d26|glyph:𠴦|0'
+    'os|cp/fncr:u-cjk-xb/24fef|glyph:𤿯|0'
+    'os|cp/fncr:u-cjk-xb/27474|glyph:𧑴|0'
+    'os|cp/fncr:u-cjk-xb/284a1|glyph:𨒡|0'
+    'os|cp/fncr:u-cjk-xb/2a6a7|glyph:𪚧|0'
+    'os|cp/fncr:u-cjk-xb/2a6ab|glyph:𪚫|0'
+    'os|cp/fncr:u-cjk/52ac|glyph:劬|0'
+    'os|cp/fncr:u-cjk/90ad|glyph:邭|0'
+    'os|strokeorder:352513553254|glyph:𤿯|0'
+    'os|strokeorder:3525141121|glyph:𠴦|0'
+    'os|strokeorder:35251454|glyph:𨒡|0'
+    'os|strokeorder:3525152|glyph:邭|0'
+    'os|strokeorder:352515251115115113541|glyph:𪚫|0'
+    'os|strokeorder:35251525112511511|glyph:𪚧|0'
+    'os|strokeorder:352515251214251214|glyph:𧑴|0'
+    'os|strokeorder:3525153|glyph:劬|0'
+    'so|glyph:劬|cp/fncr:u-cjk/52ac|0'
+    'so|glyph:劬|strokeorder:3525153|0'
+    'so|glyph:邭|cp/fncr:u-cjk/90ad|0'
+    'so|glyph:邭|strokeorder:3525152|0'
+    'so|glyph:𠴦|cp/fncr:u-cjk-xb/20d26|0'
+    'so|glyph:𠴦|strokeorder:3525141121|0'
+    'so|glyph:𤿯|cp/fncr:u-cjk-xb/24fef|0'
+    'so|glyph:𤿯|strokeorder:352513553254|0'
+    'so|glyph:𧑴|cp/fncr:u-cjk-xb/27474|0'
+    'so|glyph:𧑴|strokeorder:352515251214251214|0'
+    'so|glyph:𨒡|cp/fncr:u-cjk-xb/284a1|0'
+    'so|glyph:𨒡|strokeorder:35251454|0'
+    'so|glyph:𪚧|cp/fncr:u-cjk-xb/2a6a7|0'
+    'so|glyph:𪚧|strokeorder:35251525112511511|0'
+    'so|glyph:𪚫|cp/fncr:u-cjk-xb/2a6ab|0'
+    'so|glyph:𪚫|strokeorder:352515251115115113541|0'
+    ]
+  #.........................................................................................................
+  idx = -1
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    input = HOLLERITH.read db
+    input
+      .pipe HOLLERITH.$url_from_key db
+      .pipe $ ( key, send ) =>
+        # debug '©4i3qZ', key
+        idx += +1
+        T.eq key, matchers[ idx ]
+      .pipe D.$on_end => done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "prefixes and searching 0" ] = ( T, done ) ->
+  matchers    = []
+  probes_idx  = 1
+  #.........................................................................................................
+  matchers = [
+    'os|strokeorder:3525141121|glyph:𠴦|0'
+    'os|strokeorder:35251454|glyph:𨒡|0'
+    ]
+  #.........................................................................................................
+  idx = -1
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    query = HOLLERITH.new_query db, [ 'os', 'strokeorder', '352514', ]
+    # debug '©q0oj2', query
+    input = db[ '%self' ].createKeyStream query
+    input
+      #.....................................................................................................
+      .pipe $ ( bkey, send ) =>
+        url = HOLLERITH.url_from_key db, HOLLERITH._decode db, bkey
+        idx += +1
+        T.eq url, matchers[ idx ]
+      #.....................................................................................................
+      .pipe D.$on_end =>
+        T.eq idx, 1
+        done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "prefixes and searching 1" ] = ( T, done ) ->
+  matchers    = []
+  probes_idx  = 1
+  #.........................................................................................................
+  matchers = [
+    'os|strokeorder:3525141121|glyph:𠴦|0'
+    'os|strokeorder:35251454|glyph:𨒡|0'
+    ]
+  #.........................................................................................................
+  idx = -1
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    input = HOLLERITH.read db, [ 'os', 'strokeorder', '352514', ]
+      .pipe HOLLERITH.$url_from_key db
+      .pipe D.$show()
+      #.....................................................................................................
+      .pipe $ ( url, send ) =>
+        idx += +1
+        T.eq url, matchers[ idx ]
+      #.....................................................................................................
+      .pipe D.$on_end =>
+        T.eq idx, 1
+        done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "_ordering" ] = ( T, done ) ->

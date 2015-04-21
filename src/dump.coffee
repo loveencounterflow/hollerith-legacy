@@ -80,7 +80,7 @@ HOLLERITH                 = require './main'
     if key?
       count += +1
       if count < limit
-        key_rpr = HOLLERITH._rpr_of_key db, HOLLERITH._decode db, key
+        key_rpr = HOLLERITH.url_from_key db, HOLLERITH._decode db, key
         if colors
           log ( CND.grey ƒ count ), ( CND.plum key_rpr ), ( CND.grey key.slice 0, 10 )
         else
@@ -107,7 +107,7 @@ HOLLERITH                 = require './main'
     if key?
       key_count += +1
       if key_count < limit
-        key_rpr = HOLLERITH._rpr_of_key db, HOLLERITH._decode db, key
+        key_rpr = HOLLERITH.url_from_key db, HOLLERITH._decode db, key
         [ prefix, suffix_idx, ] = @_first_chrs_of key_rpr, chrs
         unless prefixes[ prefix ]?
           prefix_count       += +1
@@ -137,7 +137,7 @@ HOLLERITH                 = require './main'
       if prefix?
         # debug '©7fHvz', rpr prefix
         query = HOLLERITH.new_query db, prefix
-        urge '©g1y6J', query[ 'gte' ], HOLLERITH._decode db, query[ 'gte' ]
+        urge '©g1y6J', query[ 'gte' ]
         urge '©g1y6J', query[ 'lte' ]
         input = db[ '%self' ].createKeyStream query
       else
