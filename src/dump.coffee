@@ -137,7 +137,7 @@ HOLLERITH                 = require './main'
       if prefix?
         # debug '©7fHvz', rpr prefix
         query = HOLLERITH.new_query db, prefix
-        urge '©g1y6J', query[ 'gte' ]
+        urge '©g1y6J', query[ 'gte' ], HOLLERITH._decode db, query[ 'gte' ]
         urge '©g1y6J', query[ 'lte' ]
         input = db[ '%self' ].createKeyStream query
       else
