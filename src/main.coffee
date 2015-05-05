@@ -20,6 +20,7 @@ echo                      = CND.echo.bind CND
 suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
 #...........................................................................................................
+### https://github.com/deanlandolt/bytewise ###
 BYTEWISE                  = require 'bytewise'
 _btws_encode              = BYTEWISE.encode.bind BYTEWISE
 _btws_decode              = BYTEWISE.decode.bind BYTEWISE
@@ -33,6 +34,7 @@ leveldown                 = require 'level/node_modules/leveldown'
 #...........................................................................................................
 suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
+repeat_immediately        = suspend.repeat_immediately
 #...........................................................................................................
 LODASH                    = require 'lodash'
 
@@ -176,12 +178,17 @@ LODASH                    = require 'lodash'
         return false
 
 
-
 #===========================================================================================================
 # KEY AND PREFIXES
 #-----------------------------------------------------------------------------------------------------------
-@_encode = ( db, key ) -> _btws_encode key
-@_decode = ( db, key ) -> _btws_decode key
+@_encode = ( db, key ) ->
+  throw new Error "illegal key #{rpr key}" if key is undefined
+  return _btws_encode key
+
+#-----------------------------------------------------------------------------------------------------------
+@_decode = ( db, key ) ->
+  throw new Error "illegal key #{rpr key}" if ( R = _btws_decode key ) is undefined
+  return R
 
 #-----------------------------------------------------------------------------------------------------------
 ### NB Argument ordering for these function is always subject before object, regardless of the phrasetype

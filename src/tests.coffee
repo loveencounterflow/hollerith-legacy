@@ -342,12 +342,4 @@ BYTEWISE                  = require 'bytewise'
 ############################################################################################################
 unless module.parent?
   @_main()
-  # @[ "ordering" ]()
-  # CND.dir ( require 'leveldown' ) join __dirname, '..', 'dbs/tests'
-  # db = HOLLERITH.new_db join __dirname, '..', 'dbs/tests'
-  # @_feed_test_data db, ( error ) ->
-  #   throw error if error?
-  #   db[ '%self' ].createKeyStream()
-  #     .pipe D.$show()
-
 
