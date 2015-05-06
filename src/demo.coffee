@@ -216,7 +216,7 @@ HOLLERITH.$pick_values = ->
   step ( resume ) =>
     #.......................................................................................................
     Z     = {}
-    gte   = "os|factor/strokeclass/wbf:"
+    gte   = "os|factor/shapeclass/wbf:"
     lte   = @_lte_from_gte gte
     input = db[ '%self' ].createKeyStream { gte: gte, lte: lte, }
     #.......................................................................................................
