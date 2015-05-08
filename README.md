@@ -5,8 +5,6 @@
 - [What is LevelDB?](#what-is-leveldb)
 	- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
 - [xxx](#xxx)
-- [](#)
-- [](#-1)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
 
@@ -340,176 +338,105 @@ pt          | sk    : sv      | ok        : ov          | idx [ , idx ... ]
 
 ```
 
+so|glyph:丁|factor/strokeclass/wbf:"12"|
+so|glyph:丁|factor/shapeclass/wbf:"12"|
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-spo
-sop
-osp
-pso
-pso
-pos
-
-
-
-
-
-
-so|glyph:丁|factor/strokeclass/wbf:12|
-so|glyph:丁|factor/shapeclass/wbf:12|
-
-os|factor/strokeclass/wbf:32|
-os|guide/lineup/length:05|
-os|guide/lineup/uchr:八刀宀貝|
+os|factor/strokeclass/wbf:"32"|
+os|guide/lineup/length:5|
+os|guide/lineup/uchr:"八刀宀貝"|
 os|rank/cjt:000000|
 
 
-os|guide/lineup/length:05|glyph:𧷟|
-                       so|glyph:𧷟|guide/lineup/uchr:八刀宀貝|
-                       so|glyph:𧷟|guide/uchr/has:八|0
-                                         so|glyph:八|factor/shapeclass/wbf:34 |
-                       so|glyph:𧷟|guide/uchr/has:刀|1
-                                         so|glyph:刀|factor/shapeclass/wbf:5(12)3|
-                       so|glyph:𧷟|guide/uchr/has:宀|2
-                                         so|glyph:宀|factor/shapeclass/wbf:44|
-                       so|glyph:𧷟|guide/uchr/has:|3
-                                         so|glyph:|factor/shapeclass/wbf:12|
-                       so|glyph:𧷟|guide/uchr/has:貝|4
-                                         so|glyph:貝|factor/shapeclass/wbf:25(12)|
+os|guide/lineup/length:5|"𧷟"|
+                      so|"𧷟"|guide/lineup/uchr:"八刀宀貝"|
+                      so|"𧷟"|guide/uchr/has:"八"|0
+                                          so|"八"|factor/shapeclass/wbf:34 |
+                      so|"𧷟"|guide/uchr/has:"刀"|1
+                                          so|"刀"|factor/shapeclass/wbf:5(12)3|
+                      so|"𧷟"|guide/uchr/has:"宀"|2
+                                          so|"宀"|factor/shapeclass/wbf:44|
+                      so|"𧷟"|guide/uchr/has:""|3
+                                          so|""|factor/shapeclass/wbf:"12"|
+                      so|"𧷟"|guide/uchr/has:"貝"|4
+                                          so|"貝"|factor/shapeclass/wbf:"25(12)"|
 
 
-os|guide/lineup/length:05|glyph:𧷟|
-                       so|glyph:𧷟|rank/cjt:005432|
+os|guide/lineup/length:5|"𧷟"|
+                       so|"𧷟"|rank/cjt:5432|
 
-                       so|glyph:𧷟|guide/lineup/uchr/full:八刀宀貝|
-
-
-A: os|guide/lineup/length:05|glyph:𧷟|
-
-B: os|rank/cjt:005432|glyph:𧷟|
+                       so|"𧷟"|guide/lineup/uchr/full:"八刀宀貝"|
 
 
- oos|guide/lineup/length:05|rank/cjt:005432|glyph:𧷟|
-oos*|guide/lineup/length|rank/cjt|05|005432|glyph:𧷟|
-oos*|rank/cjt|guide/lineup/length|005432|05|glyph:𧷟|
-
-oos*|rank/cjt|guide/lineup/length|⤒⤒⤒⤒⤒⤒|0⤒|#glyph:𧷟|
-oos*|rank/cjt|guide/lineup/length|⤓⤓⤓⤓⤓⤓|05|#glyph:𧷟|
-
-so|glyph:𧷟|guide/lineup/length:05|
-so|glyph:𧷟|guide/has/uchr:八|0
-
-
-|
-/
-:
-http://example.com/foo/bar/index.html
-protocol:http|domain:example.com|path:foo/bar/index.html
+(pos|guide/lineup/length:5)-"𧷟"
+											 [spo|"𧷟"|rank/cjt]=5432
+											 ...
+											 [spo|"𧷟"|guide/uchr/has]=["八","刀","宀","","貝"]
+											 ...
+	                      										 [spo|"八"|factor/strokeclass/wbf]="34"
+	                      										     [spo|"刀"|factor/strokeclass/wbf]="53"
+	                      										          [spo|"宀"|factor/strokeclass/wbf]=...
 
 
-Heaxastore indexing; each fact `spo` gets 5 additonal
-index entries:
+###############################################
+
+
+key                                      	value
+
+....................................................
+# Primary Entries
+
+spo|"𧷟"|guide/lineup/length|            	5
+spo|"𧷟"|cp/cid|                         	163295
+spo|"𧷟"|guide/uchr/has|                 	["八","刀","宀","","貝"]
+spo|"𧷟"|rank/cjt|												5432
+spo|"八"|factor/strokeclass/wbf|					 "34"
+
+....................................................
+#	Secondary Entries
+
+pos|cp/cid:163295|"𧷟"|
+pos|factor/strokeclass/wbf:"34"|"八"|
+pos|guide/lineup/length:5|"𧷟"|
+pos|guide/uchr/has:"八"|"𧷟"|0
+pos|guide/uchr/has:"刀"|"𧷟"|1
+pos|guide/uchr/has:"宀"|"𧷟"|2
+pos|guide/uchr/has:""|"𧷟"|3
+pos|guide/uchr/has:"貝"|"𧷟"|4
+pos|rank/cjt:5432|"𧷟"|
+
+###############################################
+
+[ '𧷟', 'guide/lineup/length', 5,                                    ]
+[ '𧷟', 'cp/cid',              163295,                               ]
+[ '𧷟', 'guide/uchr/has',      [ '八', '刀', '宀', '', '貝', ],      ]
 
 
 
-spo|𧷟|guide/lineup/length|05|
-sop|𧷟|05|guide/lineup/length|
-pos|guide/lineup/length|05|𧷟|
-pso|guide/lineup/length|𧷟|05|
-osp|05|𧷟|guide/lineup/length|
-ops|05|guide/lineup/length|𧷟|
 
-spo|𧷟|cp/cid|163295|+
-pos|cp/cid|163295|𧷟|+
-sop|𧷟|163295|cp/cid|
-pso|cp/cid|𧷟|163295|
-osp|163295|𧷟|cp/cid|
-ops|163295|cp/cid|𧷟|
-
-ops|八|guide/uchr/has|𧷟|0
-ops|刀|guide/uchr/has|𧷟|1
-ops|宀|guide/uchr/has|𧷟|2
-ops|貝|guide/uchr/has|𧷟|4
-ops||guide/uchr/has|𧷟|3
-osp|八|𧷟|guide/uchr/has|0
-osp|刀|𧷟|guide/uchr/has|1
-osp|宀|𧷟|guide/uchr/has|2
-osp|貝|𧷟|guide/uchr/has|4
-osp||𧷟|guide/uchr/has|3
-pos|guide/uchr/has|八|𧷟|0
-pos|guide/uchr/has|刀|𧷟|1
-pos|guide/uchr/has|宀|𧷟|2
-pos|guide/uchr/has|貝|𧷟|4
-pos|guide/uchr/has||𧷟|3
-pso|guide/uchr/has|𧷟|八|0
-pso|guide/uchr/has|𧷟|刀|1
-pso|guide/uchr/has|𧷟|宀|2
-pso|guide/uchr/has|𧷟|貝|4
-pso|guide/uchr/has|𧷟||3
-sop|𧷟|八|guide/uchr/has|0
-sop|𧷟|刀|guide/uchr/has|1
-sop|𧷟|宀|guide/uchr/has|2
-sop|𧷟|貝|guide/uchr/has|4
-sop|𧷟||guide/uchr/has|3
-spo|𧷟|guide/uchr/has|八|0
-spo|𧷟|guide/uchr/has|刀|1
-spo|𧷟|guide/uchr/has|宀|2
-spo|𧷟|guide/uchr/has|貝|4
-spo|𧷟|guide/uchr/has||3
-
-----------------------------------------------------
-
-os|cp/cid:163295|glyph:𧷟|
-os|guide/lineup/length:05|glyph:𧷟|
-os|guide/uchr/has:八|glyph:𧷟|0
-os|guide/uchr/has:刀|glyph:𧷟|1
-os|guide/uchr/has:宀|glyph:𧷟|2
-os|guide/uchr/has:貝|glyph:𧷟|4
-os|guide/uchr/has:|glyph:𧷟|3
-so|glyph:𧷟|guide/lineup/length:05|
-so|glyph:𧷟|cp/cid:163295|
-so|glyph:𧷟|guide/uchr/has:八|0
-so|glyph:𧷟|guide/uchr/has:刀|1
-so|glyph:𧷟|guide/uchr/has:宀|2
-so|glyph:𧷟|guide/uchr/has:貝|4
-so|glyph:𧷟|guide/uchr/has:|3
+###############################################
+X os|cp/cid:163295|𧷟
+X os|guide/lineup/length:5|𧷟
+ops|"八"|guide/uchr/has|"𧷟"|0
+ops|"刀"|guide/uchr/has|"𧷟"|1
+ops|"宀"|guide/uchr/has|"𧷟"|2
+ops|""|guide/uchr/has|"𧷟"|3
+ops|"貝"|guide/uchr/has|"𧷟"|4
+osp|"八"|"𧷟"|guide/uchr/has|0
+osp|"刀"|"𧷟"|guide/uchr/has|1
+osp|"宀"|"𧷟"|guide/uchr/has|2
+osp|""|"𧷟"|guide/uchr/has|3
+osp|"貝"|"𧷟"|guide/uchr/has|4
 
 
- sof|glyph:𧷟|guide/uchr/has:八|0
- osf|guide/uchr/has:八|glyph:𧷟|0
- sov|𧷟|八|glyph:guide/uchr/has:0
- osv|八|𧷟|guide/uchr/has:glyph:0
-(sok|glyph:guide/uchr/has:𧷟|八|0)
-(osk|guide/uchr/has:glyph:八|𧷟|0)
 
-----------------------------------------------------
-key                                      value
-os|cp/cid:163295                        { s: '𧷟', }
-os|guide/lineup/length:05               { s: '𧷟', }
-os|guide/uchr/has:八|𧷟                  { idx: 0, }
-os|guide/uchr/has:刀|𧷟                  { idx: 1, }
-os|guide/uchr/has:宀|𧷟                  { idx: 2, }
-os|guide/uchr/has:|𧷟                  { idx: 3, }
-os|guide/uchr/has:貝|𧷟                  { idx: 4, }
-so|𧷟|guide/lineup/length                5
-so|𧷟|cp/cid                             163295
-so|𧷟|guide/uchr/has                     [ '八', '刀', '宀', '', '貝', ]
+###############################################
+set  		db,     s, p, o, [idx]
+_set 		db, pt, s, p, o, [idx]
+
+push  	db,     s, p, o
+
+get 		db, 		s, [idx]
+_get 		db,
 
 
 

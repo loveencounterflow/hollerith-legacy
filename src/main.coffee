@@ -28,8 +28,6 @@ _btws_decode              = BYTEWISE.decode.bind BYTEWISE
 D                         = require 'pipedreams2'
 $                         = D.remit.bind D
 _new_level_db             = require 'level'
-@_zero                    = _btws_encode true
-@_last_octet              = new Buffer [ 0xff, ]
 leveldown                 = require 'level/node_modules/leveldown'
 #...........................................................................................................
 suspend                   = require 'coffeenode-suspend'
@@ -38,6 +36,14 @@ repeat_immediately        = suspend.repeat_immediately
 #...........................................................................................................
 LODASH                    = require 'lodash'
 
+
+#-----------------------------------------------------------------------------------------------------------
+@phrasetypes      = [ 'pos', 'spo', ]
+@_misfit          = Symbol 'misfit'
+@_zero            = _btws_encode true
+@_lo_raw          = _btws_encode null
+@_hi_raw          = _btws_encode undefined
+@_last_octet      = new Buffer [ 0xff, ]
 
 #-----------------------------------------------------------------------------------------------------------
 @new_db = ( route ) ->
@@ -105,9 +111,17 @@ LODASH                    = require 'lodash'
   has_ended   = no
   _send       = null
   #.........................................................................................................
+  push = ( key, value ) =>
+    value = if value? then @_encode db, value else @_zero
+    buffer.push { type: 'put', key: ( @_encode db, key ), value: value, }
+  #.........................................................................................................
   flush = =>
     if buffer.length > 0
       batch_count += +1
+      ### --- ###
+      for { key, value, } in buffer
+        debug '©AbDU1', ( @_decode db, key ), ( @_decode db, value )
+      ### --- ###
       substrate.batch buffer, ( error ) =>
         throw error if error?
         batch_count += -1
@@ -116,18 +130,32 @@ LODASH                    = require 'lodash'
     else
       _send.end()
   #.........................................................................................................
-  return $ ( so_key, send, end ) =>
+  return $ ( spo, send, end ) =>
+    # debug '©BpJQt', spo
     _send = send
-    if so_key?
-      # debug '©rDlYA', so_key
-      buffer.push { type: 'put', key: ( @_encode db, so_key ), value: @_zero, }
-      ### TAINT must validate this type check still works as intended ###
-      unless CND.isa_pod so_key[ 2 ][ 1 ]
-        os_key = @_new_os_key_from_so_key db, so_key
-        buffer.push { type: 'put', key: ( @_encode db, os_key ), value: @_zero, }
+    if spo?
+      [ sbj, prd, obj, ] = spo
+      push [ 'spo', sbj, prd, ], obj
+      # debug '©OYmaD', [ 'spo', sbj, prd, ], obj
+      ### TAINT what to send, if anything? ###
+      # send entry
+      #.....................................................................................................
+      if CND.isa_pod obj
+        ### Do not create index entries in case `obj` is a POD: ###
+        null
+      #.....................................................................................................
+      else if CND.isa_list obj
+        ### Create one index entry for each element in case `obj` is a list: ###
+        for obj_element, obj_idx in obj
+          push [ 'pos', prd, obj_element, obj_idx, ]
+      #.....................................................................................................
+      else
+        ### Create one index entry for `obj` otherwise: ###
+        push [ 'pos', prd, obj, sbj, ]
+      #.....................................................................................................
       flush() if buffer.length >= buffer_size
-      send so_key
-      send os_key
+    #.......................................................................................................
+    ### Flush remaining buffered entries to DB ###
     if end?
       has_ended = yes
       flush()
@@ -135,13 +163,70 @@ LODASH                    = require 'lodash'
 
 #===========================================================================================================
 # READING
+# #-----------------------------------------------------------------------------------------------------------
+# @create_keystream = ( db, lo_hint = null, hi_hint = null ) ->
+#   ### TAINT code duplication ###
+#   if lo_hint?
+#     if hi_hint?
+#       query = { gte: lo_hint, lte:hi_hint, }
+#     else
+#       query = { gte: lo_hint, }
+#   else if hi_hint?
+#     query = { lte: hi_hint, }
+#   else
+#     query = null
+#   #.........................................................................................................
+#   debug '©835JP', query
+#   R = if query? then ( db[ '%self' ].createKeyStream query ) else db[ '%self' ].createKeyStream()
+#   # R = db[ '%self' ].createKeyStream @new_query db, query
+#   ### TAINT Should we test for well-formed entries here? ###
+#   R = R.pipe $ ( bkey, send ) => send @_decode db, bkey
+#   return R
+
 #-----------------------------------------------------------------------------------------------------------
-@read = ( db, hint = null ) ->
-  if hint? then R = db[ '%self' ].createKeyStream @new_query db, hint
-  else          R = db[ '%self' ].createKeyStream()
+@create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
+  ###
+  * If no hint is given, all entries will be given in the stream.
+  * If both `lo_hint` and `hi_hint` are given, a query with lower and upper, inclusive boundaries is
+    issued.
+  * If only `lo_hint` is given, a prefix query is issued.
+  * If `hi_hint` is given but `lo_hint` is missing, an error is issued.
+  ###
   #.........................................................................................................
-  R = R.pipe $ ( bkey, send ) => send @_decode db, bkey
+  if hi_hint? and not lo_hint?
+    throw new Error "must give `lo_hint` when `hi_hint` is given"
+  #.........................................................................................................
+  if not hi_hint?
+    lo_hint_enc = @_encode       db, lo_hint
+    hi_hint_enc = @_gte_from_lte db, lo_hint_enc
+  #.........................................................................................................
+  else
+    lo_hint_enc = if lo_hint? then ( @_encode db, lo_hint ) else @_lo_raw
+    hi_hint_enc = if hi_hint? then ( @_encode db, hi_hint ) else @_hi_raw
+  #.........................................................................................................
+  query     = { gte: lo_hint_enc, lte: hi_hint_enc, }
+  urge '©a0Lgn', query
+  R         = db[ '%self' ].createReadStream query
+  ### TAINT Should we test for well-formed entries here? ###
+  R         = R.pipe $ ( { key, value }, send ) => send [ ( @_decode db, key ), ( @_decode db, value ), ]
+  #.........................................................................................................
   return R
+
+#-----------------------------------------------------------------------------------------------------------
+@read_many = ( db, hint = null ) ->
+  ### Hints are interpreted as partial secondary (POS) keys. ###
+
+#-----------------------------------------------------------------------------------------------------------
+@read_one = ( db, key, fallback = @_misfit, handler ) ->
+  ### Hints are interpreted as complete primary (SPO) keys. ###
+  switch arity = arguments.length
+    when 3
+      handler   = fallback
+      fallback  = @_misfit
+    when 4 then null
+    else throw new Error "expected 3 or 4 arguments, got #{arity}"
+  #.........................................................................................................
+  db[ '%self' ].get key, handler
 
 #-----------------------------------------------------------------------------------------------------------
 @read_sub = ( db, settings, read ) ->
@@ -284,12 +369,10 @@ and the ordering in the resulting key. ###
 
 #-----------------------------------------------------------------------------------------------------------
 @_query_from_partial_key = ( db, pkey ) ->
-  for element in pkey
-    throw new Error "illegal prefix-key: #{rpr pkey}" unless CND.isa_text element
   base                = @_encode db, pkey
   length              = base.length
-  throw new Error "illegal prefix-key: #{rpr pkey}" unless base[ length - 1 ] is 0x00
-  throw new Error "illegal prefix-key: #{rpr pkey}" unless base[ length - 2 ] is 0x00
+  throw new Error "illegal prefix-key (1): #{rpr pkey}" unless base[ length - 1 ] is 0x00
+  throw new Error "illegal prefix-key (2): #{rpr pkey}" unless base[ length - 2 ] is 0x00
   base[ length - 2 ]  = 0xff
   gte                 = base.slice 0, length - 2
   lte                 = base.slice 0, length - 1
