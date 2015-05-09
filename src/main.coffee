@@ -40,9 +40,10 @@ LODASH                    = require 'lodash'
 #-----------------------------------------------------------------------------------------------------------
 @phrasetypes      = [ 'pos', 'spo', ]
 @_misfit          = Symbol 'misfit'
-@_zero            = _btws_encode true
-@_lo_raw          = _btws_encode null
-@_hi_raw          = _btws_encode undefined
+@_zero            = true
+@_zero_enc        = _btws_encode @_zero
+@_lo_enc          = _btws_encode null
+@_hi_enc          = _btws_encode undefined
 @_last_octet      = new Buffer [ 0xff, ]
 
 #-----------------------------------------------------------------------------------------------------------
@@ -112,16 +113,16 @@ LODASH                    = require 'lodash'
   _send       = null
   #.........................................................................................................
   push = ( key, value ) =>
-    value = if value? then @_encode db, value else @_zero
+    value = if value? then @_encode db, value else @_zero_enc
     buffer.push { type: 'put', key: ( @_encode db, key ), value: value, }
   #.........................................................................................................
   flush = =>
     if buffer.length > 0
       batch_count += +1
-      ### --- ###
-      for { key, value, } in buffer
-        debug '©AbDU1', ( @_decode db, key ), ( @_decode db, value )
-      ### --- ###
+      # ### --- ###
+      # for { key, value, } in buffer
+      #   debug '©AbDU1', ( @_decode db, key ), ( @_decode db, value )
+      # ### --- ###
       substrate.batch buffer, ( error ) =>
         throw error if error?
         batch_count += -1
@@ -147,7 +148,7 @@ LODASH                    = require 'lodash'
       else if CND.isa_list obj
         ### Create one index entry for each element in case `obj` is a list: ###
         for obj_element, obj_idx in obj
-          push [ 'pos', prd, obj_element, obj_idx, ]
+          push [ 'pos', prd, obj_element, sbj, obj_idx, ]
       #.....................................................................................................
       else
         ### Create one index entry for `obj` otherwise: ###
@@ -184,6 +185,12 @@ LODASH                    = require 'lodash'
 #   return R
 
 #-----------------------------------------------------------------------------------------------------------
+@create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->
+  R = @create_facetstream db, lo_hint, hi_hint
+    .pipe @$as_phrase db
+  return R
+
+#-----------------------------------------------------------------------------------------------------------
 @create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
   ###
   * If no hint is given, all entries will be given in the stream.
@@ -196,16 +203,14 @@ LODASH                    = require 'lodash'
   if hi_hint? and not lo_hint?
     throw new Error "must give `lo_hint` when `hi_hint` is given"
   #.........................................................................................................
-  if not hi_hint?
-    lo_hint_enc = @_encode       db, lo_hint
-    hi_hint_enc = @_gte_from_lte db, lo_hint_enc
+  if lo_hint and not hi_hint?
+    query       = @_query_from_prefix db, lo_hint
   #.........................................................................................................
   else
-    lo_hint_enc = if lo_hint? then ( @_encode db, lo_hint ) else @_lo_raw
-    hi_hint_enc = if hi_hint? then ( @_encode db, hi_hint ) else @_hi_raw
+    lo_hint_enc = if lo_hint? then            ( @_encode db, lo_hint )          else @_lo_enc
+    hi_hint_enc = if hi_hint? then ( @_query_from_prefix db, hi_hint )[ 'lte' ] else @_hi_enc
+    query       = { gte: lo_hint_enc, lte: hi_hint_enc, }
   #.........................................................................................................
-  query     = { gte: lo_hint_enc, lte: hi_hint_enc, }
-  urge '©a0Lgn', query
   R         = db[ '%self' ].createReadStream query
   ### TAINT Should we test for well-formed entries here? ###
   R         = R.pipe $ ( { key, value }, send ) => send [ ( @_decode db, key ), ( @_decode db, value ), ]
@@ -239,22 +244,36 @@ LODASH                    = require 'lodash'
     else
       throw new Error "expected 2 or 3 arguments, got #{arity}"
   #.........................................................................................................
-  indexed           = settings?[ 'indexed' ] ? no
+  indexed           = settings?[ 'indexed'    ] ? no
+  # transform         = settings?[ 'transform'  ] ? D.$pass_through()
+  mangle            = settings?[ 'mangle'     ] ? ( data ) -> data
+  send_empty        = settings?[ 'empty'      ] ? no
   insert_index      = if indexed then D.new_indexer() else ( x ) -> x
   open_stream_count = 0
   #.........................................................................................................
   return $ ( outer_data, outer_send, outer_end ) =>
+    count = 0
     #.......................................................................................................
     if outer_data?
-      open_stream_count  += +1
-      sub_input = read outer_data
+      open_stream_count    += +1
+      sub_input             = read outer_data
+      [ memo, sub_input, ]  = if CND.isa_list sub_input then sub_input else [ @_misfit, sub_input, ]
+      sub_input
+        # .pipe transform
         .pipe do =>
-          buffer = []
+          ### TAINT no need to build buffer if not `send_empty` and there are no results ###
+          buffer = if memo is @_misfit then [] else [ memo, ]
           return $ ( inner_data, _, inner_end ) =>
-            buffer.push inner_data if inner_data?
+            if inner_data?
+              inner_data = mangle inner_data
+              if inner_data?
+                count += +1
+                buffer.push inner_data
             if inner_end?
-              outer_send insert_index buffer
+              if send_empty or count > 0
+                outer_send insert_index buffer
               open_stream_count += -1
+              inner_end()
     #.......................................................................................................
     if outer_end?
       repeat_immediately ->
@@ -289,7 +308,7 @@ and the ordering in the resulting key. ###
 
 #-----------------------------------------------------------------------------------------------------------
 @_new_os_key_from_so_key = ( db, so_key ) ->
-  [ phrasetype, sk, sv, ok, ov, idx, ] = @normalize_key db, so_key
+  [ phrasetype, sk, sv, ok, ov, idx, ] = @as_phrase db, so_key
   throw new Error "expected phrasetype 'so', got #{rpr phrasetype}" unless phrasetype is 'so'
   return [ 'os', ok, ov, sk, sv, idx, ]
 
@@ -301,10 +320,22 @@ and the ordering in the resulting key. ###
     ( @new_key db, other_phrasetype, sk, sv, ok, ov, idx ), ]
 
 #-----------------------------------------------------------------------------------------------------------
-@normalize_key = ( db, key ) ->
-  [ phrasetype, sk, sv, ok, ov, idx, ] = key
-  [ sk, sv, ok, ov, ] = [ ok, ov, sk, sv, ] if phrasetype is 'os'
-  return [ phrasetype, sk, sv, ok, ov, ( idx ? 0 ), ]
+@as_phrase = ( db, key, value = @_zero_enc ) ->
+  switch phrasetype = key[ 0 ]
+    when 'spo'
+      throw new Error "illegal SPO key (length #{length})" unless ( length = key.length ) is 3
+      throw new Error "illegal value #{rpr value}" if value in [ @_zero_enc, undefined, ]
+      return [ key[ 1 ], key[ 2 ], value, ]
+    when 'pos'
+      throw new Error "illegal POS key (length #{length})" unless 4 <= ( length = key.length ) <= 5
+      throw new Error "illegal value #{rpr value}" if not ( value in [ @_zero, undefined, ] )
+      [ _, prd, obj, sbj, idx, ] = key
+      return if idx? then [ sbj, prd, obj, idx, ] else [ sbj, prd, obj, ]
+
+#-----------------------------------------------------------------------------------------------------------
+@$as_phrase = ( db ) ->
+  return $ ( data, send ) =>
+    send @as_phrase db, data...
 
 #-----------------------------------------------------------------------------------------------------------
 @key_from_url = ( db, url ) ->
@@ -350,29 +381,40 @@ and the ordering in the resulting key. ###
 
 #===========================================================================================================
 # PREFIXES / QUERIES
-#-----------------------------------------------------------------------------------------------------------
-@new_query = ( db, hint ) ->
-  switch type = CND.type_of hint
-    when 'text'                   then return @_query_from_partial_url db, hint
-    when 'list'                   then return @_query_from_partial_key db, hint
-    when 'pod', 'HOLLERITH/query' then return LODASH.cloneDeep hint
-  throw new Error "expected a partial URL (a text) or key (a list), got a #{type}"
+# #-----------------------------------------------------------------------------------------------------------
+# @new_query = ( db, hint ) ->
+#   switch type = CND.type_of hint
+#     when 'text'                   then return @_query_from_partial_url db, hint
+#     when 'list'                   then return @_query_from_partial_key db, hint
+#     when 'pod', 'HOLLERITH/query' then return LODASH.cloneDeep hint
+#   throw new Error "expected a partial URL (a text) or key (a list), got a #{type}"
+
+# #-----------------------------------------------------------------------------------------------------------
+# @_query_from_partial_url = ( db, purl ) ->
+#   [ phrasetype, tail, ] = purl.split '|', 2
+#   [ k0, v0, ]           = if tail? then ( tail.split ':', 2 ) else [ null, null, ]
+#   pkey                  = [ phrasetype, ]
+#   pkey.push k0 if k0?
+#   pkey.push v0 if v0?
+#   return @_query_from_partial_key db, pkey
+
+# #-----------------------------------------------------------------------------------------------------------
+# @_query_from_partial_key = ( db, pkey ) ->
+#   base                = @_encode db, pkey
+#   length              = base.length
+#   throw new Error "illegal prefix-key (1): #{rpr pkey}" unless base[ length - 1 ] is 0x00
+#   throw new Error "illegal prefix-key (2): #{rpr pkey}" unless base[ length - 2 ] is 0x00
+#   base[ length - 2 ]  = 0xff
+#   gte                 = base.slice 0, length - 2
+#   lte                 = base.slice 0, length - 1
+#   return { gte, lte, }
 
 #-----------------------------------------------------------------------------------------------------------
-@_query_from_partial_url = ( db, purl ) ->
-  [ phrasetype, tail, ] = purl.split '|', 2
-  [ k0, v0, ]           = if tail? then ( tail.split ':', 2 ) else [ null, null, ]
-  pkey                  = [ phrasetype, ]
-  pkey.push k0 if k0?
-  pkey.push v0 if v0?
-  return @_query_from_partial_key db, pkey
-
-#-----------------------------------------------------------------------------------------------------------
-@_query_from_partial_key = ( db, pkey ) ->
-  base                = @_encode db, pkey
+@_query_from_prefix = ( db, lo_hint ) ->
+  base                = @_encode db, lo_hint
   length              = base.length
-  throw new Error "illegal prefix-key (1): #{rpr pkey}" unless base[ length - 1 ] is 0x00
-  throw new Error "illegal prefix-key (2): #{rpr pkey}" unless base[ length - 2 ] is 0x00
+  throw new Error "illegal prefix-key (1): #{rpr lo_hint}" unless base[ length - 1 ] is 0x00
+  throw new Error "illegal prefix-key (2): #{rpr lo_hint}" unless base[ length - 2 ] is 0x00
   base[ length - 2 ]  = 0xff
   gte                 = base.slice 0, length - 2
   lte                 = base.slice 0, length - 1

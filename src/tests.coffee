@@ -71,7 +71,7 @@ BYTEWISE                  = require 'bytewise'
         #...................................................................................................
         for probe in @_feed_test_data.probes[ probes_idx ]
           # key = HOLLERITH.new_so_key db, probe...
-          debug '©WV0j2', probe
+          # debug '©WV0j2', probe
           input.write probe
         input.end()
     #-------------------------------------------------------------------------------------------------------
@@ -104,16 +104,21 @@ BYTEWISE                  = require 'bytewise'
   [ '𧷟2', 'guide/lineup/length',              2,                                   ]
   [ '𧷟3', 'guide/lineup/length',              3,                                   ]
   [ '𧷟4', 'guide/lineup/length',              4,                                   ]
-  [ '𧷟', 'guide/lineup/length',              5,                                   ]
+  [ '𧷟', 'guide/lineup/length',              5,                                    ]
   [ '𧷟6', 'guide/lineup/length',              6,                                   ]
-  [ '𧷟', 'cp/cid',                           163295,                              ]
-  [ '𧷟', 'guide/uchr/has',                   [ '八', '刀', '宀', '', '貝', ],    ]
-  [ '𧷟', 'rank/cjt',                         5432,                                ]
-  [ '八', 'factor/strokeclass/wbf',          '34',                                 ]
-  [ '刀', 'factor/strokeclass/wbf',          '5(12)3',                             ]
-  [ '宀', 'factor/strokeclass/wbf',          '44',                                 ]
-  [ '', 'factor/strokeclass/wbf',          '12',                                 ]
-  [ '貝', 'factor/strokeclass/wbf',          '25(12)',                             ]
+  [ '𧷟', 'cp/cid',                           163295,                               ]
+  [ '𧷟', 'guide/uchr/has',                   [ '八', '刀', '宀', '', '貝', ],      ]
+  [ '𧷟', 'rank/cjt',                         5432,                                 ]
+  [ '八', 'factor/strokeclass/wbf',          '34',                                  ]
+  [ '刀', 'factor/strokeclass/wbf',          '5(12)3',                              ]
+  [ '宀', 'factor/strokeclass/wbf',          '44',                                  ]
+  [ '', 'factor/strokeclass/wbf',          '12',                                  ]
+  [ '貝', 'factor/strokeclass/wbf',          '25(12)',                              ]
+  [ '八', 'rank/cjt',                         12541,                                ]
+  [ '刀', 'rank/cjt',                         12542,                                ]
+  [ '宀', 'rank/cjt',                         12543,                                ]
+  [ '', 'rank/cjt',                         12544,                                ]
+  [ '貝', 'rank/cjt',                         12545,                                ]
   ]
 
 #...........................................................................................................
@@ -155,28 +160,310 @@ BYTEWISE                  = require 'bytewise'
     input
       # .pipe HOLLERITH.$url_from_key db
       .pipe $ ( [ key, value, ], send ) =>
-        debug '©4i3qZ', key, value
         idx += +1
         # T.eq key, matchers[ idx ]
       .pipe D.$on_end => done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "read POS keys without error" ] = ( T, done ) ->
+@[ "read keys without error (1)" ] = ( T, done ) ->
+  step ( resume ) =>
+    yield HOLLERITH.clear db, resume
+    for idx in [ 0 ... 10 ]
+      db[ '%self' ].put ( HOLLERITH._encode db, [ 'x', idx, 'x', ] ), HOLLERITH._zero_enc
+    #.......................................................................................................
+    probe_idx = 4
+    count     = 0
+    query     = HOLLERITH._query_from_prefix db, [ 'x', probe_idx, ]
+    input     = db[ '%self' ].createReadStream query
+    input
+      .pipe $ ( { key, value, }, send ) =>
+        count += 1
+        T.eq ( HOLLERITH._decode db, key )[ 1 ], probe_idx
+      .pipe D.$on_end =>
+        T.eq count, 1
+        done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read keys without error (2)" ] = ( T, done ) ->
+  step ( resume ) =>
+    yield HOLLERITH.clear db, resume
+    for idx in [ 0 ... 10 ]
+      db[ '%self' ].put ( HOLLERITH._encode db, [ 'x', idx, 'x', ] ), HOLLERITH._zero_enc
+    #.......................................................................................................
+    probe_idx = 4
+    count     = 0
+    prefix    = [ 'x', probe_idx, ]
+    input     = HOLLERITH.create_facetstream db, prefix
+    input
+      .pipe $ ( facet, send ) =>
+        count += 1
+        [ key, value, ] = facet
+        T.eq key[ 1 ], probe_idx
+      .pipe D.$on_end =>
+        T.eq count, 1
+        done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read keys without error (3)" ] = ( T, done ) ->
+  step ( resume ) =>
+    yield HOLLERITH.clear db, resume
+    for idx in [ 0 ... 10 ]
+      db[ '%self' ].put ( HOLLERITH._encode db, [ 'x', idx, 'x', ] ), HOLLERITH._zero_enc
+    #.......................................................................................................
+    probe_idx = 3
+    count     = 0
+    delta     = 2
+    lo        = [ 'x', probe_idx, ]
+    hi        = [ 'x', probe_idx + delta, ]
+    query     = { gte: ( HOLLERITH._encode db, lo ), lte: ( HOLLERITH._query_from_prefix db, hi )[ 'lte' ], }
+    input     = db[ '%self' ].createReadStream query
+    input
+      .pipe $ ( { key, value, }, send ) =>
+        count += 1
+        T.eq ( HOLLERITH._decode db, key )[ 1 ], probe_idx + count - 1
+      .pipe D.$on_end =>
+        T.eq count, delta + 1
+        done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read keys without error (4)" ] = ( T, done ) ->
+  step ( resume ) =>
+    yield HOLLERITH.clear db, resume
+    for idx in [ 0 ... 10 ]
+      db[ '%self' ].put ( HOLLERITH._encode db, [ 'x', idx, 'x', ] ), HOLLERITH._zero_enc
+    #.......................................................................................................
+    probe_idx = 3
+    count     = 0
+    delta     = 2
+    lo        = [ 'x', probe_idx, ]
+    hi        = [ 'x', probe_idx + delta, ]
+    input     = HOLLERITH.create_facetstream db, lo, hi
+    input
+      .pipe $ ( [ key, value, ], send ) =>
+        count += 1
+        T.eq key[ 1 ], probe_idx + count - 1
+      .pipe D.$on_end =>
+        T.eq count, delta + 1
+        done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "create_facetstream throws with wrong arguments" ] = ( T, done ) ->
+  message = "must give `lo_hint` when `hi_hint` is given"
+  T.throws message, ( -> HOLLERITH.create_facetstream db, null, [ 'xxx', ] )
+  done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read POS facets" ] = ( T, done ) ->
   probes_idx  = 0
-  idx = -1
+  idx         = -1
+  #.........................................................................................................
+  key_matchers = [
+    [ 'pos', 'guide/lineup/length', 2, '𧷟2' ]
+    [ 'pos', 'guide/lineup/length', 3, '𧷟3' ]
+    [ 'pos', 'guide/lineup/length', 4, '𧷟4' ]
+    ]
+  #.........................................................................................................
+  phrase_matchers = [
+    [ '𧷟2', 'guide/lineup/length', 2 ]
+    [ '𧷟3', 'guide/lineup/length', 3 ]
+    [ '𧷟4', 'guide/lineup/length', 4 ]
+    ]
+  #.........................................................................................................
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
-    lo_hint = [ 'pos', 'guide/lineup/length', 1, ]
-    hi_hint = [ 'pos', 'guide/lineup/length', 5.1, ]
-    # input   = HOLLERITH.create_keystream db, lo_hint
-    input   = HOLLERITH.create_facetstream db, lo_hint, hi_hint
+    lo = [ 'pos', 'guide/lineup/length', 2, ]
+    hi = [ 'pos', 'guide/lineup/length', 4, ]
+    # input   = HOLLERITH.create_keystream db, lo
+    input   = HOLLERITH.create_facetstream db, lo, hi
     input
       # .pipe HOLLERITH.$url_from_key db
       .pipe $ ( [ key, value, ], send ) =>
-        debug '©HfYFf', key, value
         idx += +1
-        # T.eq key, matchers[ idx ]
+        phrase = HOLLERITH.as_phrase db, key, value
+        T.eq key, key_matchers[ idx ]
+        T.eq phrase, phrase_matchers[ idx ]
       .pipe D.$on_end => done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read POS phrases (1)" ] = ( T, done ) ->
+  probes_idx  = 0
+  idx         = -1
+  #.........................................................................................................
+  matchers = [
+    [ '𧷟2', 'guide/lineup/length', 2 ]
+    [ '𧷟3', 'guide/lineup/length', 3 ]
+    [ '𧷟4', 'guide/lineup/length', 4 ]
+    ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    lo = [ 'pos', 'guide/lineup/length', 2, ]
+    hi = [ 'pos', 'guide/lineup/length', 4, ]
+    input   = HOLLERITH.create_phrasestream db, lo, hi
+    input
+      .pipe $ ( phrase, send ) =>
+        idx += +1
+        T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end => done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read POS phrases (2)" ] = ( T, done ) ->
+  probes_idx  = 0
+  idx         = -1
+  count       = 0
+  #.........................................................................................................
+  matchers = [
+    [ '𧷟', 'guide/uchr/has', '八', 0 ]
+    [ '𧷟', 'guide/uchr/has', '刀', 1 ]
+    [ '𧷟', 'guide/uchr/has', '宀', 2 ]
+    [ '𧷟', 'guide/uchr/has', '貝', 4 ]
+    [ '𧷟', 'guide/uchr/has', '', 3 ]
+    ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    prefix    = [ 'pos', 'guide/uchr/has', ]
+    input     = HOLLERITH.create_phrasestream db, prefix
+    settings  = { indexed: no, }
+    input
+      .pipe $ ( phrase, send ) =>
+        count  += +1
+        idx    += +1
+        T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end =>
+        T.eq count, matchers.length
+        done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read SPO phrases" ] = ( T, done ) ->
+  probes_idx  = 0
+  idx         = -1
+  count       = 0
+  #.........................................................................................................
+  matchers = [
+    [ '𧷟', 'cp/cid', 163295 ]
+    [ '𧷟', 'guide/lineup/length', 5 ]
+    [ '𧷟', 'guide/uchr/has', [ '八', '刀', '宀', '', '貝' ] ]
+    [ '𧷟', 'rank/cjt', 5432 ]
+    [ '𧷟1', 'guide/lineup/length', 1 ]
+    [ '𧷟2', 'guide/lineup/length', 2 ]
+    [ '𧷟3', 'guide/lineup/length', 3 ]
+    [ '𧷟4', 'guide/lineup/length', 4 ]
+    [ '𧷟6', 'guide/lineup/length', 6 ]
+    ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    prefix  = [ 'spo', '𧷟', ]
+    input   = HOLLERITH.create_phrasestream db, prefix
+    input
+      .pipe $ ( phrase, send ) =>
+        count  += +1
+        idx    += +1
+        T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end =>
+        T.eq count, matchers.length
+        done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read with sub-read (1)" ] = ( T, done ) ->
+  probes_idx  = 0
+  idx         = -1
+  count       = 0
+  #.........................................................................................................
+  matchers = [
+    [ '𧷟', [ '八', 'factor/strokeclass/wbf', '34' ] ]
+    ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    prefix    = [ 'spo', '𧷟', 'guide/uchr/has', ]
+    input     = HOLLERITH.create_phrasestream db, prefix
+    settings  = { indexed: no, }
+    input
+      .pipe HOLLERITH.read_sub db, settings, ( [ glyph, prd, guides, ] ) =>
+        sub_input = HOLLERITH.create_phrasestream db, [ 'spo', guides[ 0 ], 'factor/strokeclass/wbf', ]
+        return [ glyph, sub_input, ]
+      .pipe $ ( phrase, send ) =>
+        count  += +1
+        idx    += +1
+        T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end =>
+        T.eq count, matchers.length
+        done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read with sub-read (2)" ] = ( T, done ) ->
+  probes_idx  = 0
+  idx         = -1
+  count       = 0
+  #.........................................................................................................
+  matchers = [
+    [ '𧷟', [ '八', 'factor/strokeclass/wbf', '34' ] ]
+    [ '𧷟', [ '刀', 'factor/strokeclass/wbf', '5(12)3' ] ]
+    [ '𧷟', [ '宀', 'factor/strokeclass/wbf', '44' ] ]
+    [ '𧷟', [ '貝', 'factor/strokeclass/wbf', '25(12)' ] ]
+    [ '𧷟', [ '', 'factor/strokeclass/wbf', '12' ] ]
+    ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    prefix    = [ 'pos', 'guide/uchr/has', ]
+    input     = HOLLERITH.create_phrasestream db, prefix
+    settings  = { indexed: no, }
+    input
+      .pipe HOLLERITH.read_sub db, settings, ( phrase ) =>
+        [ glyph, prd, guide, ]  = phrase
+        prefix                  = [ 'spo', guide, 'factor/strokeclass/wbf', ]
+        sub_input               = HOLLERITH.create_phrasestream db, prefix
+        return [ glyph, sub_input, ]
+      .pipe $ ( phrase, send ) =>
+        debug '©quPbg', JSON.stringify phrase
+        count  += +1
+        idx    += +1
+        T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end =>
+        T.eq count, matchers.length
+        done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read with sub-read (3)" ] = ( T, done ) ->
+  probes_idx  = 0
+  idx         = -1
+  count       = 0
+  #.........................................................................................................
+  matchers = [
+    [["𧷟","八","34"],["八","rank/cjt",12541]]
+    [["𧷟","刀","5(12)3"],["刀","rank/cjt",12542]]
+    [["𧷟","宀","44"],["宀","rank/cjt",12543]]
+    [["𧷟","貝","25(12)"],["貝","rank/cjt",12545]]
+    [["𧷟","","12"],["","rank/cjt",12544]]
+    ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    prefix    = [ 'pos', 'guide/uchr/has', ]
+    input     = HOLLERITH.create_phrasestream db, prefix
+    settings  = { indexed: no, }
+    input
+      .pipe HOLLERITH.read_sub db, settings, ( phrase ) =>
+        [ glyph, prd, guide, ]  = phrase
+        prefix                  = [ 'spo', guide, 'factor/strokeclass/wbf', ]
+        sub_input               = HOLLERITH.create_phrasestream db, prefix
+        return [ glyph, sub_input, ]
+      .pipe HOLLERITH.read_sub db, settings, ( xphrase ) =>
+        [ glyph, [ guide, prd, shapeclass, ] ]  = xphrase
+        prefix                                  = [ 'spo', guide, 'rank/cjt', ]
+        sub_input                               = HOLLERITH.create_phrasestream db, prefix
+        return [ [ glyph, guide, shapeclass, ], sub_input, ]
+      .pipe $ ( xphrase, send ) =>
+        debug '©quPbg', JSON.stringify xphrase
+        count  += +1
+        idx    += +1
+        T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end =>
+        T.eq count, matchers.length
+        done()
 
 # #-----------------------------------------------------------------------------------------------------------
 # @[ "keys 0" ] = ( T, done ) ->
@@ -201,7 +488,7 @@ BYTEWISE                  = require 'bytewise'
 # @[ "keys 2" ] = ( T, done ) ->
 #   [ t_0, sk_0, sv_0, ok_0, ov_0, idx_0, ] = [ 'so', 'glyph', '家', 'strokeorder', '4451353334', 0, ]
 #   so_key_0 = HOLLERITH.new_key db, t_0, sk_0, sv_0, ok_0, ov_0, idx_0
-#   [ t_1, sk_1, sv_1, ok_1, ov_1, idx_1, ] = HOLLERITH.normalize_key db, so_key_0
+#   [ t_1, sk_1, sv_1, ok_1, ov_1, idx_1, ] = HOLLERITH.as_phrase db, so_key_0
 #   T.eq [ t_0, sk_0, sv_0, ok_0, ov_0, idx_0, ], [ t_1, sk_1, sv_1, ok_1, ov_1, idx_1, ]
 #   done()
 

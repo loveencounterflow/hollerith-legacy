@@ -43,6 +43,9 @@ HOLLERITH                 = require './main'
 #...........................................................................................................
 options                   = null
 
+#-----------------------------------------------------------------------------------------------------------
+@_misfit          = Symbol 'misfit'
+
 
 #===========================================================================================================
 # PIPEDREAMS
@@ -56,43 +59,6 @@ D.new_indexer = ( idx = 0 ) -> ( data ) => [ idx++, data, ]
 @initialize = ( handler ) ->
   options[ 'db' ] = HOLLERITH.new_db options[ 'route' ]
   handler null
-
-#-----------------------------------------------------------------------------------------------------------
-@read_sub = ( db, settings, read ) ->
-  switch arity = arguments.length
-    when 2
-      read      = settings
-      settings  = null
-    when 3
-      null
-    else
-      throw new Error "expected 2 or 3 arguments, got #{arity}"
-  #.........................................................................................................
-  indexed           = settings?[ 'indexed' ] ? no
-  insert_index      = if indexed then D.new_indexer() else ( x ) -> x
-  open_stream_count = 0
-  #.........................................................................................................
-  return $ ( outer_data, outer_send, outer_end ) =>
-    #.......................................................................................................
-    if outer_data?
-      open_stream_count  += +1
-      sub_input = read outer_data
-        .pipe $ ( bkey, send ) => send bkey.toString 'utf-8'
-        # This line need for `main()`, but should be configured in `settings`:
-        # .pipe $ ( key, send ) => send JSON.parse key
-        .pipe do =>
-          buffer = []
-          return $ ( inner_data, _, inner_end ) =>
-            buffer.push inner_data if inner_data?
-            if inner_end?
-              outer_send insert_index buffer
-              open_stream_count += -1
-    #.......................................................................................................
-    if outer_end?
-      repeat_immediately ->
-        return true unless open_stream_count is 0
-        outer_end()
-        return false
 
 #-----------------------------------------------------------------------------------------------------------
 @main = ( first_query ) ->
@@ -113,7 +79,7 @@ D.new_indexer = ( idx = 0 ) -> ( data ) => [ idx++, data, ]
     Jizura DB version uses UTF-8 strings and is a key/value DB. ###
     #.......................................................................................................
     input
-      .pipe @_$split_key()
+      .pipe @_$split_bkey()
       #.....................................................................................................
       # .pipe HOLLERITH.read_sub db, indexed: yes, ( key ) =>
       .pipe @read_sub db, indexed: yes, ( key ) =>
@@ -145,12 +111,14 @@ D.new_indexer = ( idx = 0 ) -> ( data ) => [ idx++, data, ]
       .pipe D.$show()
 
 #-----------------------------------------------------------------------------------------------------------
-@_$split_key = ->
-  return $ ( bkey, send ) =>
-    key = bkey.toString 'utf-8'
-    key = ( key.split '|' )[ .. 2 ]
-    key = [ key[ 0 ], ( key[ 1 ].split ':' )..., ( key[ 2 ].split ':' )..., ]
-    send key
+@_$split_bkey = -> $ ( bkey, send ) => send @_split_bkey bkey
+
+#-----------------------------------------------------------------------------------------------------------
+@_split_bkey = ( bkey ) ->
+  R = bkey.toString 'utf-8'
+  R = ( R.split '|' )[ .. 2 ]
+  R = [ R[ 0 ], ( R[ 1 ].split ':' )..., ( R[ 2 ].split ':' )..., ]
+  return R
 
 #-----------------------------------------------------------------------------------------------------------
 @_lte_from_gte = ( gte ) ->
@@ -205,7 +173,7 @@ HOLLERITH.$pick_values = ->
   ### TAINT picking first from list should be done by read_sub with single: yes ###
   return D.combine [
     ( $ ( keylist, send ) => send keylist[ 0 ] )
-    @_$split_key()
+    @_$split_bkey()
     HOLLERITH.$pick_values()
     ]
 
@@ -223,7 +191,7 @@ HOLLERITH.$pick_values = ->
     input.on 'end', => handler null, Z
     #.......................................................................................................
     input
-      .pipe @_$split_key()
+      .pipe @_$split_bkey()
       .pipe HOLLERITH.$pick_values()
       .pipe $ ( [ factor, shapeclass_wbf, ], send ) =>
         factor = as_uchr factor
@@ -242,14 +210,17 @@ HOLLERITH.$pick_values = ->
     input = db[ '%self' ].createKeyStream { gte: gte, lte: lte, }
     #.......................................................................................................
     input
-      .pipe @_$split_key()
+      .pipe @_$split_bkey()
       .pipe $ ( lkey, send ) =>
         [ pt, ok, rank, sk, glyph, ] = lkey
         send glyph
       .pipe @$lineup_from_glyph db
       .pipe @$foobar()
       .pipe $ ( [ glyph, lineup, ], send ) =>
-        send [ glyph, chrs_from_text lineup.replace /\u3000/g, '' ]
+        lineup = lineup.replace /\u3000/g, ''
+        lineup = chrs_from_text lineup
+        send [ glyph, lineup, ]
+      #.....................................................................................................
       .pipe $ ( [ glyph, factors, ], send ) =>
         counts = [ 0, 0, 0, 0, 0, ]
         for factor in factors
@@ -263,11 +234,17 @@ HOLLERITH.$pick_values = ->
           debug '©edwTH', glyph, factors, counts
       # .pipe D.$show()
 
-# #-----------------------------------------------------------------------------------------------------------
-# @find_good_kwic_sample_glyphs = ->
+#-----------------------------------------------------------------------------------------------------------
+@f = ->
+  step ( resume ) =>
+    yield @initialize resume
+    db = options[ 'db' ]
+    shapeclasswbf_by_factor = yield @read_shapeclasswbf_by_factor db, resume
+    @find_good_kwic_sample_glyphs db, shapeclasswbf_by_factor
+
+#-----------------------------------------------------------------------------------------------------------
+@find_good_kwic_sample_glyphs_2 = ( db ) ->
 #   step ( resume ) =>
-#     yield @initialize resume
-#     db = options[ 'db' ]
 #     CHR = require '/Volumes/Storage/io/coffeenode-chr'
 #     chrs_from_text = ( text ) -> CHR.chrs_from_text text, input: 'xncr'
 #     #.......................................................................................................
@@ -276,23 +253,85 @@ HOLLERITH.$pick_values = ->
 #     input = db[ '%self' ].createKeyStream { gte: gte, lte: lte, }
 #     #.......................................................................................................
 #     input
-#       .pipe @_$split_key()
+#       .pipe @_$split_bkey()
 #       .pipe $ ( lkey, send ) =>
 #         [ pt, ok, rank, sk, glyph, ] = lkey
 #         send glyph
 #       .pipe @$lineup_from_glyph db
 #       .pipe @$foobar()
 #       .pipe $ ( [ glyph, lineup, ], send ) =>
-#         send [ glyph, chrs_from_text lineup.replace /\u3000/g, '' ]
-#       .pipe D.$show()
-
-#-----------------------------------------------------------------------------------------------------------
-@f = ->
+#         lineup = lineup.replace /\u3000/g, ''
+#         lineup = chrs_from_text lineup
+#         send [ glyph, lineup, ]
+#       #.....................................................................................................
+#       .pipe $ ( [ glyph, factors, ], send ) =>
+#         counts = [ 0, 0, 0, 0, 0, ]
+#         for factor in factors
+#           unless ( shapeclass_wbf = shapeclasswbf_by_factor[ factor ] )?
+#             warn glyph, factor
+#             echo glyph, factor
+#             continue
+#           shapeclass_idx              = ( parseInt shapeclass_wbf[ 0 ], 10 ) - 1
+#           counts[ shapeclass_idx ]    = 1
+#         if ( counts.join '' ) is '11111'
+#           debug '©edwTH', glyph, factors, counts
+#       # .pipe D.$show()
+  count       = 0
+  #.........................................................................................................
   step ( resume ) =>
-    yield @initialize resume
-    db = options[ 'db' ]
-    shapeclasswbf_by_factor = yield @read_shapeclasswbf_by_factor db, resume
-    @find_good_kwic_sample_glyphs db, shapeclasswbf_by_factor
+    unless db?
+      yield @initialize resume
+      db = options[ 'db' ]
+    #.......................................................................................................
+    CHR = require '/Volumes/Storage/io/coffeenode-chr'
+    chrs_from_text = ( text ) -> CHR.chrs_from_text text, input: 'xncr'
+    #.......................................................................................................
+    gte     = 'os|guide/lineup/length:05'
+    lte     = @_lte_from_gte gte
+    input   = db[ '%self' ].createKeyStream { gte: gte, lte: lte, }
+    #.......................................................................................................
+    decode_rank = ( bkey ) =>
+      [ ..., rank_txt, ] = @_split_bkey bkey
+      return parseInt rank_txt, 10
+    #.......................................................................................................
+    decode_lineup = ( bkey ) =>
+      [ ..., lineup, ] = @_split_bkey bkey
+      lineup = lineup.replace /\u3000/g, ''
+      return chrs_from_text lineup
+    #.......................................................................................................
+    input
+      .pipe @_$split_bkey()
+      #.....................................................................................................
+      .pipe HOLLERITH.read_sub db, mangle: decode_rank, ( phrase ) =>
+        [ ..., glyph, ]           = phrase
+        sub_gte     = "so|glyph:#{glyph}|rank/cjt:"
+        sub_lte     = @_lte_from_gte sub_gte
+        sub_input   = db[ '%self' ].createKeyStream { gte: sub_gte, lte: sub_lte, }
+        return [ glyph, sub_input, ]
+      #.....................................................................................................
+      .pipe D.$filter ( [ glyph, rank, ] ) -> rank < 1000
+      #.....................................................................................................
+      .pipe HOLLERITH.read_sub db, mangle: decode_lineup, ( record ) =>
+        [ glyph, rank, ]  = record
+        sub_gte     = "so|glyph:#{glyph}|guide/lineup/uchr:"
+        sub_lte     = @_lte_from_gte sub_gte
+        sub_input   = db[ '%self' ].createKeyStream { gte: sub_gte, lte: sub_lte, }
+        return [ [ glyph, rank, ], sub_input, ]
+      #.....................................................................................................
+      .pipe D.$show()
+      # .pipe HOLLERITH.read_sub db, settings, ( xphrase ) =>
+      #   [ glyph, [ guide, prd, shapeclass, ] ]  = xphrase
+      #   prefix                                  = [ 'spo', guide, 'rank/cjt', ]
+      #   sub_input                               = HOLLERITH.create_phrasestream db, prefix
+      #   return [ [ glyph, guide, shapeclass, ], sub_input, ]
+      # .pipe $ ( xphrase, send ) =>
+      #   debug '©quPbg', JSON.stringify xphrase
+      #   count  += +1
+      #   idx    += +1
+      #   T.eq phrase, matchers[ idx ]
+      # .pipe D.$on_end =>
+      #   T.eq count, matchers.length
+      #   done()
 
 
 ############################################################################################################
@@ -307,8 +346,8 @@ unless module.parent?
   #---------------------------------------------------------------------------------------------------------
   debug '©AoOAS', options
   # @main()
-  # @find_good_kwic_sample_glyphs()
-  @f()
+  @find_good_kwic_sample_glyphs_2()
+  # @f()
 
 
 
