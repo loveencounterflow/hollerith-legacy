@@ -460,7 +460,7 @@ BYTEWISE                  = require 'bytewise'
         debug '©quPbg', JSON.stringify xphrase
         count  += +1
         idx    += +1
-        T.eq phrase, matchers[ idx ]
+        T.eq xphrase, matchers[ idx ]
       .pipe D.$on_end =>
         T.eq count, matchers.length
         done()
