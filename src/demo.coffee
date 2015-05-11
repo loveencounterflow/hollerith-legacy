@@ -427,8 +427,8 @@ unless module.parent?
   #   yield @initialize resume
   #   db = options[ 'db' ]
   #   @find_good_kwic_sample_glyphs_2 db
-  @copy_jizura_db()
+  # @copy_jizura_db()
   # @dump_jizura_db()
-  # @find_good_kwic_sample_glyphs_2()
+  @find_good_kwic_sample_glyphs_2()
 
 
