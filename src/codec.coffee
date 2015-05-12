@@ -121,6 +121,8 @@ buffer_too_short_error = new Error "buffer too short"
 # TEXT
 #-----------------------------------------------------------------------------------------------------------
 @write_text = ( idx, text ) ->
+  text = text.replace /0x00/g, '\x01\x00'
+  text = text.replace /0x01/g, '\x01\x01'
   length_estimate = max_bytes_per_chr * text.length + 3
   @grow_rbuffer rbuffer.length - length_estimate
   rbuffer[ idx                    ] = @type_text
