@@ -569,6 +569,19 @@ read_all_keys = ( db, handler ) ->
     # for probe, probe_idx in probes
     #   T.eq probe, matchers[ probe_idx ]
     T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
+    T.eq 1, 0
     done()
 
 
