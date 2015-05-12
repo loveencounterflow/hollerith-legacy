@@ -203,7 +203,18 @@ the existing
 
 ## The Hollerith<sup>2</sup> Codec
 
-## The Hollerith² Codec
+## The Hollerith² Codec (H2C)
+
+### Numbers
+
+### Texts (Strings)
+
+The H2C encoding for strings is straightforward: We simply use the UTF-8 representation of the
+text which is preceded by a text type marker (`0xfe`) and trailed by a LO byte (`0x00`) and
+a HI byte (`0xff`). When decoding, the first byte is discarded; then, the buffer is searched
+byte by byte for a HI byte, which cannot occur in properly encoded UTF-8 byte sequence. The
+last two bytes are again discarded, and the range of bytes in between is decoded as UTF-8.
+
 
 ## xxx
 

@@ -520,10 +520,12 @@ read_all_keys = ( db, handler ) ->
     for probe in probes
       probe_bfr = new Buffer probe, 'utf-8'
       yield db.put probe_bfr, '1', resume
-    probes = yield read_all_keys db, resume
-    for probe, probe_idx in probes
-      T.eq probe, matchers[ probe_idx ]
-      # debug '©GpLKB', rpr probe.toString 'utf-8'
+    probe_bfrs = yield read_all_keys db, resume
+    for probe_bfr, probe_idx in probe_bfrs
+      matcher = matchers[ probe_idx ]
+      debug '©uLjHh', ( CND.type_of probe_bfr ), ( CND.type_of matcher ), probe_bfr.equals matcher
+      T.eq probe_bfr, matcher
+      # debug '©GpLKB', rpr probe_bfr.toString 'utf-8'
     done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -547,8 +549,8 @@ read_all_keys = ( db, handler ) ->
       'ab'
       'abc'
       'abc\x00'
-      'abca\x00'
       'abc\x00a'
+      'abca\x00'
       'abca'
       'abcb'
       'abcc'
@@ -557,26 +559,53 @@ read_all_keys = ( db, handler ) ->
       'abcdef'
       'abcdefg'
       ]
-    matchers = [
-      new Buffer [ 0x61, ]
-      new Buffer [ 0x61, 0x62, ]
-      new Buffer [ 0x61, 0x62, 0x63, ]
-      new Buffer [ 0x61, 0x62, 0x63, 0x00, ]
-      new Buffer [ 0x61, 0x62, 0x63, 0x00, 0x61, ]
-      new Buffer [ 0x61, 0x62, 0x63, 0x61, ]
-      new Buffer [ 0x61, 0x62, 0x63, 0x62, ]
-      new Buffer [ 0x61, 0x62, 0x63, 0x63, ]
-      new Buffer [ 0x61, 0x62, 0x63, 0x64, ]
-      new Buffer [ 0x61, 0x62, 0x63, 0x64, 0x65, ]
-      new Buffer [ 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, ]
-      new Buffer [ 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, ] ]
-    # CND.shuffle probes
+    matchers = ( [ probe, ] for probe in probes )
+    CND.shuffle probes
+    for probe in probes
+      yield db.put ( CODEC.encode [ probe, ] ), '1', resume
+    probe_bfrs  = yield read_all_keys db, resume
+    probes      = ( CODEC.decode probe_bfr for probe_bfr in probe_bfrs )
+    show_keys_and_key_bfrs probes, probe_bfrs
+    for probe, probe_idx in probes
+      matcher = matchers[ probe_idx ]
+      T.eq probe, matcher
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "sort texts with H2 codec" ] = ( T, done ) ->
+  step ( resume ) =>
+    settings =
+      db:           memdown
+      keyEncoding:  'binary'
+    db = levelup get_new_db_name(), settings
+    probes = [
+      ''
+      ' '
+      'a'
+      'abc'
+      '一'
+      '一二'
+      '一二三'
+      '三'
+      '二'
+      '𠀀'
+      '𠀀\x00'
+      '𠀀a'
+      '𪜀'
+      '𫝀'
+      String.fromCodePoint 0x10ffff
+      ]
+    matchers = ( [ probe, ] for probe in probes )
+    CND.shuffle probes
     for probe in probes
       probe_bfr = CODEC.encode [ probe, ]
       yield db.put probe_bfr, '1', resume
     probe_bfrs  = yield read_all_keys db, resume
     probes      = ( CODEC.decode probe_bfr for probe_bfr in probe_bfrs )
     show_keys_and_key_bfrs probes, probe_bfrs
+    for probe, probe_idx in probes
+      matcher = matchers[ probe_idx ]
+      T.eq probe, matcher
     done()
 
 #-----------------------------------------------------------------------------------------------------------
