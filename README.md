@@ -15,6 +15,7 @@
 
 ## hollerith
 
+[![Build Status](https://travis-ci.org/loveencounterflow/hollerith2.png)](https://travis-ci.org/loveencounterflow/hollerith2)
 
 use LevelDB like 1969
 
