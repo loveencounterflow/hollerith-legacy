@@ -568,6 +568,7 @@ read_all_keys = ( db, handler ) ->
     # probes = yield read_all_keys db, resume
     # for probe, probe_idx in probes
     #   T.eq probe, matchers[ probe_idx ]
+    T.eq 1, 0
     done()
 
 
