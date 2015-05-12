@@ -36,6 +36,10 @@ HOLLERITH                 = require './main'
 db                        = null
 #...........................................................................................................
 BYTEWISE                  = require 'bytewise'
+levelup                   = require 'levelup'
+memdown                   = require 'memdown'
+CODEC                     = require './codec'
+
 
 #-----------------------------------------------------------------------------------------------------------
 @_encode_list = ( list ) ->
@@ -464,6 +468,108 @@ BYTEWISE                  = require 'bytewise'
       .pipe D.$on_end =>
         T.eq count, matchers.length
         done()
+
+#-----------------------------------------------------------------------------------------------------------
+read_all_keys = ( db, handler ) ->
+  Z = []
+  input = db.createKeyStream()
+  input.on 'end', -> handler null, Z
+  input
+    .pipe $ ( data, send ) => Z.push data
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "sort using memdown" ] = ( T, done ) ->
+  step ( resume ) =>
+    settings =
+      db:           memdown
+      keyEncoding:  'binary'
+    db = levelup '/route-discarded', settings
+    probes = [
+      'a'
+      'ab'
+      'abc'
+      'abc\x00'
+      'abc\x00a'
+      'abca'
+      'abcb'
+      'abcc'
+      'abcd'
+      'abcde'
+      'abcdef'
+      'abcdefg' ]
+    matchers = [
+      new Buffer [ 0x61, ]
+      new Buffer [ 0x61, 0x62, ]
+      new Buffer [ 0x61, 0x62, 0x63, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x00, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x00, 0x61, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x61, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x62, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x63, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x64, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x64, 0x65, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, ] ]
+    CND.shuffle probes
+    for probe in probes
+      probe_bfr = new Buffer probe, 'utf-8'
+      yield db.put probe_bfr, '1', resume
+    probes = yield read_all_keys db, resume
+    for probe, probe_idx in probes
+      T.eq probe, matchers[ probe_idx ]
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "H2 codec `encode` throws on anything but a list" ] = ( T, done ) ->
+  T.throws "expected a list, got a text",         ( -> CODEC.encode 'unaccaptable' )
+  T.throws "expected a list, got a number",       ( -> CODEC.encode 42 )
+  T.throws "expected a list, got a boolean",      ( -> CODEC.encode true )
+  T.throws "expected a list, got a boolean",      ( -> CODEC.encode false )
+  T.throws "expected a list, got a jsundefined",  ( -> CODEC.encode() )
+  done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "sort with H2 codec" ] = ( T, done ) ->
+  step ( resume ) =>
+    settings =
+      db:           memdown
+      keyEncoding:  'binary'
+    db = levelup '/route-discarded', settings
+    probes = [
+      'a'
+      'ab'
+      'abc'
+      'abc\x00'
+      'abc\x00a'
+      'abca'
+      'abcb'
+      'abcc'
+      'abcd'
+      'abcde'
+      'abcdef'
+      'abcdefg' ]
+    matchers = [
+      new Buffer [ 0x61, ]
+      new Buffer [ 0x61, 0x62, ]
+      new Buffer [ 0x61, 0x62, 0x63, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x00, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x00, 0x61, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x61, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x62, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x63, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x64, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x64, 0x65, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, ]
+      new Buffer [ 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, ] ]
+    # CND.shuffle probes
+    for probe in probes
+      debug '©nJGS2', probe_bfr = CODEC.encode [ probe, ]
+    #   yield db.put probe_bfr, '1', resume
+    # probes = yield read_all_keys db, resume
+    # for probe, probe_idx in probes
+    #   T.eq probe, matchers[ probe_idx ]
+    done()
+
 
 # #-----------------------------------------------------------------------------------------------------------
 # @[ "keys 0" ] = ( T, done ) ->
