@@ -5,7 +5,9 @@
 - [What is LevelDB?](#what-is-leveldb)
 	- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
 - [The Hollerith<sup>2</sup> Codec](#the-hollerith<sup>2<sup>-codec)
-- [The Hollerith² Codec](#the-hollerith²-codec)
+- [The Hollerith² Codec (H2C)](#the-hollerith²-codec-h2c)
+	- [Numbers](#numbers)
+	- [Texts (Strings)](#texts-strings)
 - [xxx](#xxx)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*

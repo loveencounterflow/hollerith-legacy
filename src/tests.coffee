@@ -37,7 +37,7 @@ db                        = null
 #...........................................................................................................
 BYTEWISE                  = require 'bytewise'
 levelup                   = require 'levelup'
-memdown                   = require 'memdown'
+leveldown                 = require 'leveldown'
 CODEC                     = require './codec'
 
 
@@ -470,26 +470,13 @@ CODEC                     = require './codec'
         done()
 
 #-----------------------------------------------------------------------------------------------------------
-get_new_db_name = ->
-  get_new_db_name.idx += +1
-  return "mydb-#{get_new_db_name.idx}"
-get_new_db_name.idx = 0
-
-#-----------------------------------------------------------------------------------------------------------
-read_all_keys = ( db, handler ) ->
-  Z = []
-  input = db.createKeyStream()
-  input.on 'end', -> handler null, Z
-  input
-    .pipe $ ( data, send ) => Z.push data
-
-#-----------------------------------------------------------------------------------------------------------
-@[ "sort using memdown" ] = ( T, done ) ->
+@[ "sorting (1)" ] = ( T, done ) ->
   step ( resume ) =>
     settings =
-      db:           memdown
+      db:           leveldown
       keyEncoding:  'binary'
-    db = levelup get_new_db_name(), settings
+    leveldb = levelup '/tmp/hollerith2-test', settings
+    yield clear_leveldb leveldb, resume
     probes = [
       'a'
       'ab'
@@ -519,14 +506,49 @@ read_all_keys = ( db, handler ) ->
     CND.shuffle probes
     for probe in probes
       probe_bfr = new Buffer probe, 'utf-8'
-      yield db.put probe_bfr, '1', resume
-    probe_bfrs = yield read_all_keys db, resume
+      yield leveldb.put probe_bfr, '1', resume
+      probe_bfrs = yield read_all_keys leveldb, resume
+    probe_bfrs = yield read_all_keys leveldb, resume
+    # debug '©RXPvv', '\n' + rpr probe_bfrs
     for probe_bfr, probe_idx in probe_bfrs
       matcher = matchers[ probe_idx ]
-      debug '©uLjHh', ( CND.type_of probe_bfr ), ( CND.type_of matcher ), probe_bfr.equals matcher
-      T.eq probe_bfr, matcher
-      # debug '©GpLKB', rpr probe_bfr.toString 'utf-8'
-    done()
+      ### TAINT looks like `T.eq buffer1, buffer2` doesn't work---sometimes... ###
+      # T.eq probe_bfr, matcher
+      T.ok probe_bfr.equals matcher
+    leveldb.close -> done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "sorting (2)" ] = ( T, done ) ->
+  ### This test is here because there seemed to occur some strange ordering issues when
+  using memdown instead of leveldown ###
+  step ( resume ) =>
+    settings =
+      db:           leveldown
+      keyEncoding:  'binary'
+    leveldb = levelup '/tmp/hollerith2-test', settings
+    yield clear_leveldb leveldb, resume
+    probes = [
+      new Buffer [ 0x00, ]
+      new Buffer [ 0x01, ]
+      new Buffer [ 0x02, ]
+      new Buffer [ 0x03, ]
+      new Buffer [ 0xf9, ]
+      new Buffer [ 0xfa, ]
+      new Buffer [ 0xfb, ]
+      new Buffer [ 0xfc, ]
+      new Buffer [ 0xfd, ]
+      ]
+    matchers = ( probe for probe in probes )
+    CND.shuffle probes
+    for probe in probes
+      yield leveldb.put probe, '1', resume
+    probe_bfrs = yield read_all_keys leveldb, resume
+    for probe_bfr, probe_idx in probe_bfrs
+      matcher = matchers[ probe_idx ]
+      # debug '©15060', probe_idx, probe_bfr, matcher
+      ### TAINT looks like `T.eq buffer1, buffer2` doesn't work---sometimes... ###
+      T.ok probe_bfr.equals matcher
+    leveldb.close -> done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "H2 codec `encode` throws on anything but a list" ] = ( T, done ) ->
@@ -538,20 +560,21 @@ read_all_keys = ( db, handler ) ->
   done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "sort with H2 codec" ] = ( T, done ) ->
+@[ "sort texts with H2 codec (1)" ] = ( T, done ) ->
   step ( resume ) =>
     settings =
-      db:           memdown
+      db:           leveldown
       keyEncoding:  'binary'
-    db = levelup get_new_db_name(), settings
+    leveldb = levelup '/tmp/hollerith2-test', settings
+    yield clear_leveldb leveldb, resume
     probes = [
       'a'
       'ab'
       'abc'
       'abc\x00'
       'abc\x00a'
-      'abca\x00'
       'abca'
+      'abca\x00'
       'abcb'
       'abcc'
       'abcd'
@@ -562,22 +585,23 @@ read_all_keys = ( db, handler ) ->
     matchers = ( [ probe, ] for probe in probes )
     CND.shuffle probes
     for probe in probes
-      yield db.put ( CODEC.encode [ probe, ] ), '1', resume
-    probe_bfrs  = yield read_all_keys db, resume
+      yield leveldb.put ( CODEC.encode [ probe, ] ), '1', resume
+    probe_bfrs  = yield read_all_keys leveldb, resume
     probes      = ( CODEC.decode probe_bfr for probe_bfr in probe_bfrs )
     show_keys_and_key_bfrs probes, probe_bfrs
     for probe, probe_idx in probes
       matcher = matchers[ probe_idx ]
       T.eq probe, matcher
-    done()
+    leveldb.close -> done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "sort texts with H2 codec" ] = ( T, done ) ->
+@[ "sort texts with H2 codec (2)" ] = ( T, done ) ->
   step ( resume ) =>
     settings =
-      db:           memdown
+      db:           leveldown
       keyEncoding:  'binary'
-    db = levelup get_new_db_name(), settings
+    leveldb = levelup '/tmp/hollerith2-test', settings
+    yield clear_leveldb leveldb, resume
     probes = [
       ''
       ' '
@@ -599,15 +623,142 @@ read_all_keys = ( db, handler ) ->
     CND.shuffle probes
     for probe in probes
       probe_bfr = CODEC.encode [ probe, ]
-      yield db.put probe_bfr, '1', resume
-    probe_bfrs  = yield read_all_keys db, resume
+      yield leveldb.put probe_bfr, '1', resume
+    probe_bfrs  = yield read_all_keys leveldb, resume
+    # debug '©Fd5iw', probe_bfrs
     probes      = ( CODEC.decode probe_bfr for probe_bfr in probe_bfrs )
     show_keys_and_key_bfrs probes, probe_bfrs
     for probe, probe_idx in probes
       matcher = matchers[ probe_idx ]
       T.eq probe, matcher
-    done()
+    leveldb.close -> done()
 
+#-----------------------------------------------------------------------------------------------------------
+@[ "sort numbers with H2 codec (1)" ] = ( T, done ) ->
+  step ( resume ) =>
+    settings =
+      db:           leveldown
+      keyEncoding:  'binary'
+    leveldb = levelup '/tmp/hollerith2-test', settings
+    yield clear_leveldb leveldb, resume
+    probes_and_descriptions = [
+      [ -Infinity,               "-Infinity"               ]
+      [ -Number.MAX_VALUE,       "-Number.MAX_VALUE"       ]
+      [ Number.MIN_SAFE_INTEGER, "Number.MIN_SAFE_INTEGER" ]
+      [ -123456789,              "-123456789"              ]
+      [ -3,                      "-3"                      ]
+      [ -2,                      "-2"                      ]
+      [ -1.5,                    "-1.5"                    ]
+      [ -1,                      "-1"                      ]
+      [ -Number.EPSILON,         "-Number.EPSILON"         ]
+      [ -Number.MIN_VALUE,       "-Number.MIN_VALUE"       ]
+      [ 0,                       "0"                       ]
+      [ +Number.MIN_VALUE,       "+Number.MIN_VALUE"       ]
+      [ +Number.EPSILON,         "+Number.EPSILON"         ]
+      [ +1,                      "+1"                      ]
+      [ +1.5,                    "+1.5"                    ]
+      [ +2,                      "+2"                      ]
+      [ +3,                      "+3"                      ]
+      [ +123456789,              "+123456789"              ]
+      [ Number.MAX_SAFE_INTEGER, "Number.MAX_SAFE_INTEGER" ]
+      [ Number.MAX_VALUE,        "Number.MAX_VALUE"        ]
+      [ +Infinity,               "+Infinity"               ]
+      ]
+    # probes_and_descriptions.sort ( a, b ) ->
+    #   return +1 if a[ 0 ] > b[ 0 ]
+    #   return -1 if a[ 0 ] < b[ 0 ]
+    #   return  0
+    matchers      = ( [ pad[ 0 ], ] for pad in probes_and_descriptions )
+    # descriptions  = ( [ pad[ 1 ], ] for pad in probes_and_descriptions )
+    for pad in probes_and_descriptions
+      urge pad
+    CND.shuffle probes_and_descriptions
+    for [ probe, _, ] in probes_and_descriptions
+      probe_bfr = CODEC.encode [ probe, ]
+      yield leveldb.put probe_bfr, '1', resume
+    probe_bfrs  = yield read_all_keys leveldb, resume
+    probes      = ( CODEC.decode probe_bfr for probe_bfr in probe_bfrs )
+    show_keys_and_key_bfrs probes, probe_bfrs
+    for probe, probe_idx in probes
+      matcher = matchers[ probe_idx ]
+      T.eq probe, matcher
+    leveldb.close -> done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "sort mixed values with H2 codec" ] = ( T, done ) ->
+  step ( resume ) =>
+    settings =
+      db:           leveldown
+      keyEncoding:  'binary'
+    leveldb = levelup '/tmp/hollerith2-test', settings
+    yield clear_leveldb leveldb, resume
+    probes = [
+      null
+      false
+      true
+      1234
+      Infinity
+      ''
+      '一'
+      '三'
+      '二'
+      '𠀀'
+      '𠀀\x00'
+      String.fromCodePoint 0x10ffff
+      ]
+    matchers = ( [ probe, ] for probe in probes )
+    CND.shuffle probes
+    for probe in probes
+      probe_bfr = CODEC.encode [ probe, ]
+      yield leveldb.put probe_bfr, '1', resume
+    probe_bfrs  = yield read_all_keys leveldb, resume
+    # debug '©Fd5iw', probe_bfrs
+    probes      = ( CODEC.decode probe_bfr for probe_bfr in probe_bfrs )
+    show_keys_and_key_bfrs probes, probe_bfrs
+    for probe, probe_idx in probes
+      matcher = matchers[ probe_idx ]
+      T.eq probe, matcher
+    leveldb.close -> done()
+
+#
+# #-----------------------------------------------------------------------------------------------------------
+# @[ "sort numbers with bytewise codec (1)" ] = ( T, done ) ->
+#   step ( resume ) =>
+#     settings =
+#       db:           leveldown
+#       keyEncoding:  'binary'
+#     leveldb = levelup '/tmp/hollerith2-test', settings
+#     yield HOLLERITH.clear leveldb, resume
+#     probes = [
+#       Number.MIN_VALUE # ≅ -1.79E+308
+#       Number.MIN_SAFE_INTEGER # -9007199254740991
+#       -123456789
+#       -3
+#       -2
+#       -1
+#       -Number.EPSILON
+#       0
+#       +Number.EPSILON
+#       +1
+#       +2
+#       +3
+#       +123456789
+#       Number.MAX_SAFE_INTEGER # +9007199254740991
+#       Number.MAX_VALUE # ≅ +1.79E+308
+#       ]
+#     matchers = ( [ probe, ] for probe in probes )
+#     CND.shuffle probes
+#     for probe in probes
+#       probe_bfr = ( require 'bytewise' ).encode probe
+#       yield leveldb.put probe_bfr, '1', resume
+#     probe_bfrs  = yield read_all_keys leveldb, resume
+#     probes      = ( ( require 'bytewise' ).decode probe_bfr for probe_bfr in probe_bfrs )
+#     show_keys_and_key_bfrs probes, probe_bfrs
+#     done()
+
+
+#===========================================================================================================
+# HELPERS
 #-----------------------------------------------------------------------------------------------------------
 show_keys_and_key_bfrs = ( keys, key_bfrs ) ->
   f = ( p ) -> ( t for t in ( p.toString 'hex' ).split /(..)/ when t isnt '' ).join ' '
@@ -622,6 +773,30 @@ show_keys_and_key_bfrs = ( keys, key_bfrs ) ->
     data.push { 'str': key_txt, 'bfr': key_bfrs[ idx ]}
   help '\n' + CND.columnify data, columnify_settings
   return null
+
+# #-----------------------------------------------------------------------------------------------------------
+# get_new_db_name = ->
+#   get_new_db_name.idx += +1
+#   return "/tmp/hollerith2-testdb-#{get_new_db_name.idx}"
+# get_new_db_name.idx = 0
+
+#-----------------------------------------------------------------------------------------------------------
+read_all_keys = ( db, handler ) ->
+  Z = []
+  input = db.createKeyStream()
+  input.on 'end', -> handler null, Z
+  input
+    .pipe $ ( data, send ) => Z.push data
+
+#-----------------------------------------------------------------------------------------------------------
+clear_leveldb = ( leveldb, handler ) ->
+  step ( resume ) =>
+    route = leveldb[ 'location' ]
+    yield leveldb.close resume
+    yield leveldown.destroy route, resume
+    yield leveldb.open resume
+    # help "erased and re-opened LevelDB at #{route}"
+    handler null
 
 
 # #-----------------------------------------------------------------------------------------------------------
