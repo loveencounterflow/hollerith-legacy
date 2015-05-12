@@ -686,6 +686,7 @@ CODEC                     = require './codec'
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "sort mixed values with H2 codec" ] = ( T, done ) ->
+  throw new Error 'XXXX'
   step ( resume ) =>
     settings =
       db:           leveldown
@@ -698,6 +699,7 @@ CODEC                     = require './codec'
       true
       1234
       Infinity
+      new Date 0
       ''
       '一'
       '三'
