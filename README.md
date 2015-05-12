@@ -4,6 +4,8 @@
 - [hollerith](#hollerith)
 - [What is LevelDB?](#what-is-leveldb)
 	- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
+- [The Hollerith<sup>2</sup> Codec](#the-hollerith<sup>2<sup>-codec)
+- [The Hollerith² Codec](#the-hollerith²-codec)
 - [xxx](#xxx)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
@@ -198,6 +200,10 @@ The Gordian knot was untied with the introduction of so-called 'surrogate pairs'
 the existing
 
  -->
+
+## The Hollerith<sup>2</sup> Codec
+
+## The Hollerith² Codec
 
 ## xxx
 

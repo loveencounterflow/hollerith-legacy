@@ -470,6 +470,12 @@ CODEC                     = require './codec'
         done()
 
 #-----------------------------------------------------------------------------------------------------------
+get_new_db_name = ->
+  get_new_db_name.idx += +1
+  return "mydb-#{get_new_db_name.idx}"
+get_new_db_name.idx = 0
+
+#-----------------------------------------------------------------------------------------------------------
 read_all_keys = ( db, handler ) ->
   Z = []
   input = db.createKeyStream()
@@ -483,7 +489,7 @@ read_all_keys = ( db, handler ) ->
     settings =
       db:           memdown
       keyEncoding:  'binary'
-    db = levelup '/route-discarded', settings
+    db = levelup get_new_db_name(), settings
     probes = [
       'a'
       'ab'
@@ -517,6 +523,7 @@ read_all_keys = ( db, handler ) ->
     probes = yield read_all_keys db, resume
     for probe, probe_idx in probes
       T.eq probe, matchers[ probe_idx ]
+      # debug '©GpLKB', rpr probe.toString 'utf-8'
     done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -534,12 +541,13 @@ read_all_keys = ( db, handler ) ->
     settings =
       db:           memdown
       keyEncoding:  'binary'
-    db = levelup '/route-discarded', settings
+    db = levelup get_new_db_name(), settings
     probes = [
       'a'
       'ab'
       'abc'
       'abc\x00'
+      'abca\x00'
       'abc\x00a'
       'abca'
       'abcb'
@@ -547,7 +555,8 @@ read_all_keys = ( db, handler ) ->
       'abcd'
       'abcde'
       'abcdef'
-      'abcdefg' ]
+      'abcdefg'
+      ]
     matchers = [
       new Buffer [ 0x61, ]
       new Buffer [ 0x61, 0x62, ]
@@ -563,26 +572,27 @@ read_all_keys = ( db, handler ) ->
       new Buffer [ 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, ] ]
     # CND.shuffle probes
     for probe in probes
-      debug '©nJGS2', probe_bfr = CODEC.encode [ probe, ]
-    #   yield db.put probe_bfr, '1', resume
-    # probes = yield read_all_keys db, resume
-    # for probe, probe_idx in probes
-    #   T.eq probe, matchers[ probe_idx ]
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
-    T.eq 1, 0
+      probe_bfr = CODEC.encode [ probe, ]
+      yield db.put probe_bfr, '1', resume
+    probe_bfrs  = yield read_all_keys db, resume
+    probes      = ( CODEC.decode probe_bfr for probe_bfr in probe_bfrs )
+    show_keys_and_key_bfrs probes, probe_bfrs
     done()
+
+#-----------------------------------------------------------------------------------------------------------
+show_keys_and_key_bfrs = ( keys, key_bfrs ) ->
+  f = ( p ) -> ( t for t in ( p.toString 'hex' ).split /(..)/ when t isnt '' ).join ' '
+  #.........................................................................................................
+  columnify_settings =
+    paddingChr: ' '
+  #.........................................................................................................
+  data      = []
+  key_bfrs  = ( f p for p in key_bfrs )
+  for key, idx in keys
+    key_txt = ( rpr key ).replace /\\u0000/g, '∇'
+    data.push { 'str': key_txt, 'bfr': key_bfrs[ idx ]}
+  help '\n' + CND.columnify data, columnify_settings
+  return null
 
 
 # #-----------------------------------------------------------------------------------------------------------
@@ -790,4 +800,26 @@ read_all_keys = ( db, handler ) ->
 ############################################################################################################
 unless module.parent?
   @_main()
+  # a = [ 'aaa', 'b', 'c', ]
+  # b = [ 'A', 'BBB', 'C', ]
+  # columnify_settings =
+  #   paddingChr: '_'
+  #   # columns: [ 'decoded', 'encoded', 'x' ]
+  # # help '\n' + CND.columnify [ a, b, ], columnify_settings
+  # data = []
+  # for element_a, idx in a
+  #   data.push { 'str': element_a, 'bfr': b[ idx ]}
+  # help '\n' + CND.columnify data, columnify_settings
+
+
+
+
+
+
+
+
+
+
+
+
 

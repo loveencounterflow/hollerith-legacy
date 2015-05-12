@@ -9,7 +9,6 @@
     "cnd": "^1.0.1",
     "coffeenode-docopt": "^0.1.0",
     "coffeenode-suspend": "^0.1.10",
-    "columnify": "^1.5.1",
     "concurrent-writable": "^1.0.4",
     "level": "^0.18.0",
     "level-batch-stream": "^1.3.1",
@@ -27,7 +26,7 @@
     "guy-test": "^1.0.2"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "gulp --harmony build && node --harmony lib/tests.js"
   },
   "repository": {
     "type": "git",
