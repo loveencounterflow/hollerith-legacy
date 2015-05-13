@@ -10,7 +10,7 @@
 		- [Numbers](#numbers)
 		- [Dates](#dates)
 		- [Singular Values](#singular-values)
-	- [The Hollerith² Phrase Structure](#the-hollerith²-phrase-structure)
+	- [The Hollerith2 Phrase Structure](#the-hollerith2-phrase-structure)
 - [XXXXXXX](#xxxxxxx)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
@@ -358,11 +358,18 @@ A so-called 'singular' encoding is used to capture the solitary values `null`,
 `0x43 ≙ 'C'` `0x44 ≙ 'D'`, respectively.
 
 
-## The Hollerith² Phrase Structure
+## The Hollerith2 Phrase Structure
 
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/082.jpg)
 
-If you've read [the section on H2C](#the-hollerith²-codec-h2c)
+If you've read [the section on H2C](#the-hollerith²-codec-h2c) you might have
+noticed the restriction on DB keys mentioned there: While DB values are encoded
+as JSON and can, therefore, hold any value that is acceptable to
+`JSON.stringify()`, keys are encoded using the Hollerith² Codec, which accepts
+only flat (unnested) lists whose elements may be numbers, texts, dates, or one
+of `null`, `false`, `true`. In this section, we will motivate why that is a good
+thing and how building an indexed, structured data collection is intended to
+work with Hollerith.
 
 
 # XXXXXXX
