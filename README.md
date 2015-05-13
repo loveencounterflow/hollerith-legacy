@@ -7,6 +7,7 @@
 - [The Hollerith² Codec (H2C)](#the-hollerith²-codec-h2c)
 	- [Texts (Strings)](#texts-strings)
 	- [Numbers](#numbers)
+	- [Dates](#dates)
 	- [Variants](#variants)
 - [xxx](#xxx)
 
@@ -287,11 +288,28 @@ Its characteristics are:
   inversing its bits (so that e.g. `0x00` becomes `~0x00` == `0xff`); that way,
   the mathematically correct ordering `... -3 ... -2 ... -1 ... -0.5 ...` is
   obtained. Since the leading byte marker of negative numbers is smaller than
-  the one for positive numbers, all encoded keys with negative numbers will come
-  before any positive number (including zero).
+  the one for positive numbers, all encoded keys with negative numbers will
+  collectively come before any positive number (including zero).
 
+### Dates
+
+Dates are encoded with a leading type marker for dates (`0xf9` in case you where
+wondering), followed by 9 bytes necessary to [encode numbers](#numbers), since
+H2C uses the underlying milliseconds-since-epoch (1st of January, 1970) to
+characterize dates. This means that
+
+* in contradistinction to pure numbers, no infinitely distant dates can be encoded,
+  since JavaScript doesn't accept `new Date( Infinity )`;
+* dates will be ordered according to their relative temporal ordering, earlier dates coming
+  before later dates; however
+* additional information such as time zones will be irretrievably lost.
 
 ### Variants
+
+A so-called 'variant' encoding is currently used to capture the solitary values
+`null`, `false` and `true`; these are expressed as the two-byte sequences `0xc0
+0x00`, `0xc0 0x01` and `0xc0 0x02`, respectively.
+
 
 ## xxx
 
