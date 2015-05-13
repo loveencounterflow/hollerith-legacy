@@ -231,7 +231,9 @@ write = ( idx, value ) ->
         idx = write idx, element
         break
       catch error
-        throw error unless error is buffer_too_short_error
+        unless error is buffer_too_short_error
+          warn "detected problem with value #{rpr value}"
+          throw error
         grow_rbuffer()
   #.........................................................................................................
   if extra_byte?

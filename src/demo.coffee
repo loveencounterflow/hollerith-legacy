@@ -186,6 +186,7 @@ HOLLERITH.$pick_values = ->
   source_db   = HOLLERITH.new_db options[ 'route' ]
   target_db   = HOLLERITH.new_db '/Volumes/Storage/temp/jizura-hollerith2'
   gte         = 'so|'
+  # gte         = 'so|glyph:𤊂' # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   lte         = @_lte_from_gte gte
   input       = source_db[ '%self' ].createKeyStream { gte, lte, }
   batch_size  = 10000
@@ -224,6 +225,16 @@ HOLLERITH.$pick_values = ->
           send [ sbj, prd, obj, ]
     #.......................................................................................................
     .pipe $ ( [ sbj, prd, obj, ], send ) =>
+      ### Compactify sparse lists so all `undefined` elements are removed; warn about this ###
+      if ( CND.type_of obj ) is 'list'
+        new_obj = ( element for element in obj when element isnt undefined )
+        if obj.length isnt new_obj.length
+          warn "phrase #{rpr [ sbj, prd, obj, ]} contained undefined elements; compactified"
+        obj = new_obj
+      send [ sbj, prd, obj, ]
+    #.......................................................................................................
+    # .pipe D.$show()
+    .pipe $ ( [ sbj, prd, obj, ], send ) =>
       ### Type Casting ###
       type_description = ds_options[ 'schema' ][ prd ]
       unless type_description?
@@ -242,8 +253,9 @@ HOLLERITH.$pick_values = ->
       count = 0
       return $ ( phrase, send ) =>
         count += 1
-        if count % 1000 is 0
-          echo count, phrase
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # if count % 10000 is 0
+        #   echo count, phrase
         send phrase
     #.......................................................................................................
     .pipe output

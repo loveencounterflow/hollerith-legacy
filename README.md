@@ -1,16 +1,17 @@
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 
 
-- [hollerith](#hollerith)
-- [What is LevelDB?](#what-is-leveldb)
-	- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
-- [The Hollerith² Codec (H2C)](#the-hollerith²-codec-h2c)
-	- [Texts (Strings)](#texts-strings)
-- [                                         Value        Length](#value--------length)
-	- [Numbers](#numbers)
-	- [Dates](#dates)
-	- [Singular Values](#singular-values)
-- [xxx](#xxx)
+	- [hollerith](#hollerith)
+	- [What is LevelDB?](#what-is-leveldb)
+		- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
+	- [The Hollerith2 Codec (H2C)](#the-hollerith2-codec-h2c)
+		- [Texts (Strings)](#texts-strings)
+	- [                                         Value        Length](#value--------length)
+		- [Numbers](#numbers)
+		- [Dates](#dates)
+		- [Singular Values](#singular-values)
+	- [The Hollerith² Phrase Structure](#the-hollerith²-phrase-structure)
+- [XXXXXXX](#xxxxxxx)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
 
@@ -206,7 +207,7 @@ the existing
 
  -->
 
-## The Hollerith² Codec (H2C)
+## The Hollerith2 Codec (H2C)
 
 ![tape code pocket rule](https://github.com/loveencounterflow/hollerith2/raw/master/art/fairchild-tts-tape-code-pocket-rule-1200rgb-verso-rot0p6cw-crop-7744x1736-scale-1024x230.jpg)
 
@@ -275,15 +276,18 @@ lists). The basic ideas are the following:
 
 * The beginning of a string is indicated by a typemarker byte (`0x54 ≙ 'T'` at the moment);
 * its end is indicated by a terminating zero byte (`0x00`).
-* Since `0x00` cannot occur inside a string, all occurrances of `0x00` bytes are replaced
-  by the sequence `0x01 0x01`, and all occurrances of `0x01` bytes are replaced by the
-  sequence `0x01 0x02`. That way, the lexicographic ordering of 'low bytes' is preserved.
-* The zero-byte-free string is encoded as UTF-8, which is an encoding that preserves
-  Unicode code point ordering.
-* No other normalization is done on strings, so if you want to, say, index a database with
-  entries in a a 'complex script' that uses decomposable sequences of diacritics and so on,
-  it's your own repsonsibility to apply a Unicode Normalization Form or other transforms;
-  such concerns are outside the scope of H2C.
+* Since `0x00` must, thus, not occur inside a string, all occurrances of `0x00`
+  bytes are replaced by the sequence `0x01 0x01`, and all occurrances of `0x01`
+  bytes are replaced by the sequence `0x01 0x02`. That way, the lexicographic
+  ordering of 'low bytes' is preserved.
+* The resulting zero-byte-free string is encoded as UTF-8, an encoding scheme
+  that maps positive integer numbers big and small to octet bit patterns in a
+  way that preserves Unicode code point ordering.
+* No other normalization is done on strings. (If you want to, say, index a
+  database with entries in a a 'complex script' that uses decomposable sequences
+  of diacritics and so on, it's your own repsonsibility to apply a Unicode
+  Normalization Form or other transforms; such concerns are outside the scope of
+  H2C.)
 * To decode an encoded string, the buffer is searched, from the typemarker byte
   onwards, for a zero byte; when it is found, the part between the initial and
   the terminal markers is decoded as UTF-8, and escaped 'low bytes' are
@@ -354,11 +358,14 @@ A so-called 'singular' encoding is used to capture the solitary values `null`,
 `0x43 ≙ 'C'` `0x44 ≙ 'D'`, respectively.
 
 
-## xxx
+## The Hollerith² Phrase Structure
 
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/082.jpg)
 
+If you've read [the section on H2C](#the-hollerith²-codec-h2c)
 
+
+# XXXXXXX
 
 samples:
 
