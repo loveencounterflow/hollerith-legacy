@@ -55,9 +55,7 @@ tm_lo               = @[ 'typemarkers'  ][ 'lo'         ] = 0x00
 tm_null             = @[ 'typemarkers'  ][ 'null'       ] = 'B'.codePointAt 0
 tm_false            = @[ 'typemarkers'  ][ 'false'      ] = 'C'.codePointAt 0
 tm_true             = @[ 'typemarkers'  ][ 'true'       ] = 'D'.codePointAt 0
-# tm_firstdate        = @[ 'typemarkers'  ][ 'firstdate'  ] = 'F'.codePointAt 0
 tm_date             = @[ 'typemarkers'  ][ 'date'       ] = 'G'.codePointAt 0
-# tm_lastdate         = @[ 'typemarkers'  ][ 'lastdate'   ] = 'H'.codePointAt 0
 tm_ninfinity        = @[ 'typemarkers'  ][ 'ninfinity'  ] = 'J'.codePointAt 0
 tm_nnumber          = @[ 'typemarkers'  ][ 'nnumber'    ] = 'K'.codePointAt 0
 tm_pnumber          = @[ 'typemarkers'  ][ 'pnumber'    ] = 'L'.codePointAt 0

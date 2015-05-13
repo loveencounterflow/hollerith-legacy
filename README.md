@@ -244,6 +244,20 @@ supports flat lists as keys** whose elements can only be
 It's very well possible that H2C will support more data types and / or
 user-defined data types in the future.
 
+```coffee
+HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'lo'         ] =                     0x00
+HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'null'       ] = 'B'.codePointAt 0 # 0x42
+HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'false'      ] = 'C'.codePointAt 0 # 0x43
+HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'true'       ] = 'D'.codePointAt 0 # 0x44
+HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'date'       ] = 'G'.codePointAt 0 # 0x47
+HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'ninfinity'  ] = 'J'.codePointAt 0 # 0x4a
+HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'nnumber'    ] = 'K'.codePointAt 0 # 0x4b
+HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'pnumber'    ] = 'L'.codePointAt 0 # 0x4c
+HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'pinfinity'  ] = 'M'.codePointAt 0 # 0x4d
+HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'text'       ] = 'T'.codePointAt 0 # 0x54
+HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'hi'         ] =                     0xff
+```
+
 ### Texts (Strings)
 
 The H2C encoding for strings is almost binary compatible to the `bytewise`

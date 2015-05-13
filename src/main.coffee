@@ -20,7 +20,7 @@ echo                      = CND.echo.bind CND
 suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
 #...........................................................................................................
-CODEC                     = require './codec'
+CODEC                     = @CODEC = require './codec'
 _codec_encode             = CODEC.encode.bind CODEC
 _codec_decode             = CODEC.decode.bind CODEC
 #...........................................................................................................
