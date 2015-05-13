@@ -43,11 +43,11 @@ immediately               = suspend.immediately
 BYTEWISE                  = require 'bytewise'
 # levelup                   = require 'levelup'
 # leveldown                 = require 'leveldown'
-CODEC                     = require './codec'
+# CODEC                     = require './codec'
+CODEC                     = require './codec-1'
 PASSPHRASE                = require 'coffeenode-passphrase'
 ƒ                         = CND.format_number.bind CND
 
-CODEC_INSTRUMENTALIZED = {}
 times = {}
 
 #-----------------------------------------------------------------------------------------------------------
@@ -81,23 +81,17 @@ report  = ->
 #-----------------------------------------------------------------------------------------------------------
 do ->
   for name, value of CODEC
+    continue unless name is 'encode'
     do ( name, value ) ->
       if CND.isa_function value
         f = ( P ... ) ->
           start name
-          R = value.apply CODEC_INSTRUMENTALIZED, P
+          R = value.apply CODEC, P
           stop name
           return R
-        CODEC_INSTRUMENTALIZED[ name ] = f
+        CODEC[ name ] = f
       else
-        CODEC_INSTRUMENTALIZED[ name ] = value
-
-#-----------------------------------------------------------------------------------------------------------
-@test_h2c_instrumentalized = ( probes ) ->
-  t0 = +new Date()
-  CODEC_INSTRUMENTALIZED.encode probe for probe in probes
-  t1 = +new Date()
-  return t1 - t0
+        CODEC[ name ] = value
 
 #-----------------------------------------------------------------------------------------------------------
 @test_h2c = ( probes ) ->
@@ -147,7 +141,7 @@ do ->
   # urge "encode bytewise: #{ƒ bytewise_ms}ms (#{(bytewise_ms / json_ms * 100).toFixed 2}%)"
   # urge "encode h2c:      #{ƒ h2c_ms}ms (#{(h2c_ms / json_ms * 100).toFixed 2}%)"
   # urge "encode json:     #{ƒ json_ms}ms (#{(json_ms / json_ms * 100).toFixed 2}%)"
-  debug '©0qFcb', @test_h2c_instrumentalized probes
+  debug '©0qFcb', @test_h2c probes
   report()
   # f = =>
   #   debug '©XuSUh', @test_h2c      probes

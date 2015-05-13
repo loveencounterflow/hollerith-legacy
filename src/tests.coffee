@@ -38,7 +38,8 @@ db                        = null
 BYTEWISE                  = require 'bytewise'
 levelup                   = require 'levelup'
 leveldown                 = require 'leveldown'
-CODEC                     = require './codec'
+# CODEC                     = require './codec'
+CODEC                     = require './codec-1'
 
 
 #-----------------------------------------------------------------------------------------------------------
@@ -696,9 +697,11 @@ CODEC                     = require './codec'
       null
       false
       true
+      CODEC.first_date
       new Date 0
       new Date 8e11
       new Date()
+      CODEC.last_date
       1234
       Infinity
       ''
@@ -733,12 +736,7 @@ CODEC                     = require './codec'
     leveldb = levelup '/tmp/hollerith2-test', settings
     yield clear_leveldb leveldb, resume
     probes = [
-      [ "''",            '',             ]
-      [ "'一'",           '一',            ]
-      [ "'三'",           '三',            ]
-      [ "'二'",           '二',            ]
-      [ "'𠀀\x00'",       '𠀀\x00',        ]
-      [ "'𠀀'",           '𠀀',            ]
+      [ "",             '',             ]
       [ "1234",          1234,           ]
       [ "Infinity",      Infinity,       ]
       [ "String.fromCodePoint 0x10ffff", String.fromCodePoint 0x10ffff ]
@@ -748,6 +746,11 @@ CODEC                     = require './codec'
       [ "new Date()",    new Date(),     ]
       [ "null",          null,           ]
       [ "true",          true,           ]
+      [ "一",            '一',            ]
+      [ "三",            '三',            ]
+      [ "二",            '二',            ]
+      [ "𠀀",            '𠀀',            ]
+      [ "𠀀\x00",        '𠀀\x00',        ]
       ]
     matchers = ( probe for probe in probes )
     CND.shuffle probes

@@ -208,14 +208,14 @@ the existing
 ## The Hollerith² Codec (H2C)
 
 Hollerith comes with its own codec, dubbed the Hollerith² Codec, or H2C for
-short. It works like a subset of the [bytewise
+short. It works like a subset of the [`bytewise`
 codec](https://github.com/deanlandolt/bytewise) whose core implementeation ideas
 are shamelessly re-implemented.
 
-H2C's reason for being is performance concerns: Sadly, bytewise is orders of
+H2C's reason for being is performance concerns: Sadly, `bytewise` is orders of
 magnitude slower than NodeJS' `JSON.stringify` which means that the performance
-of a LevelDB write stream that pipes into the bytewise codec gets quickly
-dominated by the relative slowness of bytewise. This is a shame because bytewise
+of a LevelDB write stream that pipes into the `bytewise` codec gets quickly
+dominated by the relative slowness of `bytewise`. This is a shame because `bytewise`
 is technically a great codec when what you want is to `[ 'express',
 'hierarchies', ]` in `[ 'indexed', 'data', 42, ]` using lists of strings and
 values — which is *so* much better than trying to do the same using JSON and /
@@ -223,13 +223,13 @@ or your ad-hoc materialized path solution (using path separators that you have
 to escape in texts and padding numbers with zeros so they sort right).
 
 As it stands, `H2C.encode` is still a little over 7 times slower than
-`JSON.stringify`, but also almost 10 times faster than bytewise, which is a
+`JSON.stringify`, but also almost 10 times faster than `bytewise`, which is a
 significant gain:
 
 ![Benchmarks](https://github.com/loveencounterflow/hollerith2/raw/master/art/Screen%20Shot%202015-05-13%20at%2002.03.48%20(2).png)
 
 H2C achieves these performance gains by being *much* more restrictive than
-bytewise; while bytewise strives to support all JavaScript data types (including
+`bytewise`; while `bytewise` strives to support all JavaScript data types (including
 objects and nested lists) and to work in both the browser and in NodeJS, H2C is
 not currently designed to run in the browser, and, more importantly, **it only
 supports flat lists as keys** whose elements can only be
@@ -246,7 +246,7 @@ user-defined data types in the future.
 
 ### Texts (Strings)
 
-The H2C encoding for strings is almost binary compatible to the bytewise
+The H2C encoding for strings is almost binary compatible to the `bytewise`
 encoding of strings that are elements in lists (since H2C only encodes values in
 lists). The basic ideas are the following:
 
@@ -268,7 +268,7 @@ lists). The basic ideas are the following:
 
 ### Numbers
 
-Like H2C's string encoding, H2C's encoding of numbers has been copied from bytewise.
+Like H2C's string encoding, H2C's encoding of numbers has been copied from `bytewise`.
 Its characteristics are:
 
 * The beginning of numbers is indicated by a type marker byte that changes according
