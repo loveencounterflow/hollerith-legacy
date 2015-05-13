@@ -47,10 +47,6 @@ rbuffer_max_size        = 65536
 rbuffer_new_size        = Math.floor ( rbuffer_max_size + rbuffer_min_size ) / 2
 rbuffer                 = new Buffer rbuffer_min_size
 buffer_too_short_error  = new Error "buffer too short"
-#...........................................................................................................
-### http://www.merlyn.demon.co.uk/js-datex.htm ###
-@first_date             = new Date -8640000000000000
-@last_date              = new Date +8640000000000000
 
 #-----------------------------------------------------------------------------------------------------------
 @[ 'typemarkers' ]  = {}
@@ -75,6 +71,19 @@ tm_hi               = @[ 'typemarkers'  ][ 'hi'         ] = 0xff
 bytecount_singular  = @[ 'bytecounts'   ][ 'singular'   ] = 1
 bytecount_number    = @[ 'bytecounts'   ][ 'number'     ] = 9
 bytecount_date      = @[ 'bytecounts'   ][ 'date'       ] = bytecount_number + 1
+
+#-----------------------------------------------------------------------------------------------------------
+@[ 'sentinels' ]  = {}
+#...........................................................................................................
+### http://www.merlyn.demon.co.uk/js-datex.htm ###
+@[ 'sentinels' ][ 'firstdate' ] = new Date -8640000000000000
+@[ 'sentinels' ][ 'lastdate'  ] = new Date +8640000000000000
+
+#-----------------------------------------------------------------------------------------------------------
+@[ 'keys' ]  = {}
+#...........................................................................................................
+@[ 'keys' ][ 'lo' ] = new Buffer [ @[ 'typemarkers' ][ 'lo' ] ]
+@[ 'keys' ][ 'hi' ] = new Buffer [ @[ 'typemarkers' ][ 'hi' ] ]
 
 #-----------------------------------------------------------------------------------------------------------
 grow_rbuffer = ( delta_size ) ->
@@ -215,7 +224,7 @@ write = ( idx, value ) ->
 #===========================================================================================================
 #
 #-----------------------------------------------------------------------------------------------------------
-@encode = ( value ) ->
+@encode = ( value, extra_byte ) ->
   throw new Error "expected a list, got a #{type}" unless ( type = CND.type_of value ) is 'list'
   idx = 0
   for element in value
@@ -226,6 +235,10 @@ write = ( idx, value ) ->
       catch error
         throw error unless error is buffer_too_short_error
         grow_rbuffer()
+  #.........................................................................................................
+  if extra_byte?
+    rbuffer[ idx ]  = extra_byte
+    idx            += +1
   #.........................................................................................................
   R = new Buffer idx
   rbuffer.copy R, 0, 0, idx

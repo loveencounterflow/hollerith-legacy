@@ -41,22 +41,22 @@ leveldown                 = require 'leveldown'
 CODEC                     = require './codec'
 
 
-#-----------------------------------------------------------------------------------------------------------
-@_encode_list = ( list ) ->
-  ( list[ idx ] = BYTEWISE.encode value ) for value, idx in list
-  return list
+# #-----------------------------------------------------------------------------------------------------------
+# @_encode_list = ( list ) ->
+#   ( list[ idx ] = BYTEWISE.encode value ) for value, idx in list
+#   return list
 
-#-----------------------------------------------------------------------------------------------------------
-@_decode_list = ( list ) ->
-  ( list[ idx ] = BYTEWISE.decode value ) for value, idx in list
-  return list
+# #-----------------------------------------------------------------------------------------------------------
+# @_decode_list = ( list ) ->
+#   ( list[ idx ] = BYTEWISE.decode value ) for value, idx in list
+#   return list
 
-#-----------------------------------------------------------------------------------------------------------
-@_sort_list = ( list ) ->
-  @_encode_list list
-  list.sort Buffer.compare
-  @_decode_list list
-  return list
+# #-----------------------------------------------------------------------------------------------------------
+# @_sort_list = ( list ) ->
+#   @_encode_list list
+#   list.sort Buffer.compare
+#   @_decode_list list
+#   return list
 
 #-----------------------------------------------------------------------------------------------------------
 @_feed_test_data = ( db, probes_idx, handler ) ->
@@ -172,8 +172,10 @@ CODEC                     = require './codec'
 @[ "read keys without error (1)" ] = ( T, done ) ->
   step ( resume ) =>
     yield HOLLERITH.clear db, resume
+    ### TAINT awaiting better solution ###
+    NULL = HOLLERITH._encode_value db, 1
     for idx in [ 0 ... 10 ]
-      db[ '%self' ].put ( HOLLERITH._encode db, [ 'x', idx, 'x', ] ), HOLLERITH._zero_enc
+      db[ '%self' ].put ( HOLLERITH._encode_key db, [ 'x', idx, 'x', ] ), NULL
     #.......................................................................................................
     probe_idx = 4
     count     = 0
@@ -182,7 +184,7 @@ CODEC                     = require './codec'
     input
       .pipe $ ( { key, value, }, send ) =>
         count += 1
-        T.eq ( HOLLERITH._decode db, key )[ 1 ], probe_idx
+        T.eq ( HOLLERITH._decode_key db, key )[ 1 ], probe_idx
       .pipe D.$on_end =>
         T.eq count, 1
         done()
@@ -191,8 +193,10 @@ CODEC                     = require './codec'
 @[ "read keys without error (2)" ] = ( T, done ) ->
   step ( resume ) =>
     yield HOLLERITH.clear db, resume
+    ### TAINT awaiting better solution ###
+    NULL = HOLLERITH._encode_value db, 1
     for idx in [ 0 ... 10 ]
-      db[ '%self' ].put ( HOLLERITH._encode db, [ 'x', idx, 'x', ] ), HOLLERITH._zero_enc
+      db[ '%self' ].put ( HOLLERITH._encode_key db, [ 'x', idx, 'x', ] ), NULL
     #.......................................................................................................
     probe_idx = 4
     count     = 0
@@ -211,20 +215,22 @@ CODEC                     = require './codec'
 @[ "read keys without error (3)" ] = ( T, done ) ->
   step ( resume ) =>
     yield HOLLERITH.clear db, resume
+    ### TAINT awaiting better solution ###
+    NULL = HOLLERITH._encode_value db, 1
     for idx in [ 0 ... 10 ]
-      db[ '%self' ].put ( HOLLERITH._encode db, [ 'x', idx, 'x', ] ), HOLLERITH._zero_enc
+      db[ '%self' ].put ( HOLLERITH._encode_key db, [ 'x', idx, 'x', ] ), NULL
     #.......................................................................................................
     probe_idx = 3
     count     = 0
     delta     = 2
     lo        = [ 'x', probe_idx, ]
     hi        = [ 'x', probe_idx + delta, ]
-    query     = { gte: ( HOLLERITH._encode db, lo ), lte: ( HOLLERITH._query_from_prefix db, hi )[ 'lte' ], }
+    query     = { gte: ( HOLLERITH._encode_key db, lo ), lte: ( HOLLERITH._query_from_prefix db, hi )[ 'lte' ], }
     input     = db[ '%self' ].createReadStream query
     input
       .pipe $ ( { key, value, }, send ) =>
         count += 1
-        T.eq ( HOLLERITH._decode db, key )[ 1 ], probe_idx + count - 1
+        T.eq ( HOLLERITH._decode_key db, key )[ 1 ], probe_idx + count - 1
       .pipe D.$on_end =>
         T.eq count, delta + 1
         done()
@@ -234,7 +240,7 @@ CODEC                     = require './codec'
   step ( resume ) =>
     yield HOLLERITH.clear db, resume
     for idx in [ 0 ... 10 ]
-      db[ '%self' ].put ( HOLLERITH._encode db, [ 'x', idx, 'x', ] ), HOLLERITH._zero_enc
+      db[ '%self' ].put ( HOLLERITH._encode_key db, [ 'x', idx, 'x', ] ), HOLLERITH._encode_value db, 1
     #.......................................................................................................
     probe_idx = 3
     count     = 0
@@ -349,11 +355,6 @@ CODEC                     = require './codec'
     [ '𧷟', 'guide/lineup/length', 5 ]
     [ '𧷟', 'guide/uchr/has', [ '八', '刀', '宀', '', '貝' ] ]
     [ '𧷟', 'rank/cjt', 5432 ]
-    [ '𧷟1', 'guide/lineup/length', 1 ]
-    [ '𧷟2', 'guide/lineup/length', 2 ]
-    [ '𧷟3', 'guide/lineup/length', 3 ]
-    [ '𧷟4', 'guide/lineup/length', 4 ]
-    [ '𧷟6', 'guide/lineup/length', 6 ]
     ]
   #.........................................................................................................
   step ( resume ) =>
@@ -362,6 +363,7 @@ CODEC                     = require './codec'
     input   = HOLLERITH.create_phrasestream db, prefix
     input
       .pipe $ ( phrase, send ) =>
+        debug '©DsAfY', rpr phrase
         count  += +1
         idx    += +1
         T.eq phrase, matchers[ idx ]
@@ -696,11 +698,11 @@ CODEC                     = require './codec'
       null
       false
       true
-      CODEC.first_date
+      CODEC[ 'sentinels' ][ 'firstdate' ]
       new Date 0
       new Date 8e11
       new Date()
-      CODEC.last_date
+      CODEC[ 'sentinels' ][ 'lastdate'  ]
       1234
       Infinity
       ''

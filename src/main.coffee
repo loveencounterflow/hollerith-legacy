@@ -20,10 +20,9 @@ echo                      = CND.echo.bind CND
 suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
 #...........................................................................................................
-### https://github.com/deanlandolt/bytewise ###
-BYTEWISE                  = require 'bytewise'
-_btws_encode              = BYTEWISE.encode.bind BYTEWISE
-_btws_decode              = BYTEWISE.decode.bind BYTEWISE
+CODEC                     = require './codec'
+_codec_encode             = CODEC.encode.bind CODEC
+_codec_decode             = CODEC.decode.bind CODEC
 #...........................................................................................................
 D                         = require 'pipedreams2'
 $                         = D.remit.bind D
@@ -40,11 +39,13 @@ LODASH                    = require 'lodash'
 #-----------------------------------------------------------------------------------------------------------
 @phrasetypes      = [ 'pos', 'spo', ]
 @_misfit          = Symbol 'misfit'
-@_zero            = true
-@_zero_enc        = _btws_encode @_zero
-@_lo_enc          = _btws_encode null
-@_hi_enc          = _btws_encode undefined
-@_last_octet      = new Buffer [ 0xff, ]
+@_zero_value_bfr  = new Buffer 'null'
+# warn "mind inconsistencies in HOLLERITH2/main @_zero_enc etc"
+# @_zero            = true # ?????????????????????????????
+# @_zero_enc        = _codec_encode [ @_zero,    ]
+# @_lo_enc          = _codec_encode [ null,      ]
+# @_hi_enc          = _codec_encode [ CODEC., ]
+# @_last_octet      = new Buffer [ 0xff, ]
 
 #-----------------------------------------------------------------------------------------------------------
 @new_db = ( route ) ->
@@ -89,8 +90,8 @@ LODASH                    = require 'lodash'
 # WRITING
 #-----------------------------------------------------------------------------------------------------------
 @$write = ( db, buffer_size = 1000 ) ->
-  ### Expects a Hollerith DB object and an optional buffer size; returns a pipe transformer that does all of
-  the following:
+  ### Expects a Hollerith DB object and an optional buffer size; returns a stream transformer that does all
+  of the following:
 
   * It expects an SO key for which it will generate a corresponding OS key.
   * A corresponding OS key is formulated except when the SO key's object value is a JS object / a POD (since
@@ -113,15 +114,15 @@ LODASH                    = require 'lodash'
   _send       = null
   #.........................................................................................................
   push = ( key, value ) =>
-    value = if value? then @_encode db, value else @_zero_enc
-    buffer.push { type: 'put', key: ( @_encode db, key ), value: value, }
+    value_bfr = if value? then @_encode_value db, value else @_zero_value_bfr
+    buffer.push { type: 'put', key: ( @_encode_key db, key ), value: value_bfr, }
   #.........................................................................................................
   flush = =>
     if buffer.length > 0
       batch_count += +1
       # ### --- ###
       # for { key, value, } in buffer
-      #   debug '©AbDU1', ( @_decode db, key ), ( @_decode db, value )
+      #   debug '©AbDU1', ( @_decode_key db, key ), ( @_decode_key db, value )
       # ### --- ###
       substrate.batch buffer, ( error ) =>
         throw error if error?
@@ -181,7 +182,7 @@ LODASH                    = require 'lodash'
 #   R = if query? then ( db[ '%self' ].createKeyStream query ) else db[ '%self' ].createKeyStream()
 #   # R = db[ '%self' ].createKeyStream @new_query db, query
 #   ### TAINT Should we test for well-formed entries here? ###
-#   R = R.pipe $ ( bkey, send ) => send @_decode db, bkey
+#   R = R.pipe $ ( bkey, send ) => send @_decode_key db, bkey
 #   return R
 
 #-----------------------------------------------------------------------------------------------------------
@@ -207,13 +208,13 @@ LODASH                    = require 'lodash'
     query       = @_query_from_prefix db, lo_hint
   #.........................................................................................................
   else
-    lo_hint_enc = if lo_hint? then            ( @_encode db, lo_hint )          else @_lo_enc
-    hi_hint_enc = if hi_hint? then ( @_query_from_prefix db, hi_hint )[ 'lte' ] else @_hi_enc
-    query       = { gte: lo_hint_enc, lte: hi_hint_enc, }
+    lo_hint_bfr = if lo_hint? then (        @_encode_key db, lo_hint )          else CODEC[ 'keys' ][ 'lo' ]
+    hi_hint_bfr = if hi_hint? then ( @_query_from_prefix db, hi_hint )[ 'lte' ] else CODEC[ 'keys' ][ 'hi' ]
+    query       = { gte: lo_hint_bfr, lte: hi_hint_bfr, }
   #.........................................................................................................
-  R         = db[ '%self' ].createReadStream query
   ### TAINT Should we test for well-formed entries here? ###
-  R         = R.pipe $ ( { key, value }, send ) => send [ ( @_decode db, key ), ( @_decode db, value ), ]
+  R = db[ '%self' ].createReadStream query
+  R = R.pipe $ ( { key, value }, send ) => send [ ( @_decode_key db, key ), ( @_decode_value db, value ), ]
   #.........................................................................................................
   return R
 
@@ -283,16 +284,20 @@ LODASH                    = require 'lodash'
 
 
 #===========================================================================================================
-# KEY AND PREFIXES
+# KEYS & VALUES
 #-----------------------------------------------------------------------------------------------------------
-@_encode = ( db, key ) ->
+@_encode_key = ( db, key, extra_byte ) ->
   throw new Error "illegal key #{rpr key}" if key is undefined
-  return _btws_encode key
+  return _codec_encode key, extra_byte
 
 #-----------------------------------------------------------------------------------------------------------
-@_decode = ( db, key ) ->
-  throw new Error "illegal key #{rpr key}" if ( R = _btws_decode key ) is undefined
+@_decode_key = ( db, key ) ->
+  throw new Error "illegal key #{rpr key}" if ( R = _codec_decode key ) is undefined
   return R
+
+#-----------------------------------------------------------------------------------------------------------
+@_encode_value = ( db, value      ) -> JSON.stringify value
+@_decode_value = ( db, value_bfr  ) -> JSON.parse     value_bfr.toString 'utf-8'
 
 #-----------------------------------------------------------------------------------------------------------
 ### NB Argument ordering for these function is always subject before object, regardless of the phrasetype
@@ -320,15 +325,15 @@ and the ordering in the resulting key. ###
     ( @new_key db, other_phrasetype, sk, sv, ok, ov, idx ), ]
 
 #-----------------------------------------------------------------------------------------------------------
-@as_phrase = ( db, key, value = @_zero_enc ) ->
+@as_phrase = ( db, key, value ) ->
   switch phrasetype = key[ 0 ]
     when 'spo'
       throw new Error "illegal SPO key (length #{length})" unless ( length = key.length ) is 3
-      throw new Error "illegal value #{rpr value}" if value in [ @_zero_enc, undefined, ]
+      throw new Error "illegal value (1) #{rpr value}" if value in [ undefined, ]
       return [ key[ 1 ], key[ 2 ], value, ]
     when 'pos'
       throw new Error "illegal POS key (length #{length})" unless 4 <= ( length = key.length ) <= 5
-      throw new Error "illegal value #{rpr value}" if not ( value in [ @_zero, undefined, ] )
+      throw new Error "illegal value (2) #{rpr value}" if not ( value in [ null, ] )
       [ _, prd, obj, sbj, idx, ] = key
       return if idx? then [ sbj, prd, obj, idx, ] else [ sbj, prd, obj, ]
 
@@ -380,44 +385,12 @@ and the ordering in the resulting key. ###
 
 
 #===========================================================================================================
-# PREFIXES / QUERIES
-# #-----------------------------------------------------------------------------------------------------------
-# @new_query = ( db, hint ) ->
-#   switch type = CND.type_of hint
-#     when 'text'                   then return @_query_from_partial_url db, hint
-#     when 'list'                   then return @_query_from_partial_key db, hint
-#     when 'pod', 'HOLLERITH/query' then return LODASH.cloneDeep hint
-#   throw new Error "expected a partial URL (a text) or key (a list), got a #{type}"
-
-# #-----------------------------------------------------------------------------------------------------------
-# @_query_from_partial_url = ( db, purl ) ->
-#   [ phrasetype, tail, ] = purl.split '|', 2
-#   [ k0, v0, ]           = if tail? then ( tail.split ':', 2 ) else [ null, null, ]
-#   pkey                  = [ phrasetype, ]
-#   pkey.push k0 if k0?
-#   pkey.push v0 if v0?
-#   return @_query_from_partial_key db, pkey
-
-# #-----------------------------------------------------------------------------------------------------------
-# @_query_from_partial_key = ( db, pkey ) ->
-#   base                = @_encode db, pkey
-#   length              = base.length
-#   throw new Error "illegal prefix-key (1): #{rpr pkey}" unless base[ length - 1 ] is 0x00
-#   throw new Error "illegal prefix-key (2): #{rpr pkey}" unless base[ length - 2 ] is 0x00
-#   base[ length - 2 ]  = 0xff
-#   gte                 = base.slice 0, length - 2
-#   lte                 = base.slice 0, length - 1
-#   return { gte, lte, }
-
+# PREFIXES & QUERIES
 #-----------------------------------------------------------------------------------------------------------
 @_query_from_prefix = ( db, lo_hint ) ->
-  base                = @_encode db, lo_hint
-  length              = base.length
-  throw new Error "illegal prefix-key (1): #{rpr lo_hint}" unless base[ length - 1 ] is 0x00
-  throw new Error "illegal prefix-key (2): #{rpr lo_hint}" unless base[ length - 2 ] is 0x00
-  base[ length - 2 ]  = 0xff
-  gte                 = base.slice 0, length - 2
-  lte                 = base.slice 0, length - 1
+  base  = @_encode_key db, lo_hint, 0xff
+  gte   = base.slice 0, base.length - 1
+  lte   = base.slice 0, base.length
   return { gte, lte, }
 
 
