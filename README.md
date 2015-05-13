@@ -6,6 +6,7 @@
 	- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
 - [The Hollerith² Codec (H2C)](#the-hollerith²-codec-h2c)
 	- [Texts (Strings)](#texts-strings)
+- [                                         Value        Length](#value--------length)
 	- [Numbers](#numbers)
 	- [Dates](#dates)
 	- [Variants](#variants)
@@ -245,17 +246,21 @@ It's very well possible that H2C will support more data types and / or
 user-defined data types in the future.
 
 ```coffee
-HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'lo'         ] =                     0x00
-HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'null'       ] = 'B'.codePointAt 0 # 0x42
-HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'false'      ] = 'C'.codePointAt 0 # 0x43
-HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'true'       ] = 'D'.codePointAt 0 # 0x44
-HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'date'       ] = 'G'.codePointAt 0 # 0x47
-HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'ninfinity'  ] = 'J'.codePointAt 0 # 0x4a
-HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'nnumber'    ] = 'K'.codePointAt 0 # 0x4b
-HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'pnumber'    ] = 'L'.codePointAt 0 # 0x4c
-HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'pinfinity'  ] = 'M'.codePointAt 0 # 0x4d
-HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'text'       ] = 'T'.codePointAt 0 # 0x54
-HOLLERITH2[ 'CODEC' ][ 'typemarkers'  ][ 'hi'         ] =                     0xff
+tms = HOLLERITH2[ 'CODEC' ][ 'typemarkers' ]
+
+                                         Value        Length
+---------------------------------------------------------------------------------
+tms[ 'lo'         ] =                     0x00             1
+tms[ 'null'       ] = 'B'.codePointAt 0 # 0x42             1
+tms[ 'false'      ] = 'C'.codePointAt 0 # 0x43             1
+tms[ 'true'       ] = 'D'.codePointAt 0 # 0x44             1
+tms[ 'date'       ] = 'G'.codePointAt 0 # 0x47            10
+tms[ 'ninfinity'  ] = 'J'.codePointAt 0 # 0x4a             1
+tms[ 'nnumber'    ] = 'K'.codePointAt 0 # 0x4b             9
+tms[ 'pnumber'    ] = 'L'.codePointAt 0 # 0x4c             9
+tms[ 'pinfinity'  ] = 'M'.codePointAt 0 # 0x4d             1
+tms[ 'text'       ] = 'T'.codePointAt 0 # 0x54    (variable)
+tms[ 'hi'         ] =                     0xff             1
 ```
 
 ### Texts (Strings)
