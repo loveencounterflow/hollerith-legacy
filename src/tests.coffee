@@ -686,7 +686,6 @@ CODEC                     = require './codec'
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "sort mixed values with H2 codec" ] = ( T, done ) ->
-  throw new Error 'XXXX'
   step ( resume ) =>
     settings =
       db:           leveldown
@@ -697,9 +696,11 @@ CODEC                     = require './codec'
       null
       false
       true
+      new Date 0
+      new Date 8e11
+      new Date()
       1234
       Infinity
-      new Date 0
       ''
       '一'
       '三'
@@ -711,6 +712,7 @@ CODEC                     = require './codec'
     matchers = ( [ probe, ] for probe in probes )
     CND.shuffle probes
     for probe in probes
+      debug '©oMXJZ', probe
       probe_bfr = CODEC.encode [ probe, ]
       yield leveldb.put probe_bfr, '1', resume
     probe_bfrs  = yield read_all_keys leveldb, resume
@@ -722,41 +724,117 @@ CODEC                     = require './codec'
       T.eq probe, matcher
     leveldb.close -> done()
 
-#
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "sort numbers with bytewise codec (1)" ] = ( T, done ) ->
-#   step ( resume ) =>
-#     settings =
-#       db:           leveldown
-#       keyEncoding:  'binary'
-#     leveldb = levelup '/tmp/hollerith2-test', settings
-#     yield HOLLERITH.clear leveldb, resume
-#     probes = [
-#       Number.MIN_VALUE # ≅ -1.79E+308
-#       Number.MIN_SAFE_INTEGER # -9007199254740991
-#       -123456789
-#       -3
-#       -2
-#       -1
-#       -Number.EPSILON
-#       0
-#       +Number.EPSILON
-#       +1
-#       +2
-#       +3
-#       +123456789
-#       Number.MAX_SAFE_INTEGER # +9007199254740991
-#       Number.MAX_VALUE # ≅ +1.79E+308
-#       ]
-#     matchers = ( [ probe, ] for probe in probes )
-#     CND.shuffle probes
-#     for probe in probes
-#       probe_bfr = ( require 'bytewise' ).encode probe
-#       yield leveldb.put probe_bfr, '1', resume
-#     probe_bfrs  = yield read_all_keys leveldb, resume
-#     probes      = ( ( require 'bytewise' ).decode probe_bfr for probe_bfr in probe_bfrs )
-#     show_keys_and_key_bfrs probes, probe_bfrs
-#     done()
+#-----------------------------------------------------------------------------------------------------------
+@[ "sort lists of mixed values with H2 codec" ] = ( T, done ) ->
+  step ( resume ) =>
+    settings =
+      db:           leveldown
+      keyEncoding:  'binary'
+    leveldb = levelup '/tmp/hollerith2-test', settings
+    yield clear_leveldb leveldb, resume
+    probes = [
+      [ "''",            '',             ]
+      [ "'一'",           '一',            ]
+      [ "'三'",           '三',            ]
+      [ "'二'",           '二',            ]
+      [ "'𠀀\x00'",       '𠀀\x00',        ]
+      [ "'𠀀'",           '𠀀',            ]
+      [ "1234",          1234,           ]
+      [ "Infinity",      Infinity,       ]
+      [ "String.fromCodePoint 0x10ffff", String.fromCodePoint 0x10ffff ]
+      [ "false",         false,          ]
+      [ "new Date 0",    new Date 0,     ]
+      [ "new Date 8e11", new Date 8e11,  ]
+      [ "new Date()",    new Date(),     ]
+      [ "null",          null,           ]
+      [ "true",          true,           ]
+      ]
+    matchers = ( probe for probe in probes )
+    CND.shuffle probes
+    for probe in probes
+      debug '©oMXJZ', probe
+      probe_bfr = CODEC.encode probe
+      yield leveldb.put probe_bfr, '1', resume
+    probe_bfrs  = yield read_all_keys leveldb, resume
+    # debug '©Fd5iw', probe_bfrs
+    probes      = ( CODEC.decode probe_bfr for probe_bfr in probe_bfrs )
+    show_keys_and_key_bfrs probes, probe_bfrs
+    for probe, probe_idx in probes
+      matcher = matchers[ probe_idx ]
+      T.eq probe, matcher
+    leveldb.close -> done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "sort routes with values (1)" ] = ( T, done ) ->
+  step ( resume ) =>
+    settings =
+      db:           leveldown
+      keyEncoding:  'binary'
+    leveldb = levelup '/tmp/hollerith2-test', settings
+    yield clear_leveldb leveldb, resume
+    probes = [
+      [ 'pos', 'strokeorder', '352513553254',          '𤿯', ]
+      [ 'pos', 'strokeorder', '3525141121',            '𠴦', ]
+      [ 'pos', 'strokeorder', '35251454',              '𨒡', ]
+      [ 'pos', 'strokeorder', '3525152',               '邭', ]
+      [ 'pos', 'strokeorder', '352515251115115113541', '𪚫', ]
+      [ 'pos', 'strokeorder', '35251525112511511',     '𪚧', ]
+      [ 'pos', 'strokeorder', '352515251214251214',    '𧑴', ]
+      [ 'pos', 'strokeorder', '3525153',               '劬', ]
+      [ 'pos', 'strokeorder', '3525153\x00',               '劬', ]
+      [ 'pos', 'strokeorder\x00', '352513553254',          '𤿯', ]
+      ]
+    matchers = ( probe for probe in probes )
+    CND.shuffle probes
+    for probe in probes
+      probe_bfr = CODEC.encode probe
+      yield leveldb.put probe_bfr, '1', resume
+    probe_bfrs  = yield read_all_keys leveldb, resume
+    # debug '©Fd5iw', probe_bfrs
+    probes      = ( CODEC.decode probe_bfr for probe_bfr in probe_bfrs )
+    show_keys_and_key_bfrs probes, probe_bfrs
+    for probe, probe_idx in probes
+      matcher = matchers[ probe_idx ]
+      T.eq probe, matcher
+    leveldb.close -> done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "sort routes with values (2)" ] = ( T, done ) ->
+  step ( resume ) =>
+    settings =
+      db:           leveldown
+      keyEncoding:  'binary'
+    leveldb = levelup '/tmp/hollerith2-test', settings
+    yield clear_leveldb leveldb, resume
+    probes = [
+      [ 'a',      null, ]
+      [ 'a',      false, ]
+      [ 'a',      true, ]
+      [ 'a',      new Date(), ]
+      [ 'a',      -Infinity, ]
+      [ 'a',      +1234, ]
+      [ 'a',      +Infinity, ]
+      [ 'a',      'b', ]
+      [ 'a',      'b\x00', ]
+      [ 'a\x00',  +1234, ]
+      [ 'a\x00',  'b', ]
+      [ 'aa',     +1234, ]
+      [ 'aa',     'b', ]
+      [ 'aa',     'b\x00', ]
+      ]
+    matchers = ( probe for probe in probes )
+    CND.shuffle probes
+    for probe in probes
+      probe_bfr = CODEC.encode probe
+      yield leveldb.put probe_bfr, '1', resume
+    probe_bfrs  = yield read_all_keys leveldb, resume
+    # debug '©Fd5iw', probe_bfrs
+    probes      = ( CODEC.decode probe_bfr for probe_bfr in probe_bfrs )
+    show_keys_and_key_bfrs probes, probe_bfrs
+    for probe, probe_idx in probes
+      matcher = matchers[ probe_idx ]
+      T.eq probe, matcher
+    leveldb.close -> done()
 
 
 #===========================================================================================================
@@ -776,11 +854,11 @@ show_keys_and_key_bfrs = ( keys, key_bfrs ) ->
   help '\n' + CND.columnify data, columnify_settings
   return null
 
-# #-----------------------------------------------------------------------------------------------------------
-# get_new_db_name = ->
-#   get_new_db_name.idx += +1
-#   return "/tmp/hollerith2-testdb-#{get_new_db_name.idx}"
-# get_new_db_name.idx = 0
+#-----------------------------------------------------------------------------------------------------------
+get_new_db_name = ->
+  get_new_db_name.idx += +1
+  return "/tmp/hollerith2-testdb-#{get_new_db_name.idx}"
+get_new_db_name.idx = 0
 
 #-----------------------------------------------------------------------------------------------------------
 read_all_keys = ( db, handler ) ->
@@ -800,204 +878,6 @@ clear_leveldb = ( leveldb, handler ) ->
     # help "erased and re-opened LevelDB at #{route}"
     handler null
 
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "keys 0" ] = ( T, done ) ->
-#   key_0   = HOLLERITH.new_key     db, 'so', 'glyph', '家', 'strokeorder', '4451353334'
-#   key_1   = HOLLERITH.new_so_key  db,       'glyph', '家', 'strokeorder', '4451353334'
-#   matcher = [ 'so', 'glyph', '家', 'strokeorder', '4451353334', 0 ]
-#   T.eq key_0, matcher
-#   T.eq key_1, key_0
-#   done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "keys 1" ] = ( T, done ) ->
-#   [ sk, sv, ok, ov, ] = [ 'glyph', '家', 'strokeorder', '4451353334', ]
-#   [ so_key_0, os_key_0, ] = HOLLERITH.new_keys db, 'so', sk, sv, ok, ov
-#   so_key_1 = HOLLERITH.new_so_key db, sk, sv, ok, ov
-#   os_key_1 = HOLLERITH.new_os_key db, sk, sv, ok, ov
-#   T.eq so_key_0, so_key_1
-#   T.eq os_key_0, os_key_1
-#   done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "keys 2" ] = ( T, done ) ->
-#   [ t_0, sk_0, sv_0, ok_0, ov_0, idx_0, ] = [ 'so', 'glyph', '家', 'strokeorder', '4451353334', 0, ]
-#   so_key_0 = HOLLERITH.new_key db, t_0, sk_0, sv_0, ok_0, ov_0, idx_0
-#   [ t_1, sk_1, sv_1, ok_1, ov_1, idx_1, ] = HOLLERITH.as_phrase db, so_key_0
-#   T.eq [ t_0, sk_0, sv_0, ok_0, ov_0, idx_0, ], [ t_1, sk_1, sv_1, ok_1, ov_1, idx_1, ]
-#   done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "ordering and value recovery 0" ] = ( T, done ) ->
-#   matchers    = []
-#   probes_idx  = 0
-#   #.........................................................................................................
-#   for probe in @_feed_test_data.probes[ probes_idx ]
-#     [ sk, sv, ok, ov, ] = probe
-#     matchers.push [ 'os', ok, ov, sk, sv, 0, ]
-#     matchers.push [ 'so', sk, sv, ok, ov, 0, ]
-#   @_sort_list matchers
-#   #.........................................................................................................
-#   idx = -1
-#   step ( resume ) =>
-#     yield @_feed_test_data db, probes_idx, resume
-#     input = db[ '%self' ].createKeyStream()
-#     input
-#       .pipe $ ( key, send ) =>
-#         key = BYTEWISE.decode key
-#         idx += +1
-#         T.eq key, matchers[ idx ]
-#       .pipe D.$on_end => done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "ordering and value recovery 1" ] = ( T, done ) ->
-#   probes_idx  = 1
-#   #.........................................................................................................
-#   matchers    = [
-#     'os|cp/fncr:u-cjk-xb/20d26|glyph:𠴦|0'
-#     'os|cp/fncr:u-cjk-xb/24fef|glyph:𤿯|0'
-#     'os|cp/fncr:u-cjk-xb/27474|glyph:𧑴|0'
-#     'os|cp/fncr:u-cjk-xb/284a1|glyph:𨒡|0'
-#     'os|cp/fncr:u-cjk-xb/2a6a7|glyph:𪚧|0'
-#     'os|cp/fncr:u-cjk-xb/2a6ab|glyph:𪚫|0'
-#     'os|cp/fncr:u-cjk/52ac|glyph:劬|0'
-#     'os|cp/fncr:u-cjk/90ad|glyph:邭|0'
-#     'os|strokeorder:352513553254|glyph:𤿯|0'
-#     'os|strokeorder:3525141121|glyph:𠴦|0'
-#     'os|strokeorder:35251454|glyph:𨒡|0'
-#     'os|strokeorder:3525152|glyph:邭|0'
-#     'os|strokeorder:352515251115115113541|glyph:𪚫|0'
-#     'os|strokeorder:35251525112511511|glyph:𪚧|0'
-#     'os|strokeorder:352515251214251214|glyph:𧑴|0'
-#     'os|strokeorder:3525153|glyph:劬|0'
-#     'so|glyph:劬|cp/fncr:u-cjk/52ac|0'
-#     'so|glyph:劬|strokeorder:3525153|0'
-#     'so|glyph:邭|cp/fncr:u-cjk/90ad|0'
-#     'so|glyph:邭|strokeorder:3525152|0'
-#     'so|glyph:𠴦|cp/fncr:u-cjk-xb/20d26|0'
-#     'so|glyph:𠴦|strokeorder:3525141121|0'
-#     'so|glyph:𤿯|cp/fncr:u-cjk-xb/24fef|0'
-#     'so|glyph:𤿯|strokeorder:352513553254|0'
-#     'so|glyph:𧑴|cp/fncr:u-cjk-xb/27474|0'
-#     'so|glyph:𧑴|strokeorder:352515251214251214|0'
-#     'so|glyph:𨒡|cp/fncr:u-cjk-xb/284a1|0'
-#     'so|glyph:𨒡|strokeorder:35251454|0'
-#     'so|glyph:𪚧|cp/fncr:u-cjk-xb/2a6a7|0'
-#     'so|glyph:𪚧|strokeorder:35251525112511511|0'
-#     'so|glyph:𪚫|cp/fncr:u-cjk-xb/2a6ab|0'
-#     'so|glyph:𪚫|strokeorder:352515251115115113541|0'
-#     ]
-#   #.........................................................................................................
-#   idx = -1
-#   step ( resume ) =>
-#     yield @_feed_test_data db, probes_idx, resume
-#     input = HOLLERITH.read db
-#     input
-#       .pipe HOLLERITH.$url_from_key db
-#       .pipe $ ( key, send ) =>
-#         # debug '©4i3qZ', key
-#         idx += +1
-#         T.eq key, matchers[ idx ]
-#       .pipe D.$on_end => done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "prefixes and searching 0" ] = ( T, done ) ->
-#   matchers    = []
-#   probes_idx  = 1
-#   #.........................................................................................................
-#   matchers = [
-#     'os|strokeorder:3525141121|glyph:𠴦|0'
-#     'os|strokeorder:35251454|glyph:𨒡|0'
-#     ]
-#   #.........................................................................................................
-#   idx = -1
-#   step ( resume ) =>
-#     yield @_feed_test_data db, probes_idx, resume
-#     query = HOLLERITH.new_query db, [ 'os', 'strokeorder', '352514', ]
-#     # debug '©q0oj2', query
-#     input = db[ '%self' ].createKeyStream query
-#     input
-#       #.....................................................................................................
-#       .pipe $ ( bkey, send ) =>
-#         url = HOLLERITH.url_from_key db, HOLLERITH._decode db, bkey
-#         idx += +1
-#         T.eq url, matchers[ idx ]
-#       #.....................................................................................................
-#       .pipe D.$on_end =>
-#         T.eq idx, 1
-#         done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "prefixes and searching 1" ] = ( T, done ) ->
-#   matchers    = []
-#   probes_idx  = 1
-#   #.........................................................................................................
-#   matchers = [
-#     'os|strokeorder:3525141121|glyph:𠴦|0'
-#     'os|strokeorder:35251454|glyph:𨒡|0'
-#     ]
-#   #.........................................................................................................
-#   idx = -1
-#   step ( resume ) =>
-#     yield @_feed_test_data db, probes_idx, resume
-#     input = HOLLERITH.read db, [ 'os', 'strokeorder', '352514', ]
-#       .pipe HOLLERITH.$url_from_key db
-#       .pipe D.$show()
-#       #.....................................................................................................
-#       .pipe $ ( url, send ) =>
-#         idx += +1
-#         T.eq url, matchers[ idx ]
-#       #.....................................................................................................
-#       .pipe D.$on_end =>
-#         T.eq idx, 1
-#         done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "_ordering" ] = ( T, done ) ->
-#   hi = undefined
-#   lo = null
-#   probes = [
-#     [ 'x', '<3525135>',             ]
-#     [ 'x', '<3525141121>',          ]
-#     [ 'x', '<35251454>',            ]
-#     [ 'x', '<3525152>',             ]
-#     [ 'x', '<352515251>',           ]
-#     [ 'x', '<3525152511>',          ]
-#     [ 'x', '<3525153>',             ]
-#     [ 'x', +Infinity, ]
-#     [ 'x', -Infinity, ]
-#     [ 'x', 42, ]
-#     [ 'x', -42, ]
-#     [ 'x', 'a', ]
-#     [ 'x', 'z', ]
-#     [ 'x', '中', ]
-#     [ 'x', '\uffff', ]
-#     [ 'x', '𠂝', ]
-#     # [ 'x', ( new Buffer ( String.fromCodePoint 0x10ffff ), 'utf-8' ), ]
-#     # [ 'x', ( new Buffer ( String.fromCodePoint 0x10ffff ), 'utf-8' ).toString(), ]
-#     # [ 'x', hi, ]
-#     # [ 'x', lo, ]
-#     [ 'os', 'ok', ]        # 'os|ok'
-#     [ 'os', 'ok', 'ov', ]  # 'os|ok:ov'
-#     [ 'os', 'ok*', ]       # 'os|ok*'
-#     [ 'os', 'ok', 'ov*', ] # 'os|ok:ov*'
-#     ]
-#     # # [ 'os', [ 'ok', 'ov', ], [ 'sk', 'sv', ], 0, ]
-#     # [ 'os', 'strokeorder', '<3525141121>',            'glyph', '𠴦', 0, ]
-#     # [ 'os', 'strokeorder', '<35251454>',              'glyph', '𨒡', 0, ]
-#     # [ 'os', 'strokeorder', '<3525152>',               'glyph', '邭', 0, ]
-#     # [ 'os', 'strokeorder', '<352515251115115113541>', 'glyph', '𪚫', 0, ]
-#     # [ 'os', 'strokeorder', '<35251525112511511>',     'glyph', '𪚧', 0, ]
-#     # [ 'os', 'strokeorder', '<352515251214251214>',    'glyph', '𧑴', 0, ]
-#     # [ 'os', 'strokeorder', '<3525153>',               'glyph', '劬', 0, ]
-#   #.........................................................................................................
-#   @_sort_list probes
-#   #.........................................................................................................
-#   lines = ( [ ( CND.green probe ), ( CND.grey BYTEWISE.encode probe ), ] for probe in probes )
-#   log ( require 'columnify' ) lines
-
-
 #-----------------------------------------------------------------------------------------------------------
 @_main = ( handler ) ->
   db = HOLLERITH.new_db join __dirname, '..', 'dbs/tests'
@@ -1006,18 +886,6 @@ clear_leveldb = ( leveldb, handler ) ->
 ############################################################################################################
 unless module.parent?
   @_main()
-  # a = [ 'aaa', 'b', 'c', ]
-  # b = [ 'A', 'BBB', 'C', ]
-  # columnify_settings =
-  #   paddingChr: '_'
-  #   # columns: [ 'decoded', 'encoded', 'x' ]
-  # # help '\n' + CND.columnify [ a, b, ], columnify_settings
-  # data = []
-  # for element_a, idx in a
-  #   data.push { 'str': element_a, 'bfr': b[ idx ]}
-  # help '\n' + CND.columnify data, columnify_settings
-
-
 
 
 

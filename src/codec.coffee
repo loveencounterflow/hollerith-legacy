@@ -56,7 +56,7 @@ rbuffer             = new Buffer rbuffer_min_size
 # @type_x             = 0xf6
 # @type_x             = 0xf7
 # @type_x             = 0xf8
-# @type_x             = 0xf9
+@type_date          = 0xf9
 @type_ninfinity     = 0xfa
 @type_nnumber       = 0xfb
 @type_pnumber       = 0xfc
@@ -70,6 +70,7 @@ rbuffer             = new Buffer rbuffer_min_size
 
 #-----------------------------------------------------------------------------------------------------------
 @bytecount_number   = 9
+@bytecount_date     = @bytecount_number
 @bytecount_variant  = 2
 @bytecount_infinity = 1
 
@@ -78,8 +79,9 @@ buffer_too_short_error = new Error "buffer too short"
 
 #-----------------------------------------------------------------------------------------------------------
 @grow_rbuffer = ( delta_size ) ->
-  return null if delta_size < 1
   delta_size ?= rbuffer_delta_size
+  return null if delta_size < 1
+  # warn "growing rbuffer (#{delta_size} bytes)"
   new_result_buffer = new Buffer rbuffer.length + delta_size
   rbuffer.copy new_result_buffer
   rbuffer     = new_result_buffer
@@ -99,7 +101,7 @@ buffer_too_short_error = new Error "buffer too short"
   if      value is null   then sub_typemarker = @type_variant_null
   else if value is false  then sub_typemarker = @type_variant_false
   else if value is true   then sub_typemarker = @type_variant_true
-  else throw new Error "unable to encode value of type #{type}"
+  else throw new Error "unable to encode value of type #{CND.type_of value}"
   rbuffer[ idx      ] = @type_variant
   rbuffer[ idx + 1  ] = sub_typemarker
   return idx + @bytecount_variant
@@ -154,13 +156,32 @@ buffer_too_short_error = new Error "buffer too short"
 
 
 #===========================================================================================================
+# DATES
+#-----------------------------------------------------------------------------------------------------------
+@write_date = ( idx, date ) ->
+  number          = +date
+  rbuffer[ idx ]  = @type_date
+  new_idx         = @write_number idx + 1, number
+  return new_idx
+
+#-----------------------------------------------------------------------------------------------------------
+@read_date = ( buffer, idx ) ->
+  throw new Error "not a date at index #{idx}" unless buffer[ idx ] is @type_date
+  switch type = buffer[ idx + 1 ]
+    when @type_nnumber    then [ idx, value, ] = @read_nnumber    buffer, idx + 1
+    when @type_pnumber    then [ idx, value, ] = @read_pnumber    buffer, idx + 1
+    else throw new Error "unknown date type marker 0x#{type.toString 16} at index #{idx}"
+  return [ idx, ( new Date value ), ]
+
+
+#===========================================================================================================
 # TEXT
 #-----------------------------------------------------------------------------------------------------------
 @write_text = ( idx, text ) ->
   text = text.replace /\x01/g, '\x01\x02'
   text = text.replace /\x00/g, '\x01\x01'
   length_estimate = max_bytes_per_chr * text.length + 3
-  @grow_rbuffer rbuffer.length - length_estimate
+  @grow_rbuffer length_estimate - rbuffer.length - idx - 1
   rbuffer[ idx                    ] = @type_text
   byte_count                        = rbuffer.write text, idx + 1
   rbuffer[ idx + byte_count + 1   ] = @type_lo
@@ -186,9 +207,10 @@ buffer_too_short_error = new Error "buffer too short"
 #-----------------------------------------------------------------------------------------------------------
 @write = ( idx, value ) ->
   switch type = CND.type_of value
-    when 'jsinfinity' then return @write_infinity idx, value
     when 'text'       then return @write_text     idx, value
     when 'number'     then return @write_number   idx, value
+    when 'jsinfinity' then return @write_infinity idx, value
+    when 'jsdate'     then return @write_date     idx, value
   #.........................................................................................................
   return @write_variant  idx, value
 
@@ -227,6 +249,7 @@ buffer_too_short_error = new Error "buffer too short"
       when @type_ninfinity  then [ idx, value, ] = [ idx + 1, -Infinity, ]
       when @type_pnumber    then [ idx, value, ] = @read_pnumber    buffer, idx
       when @type_pinfinity  then [ idx, value, ] = [ idx + 1, +Infinity, ]
+      when @type_date       then [ idx, value, ] = @read_date       buffer, idx
       when @type_variant    then [ idx, value, ] = @read_variant    buffer, idx
       else throw new Error "unknown type marker 0x#{type.toString 16} at index #{idx}"
     R.push value
