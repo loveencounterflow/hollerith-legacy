@@ -7,6 +7,7 @@
 - [The Hollerith² Codec (H2C)](#the-hollerith²-codec-h2c)
 	- [Numbers](#numbers)
 	- [Texts (Strings)](#texts-strings)
+	- [Variants](#variants)
 - [xxx](#xxx)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
@@ -226,10 +227,10 @@ significant gain:
 
 ![Benchmarks](https://github.com/loveencounterflow/hollerith2/raw/master/art/Screen%20Shot%202015-05-13%20at%2002.03.48%20(2).png)
 
-H2C achieves these performance gains by being much more restrictive than bytewise;
+H2C achieves these performance gains by being *much* more restrictive than bytewise;
 while bytewise strives to support all important JavaScript data types and do it
 in the browser as well as in NodeJS, H2C is not currently designed to run in the browser,
-and, more importantly, **it only supports flat lists as keys** whose elements must be
+and, more importantly, **it only supports flat lists as keys** whose elements can only be
 
 * `null`,
 * `false`,
@@ -238,19 +239,29 @@ and, more importantly, **it only supports flat lists as keys** whose elements mu
 * Date objects, or
 * strings.
 
-
-
+It's very well possible that H2C will support more data types and user-defined data types
+in the future.
 
 ### Numbers
 
 ### Texts (Strings)
 
-The H2C encoding for strings is straightforward: We simply use the UTF-8 representation of the
-text which is preceded by a text type marker (`0xfe`) and trailed by a LO byte (`0x00`) and
-a HI byte (`0xff`). When decoding, the first byte is discarded; then, the buffer is searched
-byte by byte for a HI byte, which cannot occur in properly encoded UTF-8 byte sequence. The
-last two bytes are again discarded, and the range of bytes in between is decoded as UTF-8.
+The H2C encoding for strings is binary compatible to the bytewise encoding of strings
+that are elements in lists (since H2C only encodes values in lists). The basic
+ideas are the following:
 
+* The beginning of a string is indicated by a type marker byte (`0xfe` at the moment);
+* its end is indicated by a terminating zero byte (`0x00`).
+* Since `0x00` cannot occur inside a string, all occurrances of `0x00` bytes are replaced
+  by the sequence `0x01 0x01`, and all occurrances of `0x01` bytes are replaced by the
+  sequence `0x01 0x02`.
+* The zero-byte-free string is encoded as UTF-8, which preserves Unicode code point ordering.
+* No other normalization is done on strings, so if you want to, say, index a database of
+  entries in a a 'complex script' that uses decomposable sequences of diacritics and so on,
+  it's your own repsonsibility to choose a Unicode Normalization Form.
+* To decode an encoded string, the buffer is searched for a zero byte; the
+
+### Variants
 
 ## xxx
 
