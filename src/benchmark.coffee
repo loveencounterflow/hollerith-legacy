@@ -43,8 +43,7 @@ immediately               = suspend.immediately
 BYTEWISE                  = require 'bytewise'
 # levelup                   = require 'levelup'
 # leveldown                 = require 'leveldown'
-# CODEC                     = require './codec'
-CODEC                     = require './codec-1'
+CODEC                     = require './codec'
 PASSPHRASE                = require 'coffeenode-passphrase'
 ƒ                         = CND.format_number.bind CND
 

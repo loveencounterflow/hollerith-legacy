@@ -38,8 +38,7 @@ db                        = null
 BYTEWISE                  = require 'bytewise'
 levelup                   = require 'levelup'
 leveldown                 = require 'leveldown'
-# CODEC                     = require './codec'
-CODEC                     = require './codec-1'
+CODEC                     = require './codec'
 
 
 #-----------------------------------------------------------------------------------------------------------
