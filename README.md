@@ -4,7 +4,6 @@
 - [hollerith](#hollerith)
 - [What is LevelDB?](#what-is-leveldb)
 	- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
-- [The Hollerith<sup>2</sup> Codec](#the-hollerith<sup>2<sup>-codec)
 - [The Hollerith² Codec (H2C)](#the-hollerith²-codec-h2c)
 	- [Numbers](#numbers)
 	- [Texts (Strings)](#texts-strings)
@@ -204,9 +203,21 @@ the existing
 
  -->
 
-## The Hollerith<sup>2</sup> Codec
-
 ## The Hollerith² Codec (H2C)
+
+Hollerith comes with its own codec, dubbed the Hollerith² Codec, or H2C for
+short. It works like a subset of the [bytewise
+codec](https://github.com/deanlandolt/bytewise) whose core implementeation ideas
+are shamelessly re-implemented.
+
+H2C's reason for being is performance concerns: Sadly, bytewise is orders of
+magnitude slower than NodeJS' `JSON.stringify`. As it stands, `H2C.encode` is
+still a little over 7 times slower than `JSON.stringify`, but also almost 10
+times faster than bytewise, which is a significant gain:
+
+![Benchmarks](https://github.com/loveencounterflow/hollerith2/raw/master/art/Screen%20Shot%202015-05-13%20at%2002.03.48%20(2).png)
+
+
 
 ### Numbers
 
