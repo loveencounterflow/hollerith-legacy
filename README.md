@@ -222,7 +222,8 @@ dominated by the relative slowness of `bytewise`. This is a shame because
 `bytewise` is technically a great codec when what you want is to `[ 'express',
 'hierarchies', ]` in `[ 'indexed', 'data', 42, ]` using `[ 'lists', 'of'
 'strings' 'and' 'values' ]` — which is *so* much better than trying to do the
-same using JSON and / or your ad-hoc materialized path solution (using path
+same using JSON and / or your ad-hoc [materialized
+path](http://en.wikipedia.org/wiki/Materialized_view) solution (using path
 separators that you have to escape in texts and padding numbers with zeros so
 they sort right).
 
@@ -272,7 +273,7 @@ The H2C encoding for strings is almost binary compatible to the `bytewise`
 encoding of strings that are elements in lists (since H2C only encodes values in
 lists). The basic ideas are the following:
 
-* The beginning of a string is indicated by a typemarker byte (`0x54` ≙ `T` at the moment);
+* The beginning of a string is indicated by a typemarker byte (`0x54 ≙ 'T'` at the moment);
 * its end is indicated by a terminating zero byte (`0x00`).
 * Since `0x00` cannot occur inside a string, all occurrances of `0x00` bytes are replaced
   by the sequence `0x01 0x01`, and all occurrances of `0x01` bytes are replaced by the
@@ -295,11 +296,11 @@ Its characteristics are:
 
 * The beginning of numbers is indicated by a typemarker byte that changes according
   to whether or not the number is finite and whether or not it is negative:
-  * Negative infinity is marked by a sole `0x4a` ≙ `J`, positive infinity as a
-    sole `0x4d` ≙ `M`; these two non-finite numbers are only captured by their
+  * Negative infinity is marked by a sole `0x4a ≙ 'J'`, positive infinity as a
+    sole `0x4d ≙ 'M'`; these two non-finite numbers are only captured by their
     typemarkers.
-  * Negative finite numbers are marked with `0x4b` ≙ `K`, positive finite
-    numbers as `0x4c` ≙ `L`.
+  * Negative finite numbers are marked with `0x4b ≙ 'K'`, positive finite
+    numbers as `0x4c ≙ 'L'`.
 * Finite numbers are written into the result buffer using `Buffer.writeDoubleBE()`,
   which means that
   * all finite numbers take up 1 + 8 = 9 bytes of space;
@@ -319,7 +320,7 @@ Its characteristics are:
 
 ### Dates
 
-Dates are encoded with a leading typemarker for dates (`0x47` ≙ `G` in case you where
+Dates are encoded with a leading typemarker for dates (`0x47 ≙ 'G'` in case you where
 wondering), followed by 9 bytes necessary to [encode finite numbers](#numbers), since
 H2C uses the underlying milliseconds-since-epoch (1st of January, 1970) to
 characterize dates. This means that
@@ -349,8 +350,8 @@ above formulas with `1` subtracted or added to the arguments, you will get an
 ### Singular Values
 
 A so-called 'singular' encoding is used to capture the solitary values `null`,
-`false` and `true`; these are expressed as their type markers `0x42` ≙ `B`
-`0x43` ≙ `C` `0x44` ≙ `D`, respectively.
+`false` and `true`; these are expressed as their type markers `0x42 ≙ 'B'`
+`0x43 ≙ 'C'` `0x44 ≙ 'D'`, respectively.
 
 
 ## xxx
