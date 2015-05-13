@@ -12,7 +12,6 @@
 	- [The Hollerith2 Phrase Structure](#the-hollerith2-phrase-structure)
 		- [SPO & POS](#spo-&-pos)
 - [XXXXXXX](#xxxxxxx)
-	- [subject     predicate                     object](#subject-----predicate---------------------object)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
 
@@ -404,7 +403,7 @@ finds as
 
 ```
 subject     predicate                     object
-------------------------------------------------------
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 丁          strokecount                    2
 三          strokecount                    3
 夫          strokecount                    5
