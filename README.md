@@ -6,7 +6,6 @@
 		- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
 	- [The Hollerith2 Codec (H2C)](#the-hollerith2-codec-h2c)
 		- [Texts (Strings)](#texts-strings)
-	- [                                         Value        Length](#value--------length)
 		- [Numbers](#numbers)
 		- [Dates](#dates)
 		- [Singular Values](#singular-values)
@@ -254,7 +253,7 @@ user-defined data types in the future.
 tms = HOLLERITH2[ 'CODEC' ][ 'typemarkers' ]
 
                                          Value        Length
----------------------------------------------------------------------------------
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 tms[ 'lo'         ] =                     0x00             1
 tms[ 'null'       ] = 'B'.codePointAt 0 # 0x42             1
 tms[ 'false'      ] = 'C'.codePointAt 0 # 0x43             1
