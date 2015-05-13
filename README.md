@@ -1,7 +1,7 @@
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 
 
-	- [hollerith](#hollerith)
+- [hollerith](#hollerith)
 	- [What is LevelDB?](#what-is-leveldb)
 		- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
 	- [The Hollerith2 Codec (H2C)](#the-hollerith2-codec-h2c)
@@ -15,7 +15,7 @@
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
 
 
-## hollerith
+# hollerith
 
 [![Build Status](https://travis-ci.org/loveencounterflow/hollerith2.png)](https://travis-ci.org/loveencounterflow/hollerith2)
 
