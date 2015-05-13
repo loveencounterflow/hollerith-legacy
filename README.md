@@ -12,6 +12,7 @@
 	- [The Hollerith2 Phrase Structure](#the-hollerith2-phrase-structure)
 		- [SPO & POS](#spo-&-pos)
 - [XXXXXXX](#xxxxxxx)
+	- [subject     predicate                     object](#subject-----predicate---------------------object)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
 
@@ -394,16 +395,16 @@ Let's clarify that by way of example.
 > East-Asian languages.
 
 Something very obvious that can be said about Chinese characters is that they
-var greatly in terms of complexity: for example, of the very common characters
+var greatly in terms of complexity: for example, among the very common characters
 丁, 三, 夫, 國, the characters 丁 and 三 are vastly easier to read and write than 國.
 One way to capture this difference in complexity is to simply count the strokes
-needed to write a given character, and we find that 丁, 三, 夫, 國 are written in 2,
+needed to write a given character. We find that 丁, 三, 夫, 國 are written using 2,
 3, 5, and 11 strokes, respectively. Using Hollerith phrases, we could record these
 finds as
 
 ```
 subject     predicate                     object
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+------------------------------------------------------
 丁          strokecount                    2
 三          strokecount                    3
 夫          strokecount                    5
