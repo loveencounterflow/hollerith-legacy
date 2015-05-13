@@ -212,18 +212,19 @@ the existing
 
 Hollerith comes with its own codec, dubbed the Hollerith² Codec, or H2C for
 short. It works like a subset of the [`bytewise`
-codec](https://github.com/deanlandolt/bytewise) whose core implementeation ideas
+codec](https://github.com/deanlandolt/bytewise) whose core implementation ideas
 are shamelessly re-implemented.
 
 H2C's reason for being is performance concerns: Sadly, `bytewise` is orders of
 magnitude slower than NodeJS' `JSON.stringify` which means that the performance
 of a LevelDB write stream that pipes into the `bytewise` codec gets quickly
-dominated by the relative slowness of `bytewise`. This is a shame because `bytewise`
-is technically a great codec when what you want is to `[ 'express',
-'hierarchies', ]` in `[ 'indexed', 'data', 42, ]` using lists of strings and
-values — which is *so* much better than trying to do the same using JSON and /
-or your ad-hoc materialized path solution (using path separators that you have
-to escape in texts and padding numbers with zeros so they sort right).
+dominated by the relative slowness of `bytewise`. This is a shame because
+`bytewise` is technically a great codec when what you want is to `[ 'express',
+'hierarchies', ]` in `[ 'indexed', 'data', 42, ]` using `[ 'lists', 'of'
+'strings' 'and' 'values' ]` — which is *so* much better than trying to do the
+same using JSON and / or your ad-hoc materialized path solution (using path
+separators that you have to escape in texts and padding numbers with zeros so
+they sort right).
 
 As it stands, `H2C.encode` is still a little over 7 times slower than
 `JSON.stringify`, but also almost 10 times faster than `bytewise`, which is a
