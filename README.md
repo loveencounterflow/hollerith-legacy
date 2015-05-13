@@ -378,9 +378,10 @@ transparent total indexing'. Let's take that apart for once.
 
 The term 'binary phrase' points out that facts are recorded in a format akin to
 phrases or sentences used in natural language. In spoken language, we
-distinguish the major roles as *subject* (that which is spoken about),
-*predicate* (the topic of the sentence, as it were), and *object* (what is being
-said about the subject).
+distinguish the major roles of sentences as *subject* (that which is spoken
+about), *predicate* (the topic of the sentence, as it were), and *object* (what
+is being said about the subject). That may or may not be a linguistically
+correct explanation, but it's one that will serve us well for our purposes.
 
 Let's clarify that by way of example.
 
@@ -392,6 +393,22 @@ Let's clarify that by way of example.
 > examples that are intelligible to people who are not acquainted with
 > East-Asian languages.
 
+Something very obvious that can be said about Chinese characters is that they
+var greatly in terms of complexity: for example, of the very common characters
+丁, 三, 夫, 國, the characters 丁 and 三 are vastly easier to read and write than 國.
+One way to capture this difference in complexity is to simply count the strokes
+needed to write a given character, and we find that 丁, 三, 夫, 國 are written in 2,
+3, 5, and 11 strokes, respectively. Using Hollerith phrases, we could record these
+finds as
+
+```
+subject     predicate                     object
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+丁          strokecount                    2
+三          strokecount                    3
+夫          strokecount                    5
+國          strokecount                    11
+```
 
 
 # XXXXXXX
