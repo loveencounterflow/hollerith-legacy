@@ -269,7 +269,7 @@ The H2C encoding for strings is almost binary compatible to the `bytewise`
 encoding of strings that are elements in lists (since H2C only encodes values in
 lists). The basic ideas are the following:
 
-* The beginning of a string is indicated by a type marker byte (`0xfe` at the moment);
+* The beginning of a string is indicated by a typemarker byte (`0x54` ≙ `T` at the moment);
 * its end is indicated by a terminating zero byte (`0x00`).
 * Since `0x00` cannot occur inside a string, all occurrances of `0x00` bytes are replaced
   by the sequence `0x01 0x01`, and all occurrances of `0x01` bytes are replaced by the
@@ -280,7 +280,7 @@ lists). The basic ideas are the following:
   entries in a a 'complex script' that uses decomposable sequences of diacritics and so on,
   it's your own repsonsibility to apply a Unicode Normalization Form or other transforms;
   such concerns are outside the scope of H2C.
-* To decode an encoded string, the buffer is searched, from the type marker byte
+* To decode an encoded string, the buffer is searched, from the typemarker byte
   onwards, for a zero byte; when it is found, the part between the initial and
   the terminal markers is decoded as UTF-8, and escaped 'low bytes' are
   unescaped.
@@ -290,11 +290,13 @@ lists). The basic ideas are the following:
 Like H2C's string encoding, H2C's encoding of numbers has been copied from `bytewise`.
 Its characteristics are:
 
-* The beginning of numbers is indicated by a type marker byte that changes according
+* The beginning of numbers is indicated by a typemarker byte that changes according
   to whether or not the number is finite and whether or not it is negative:
-  * Negative infinity is marked by a sole `0xfa`, positive infinity as a sole
-    `0xfd`; these two non-finite numbers are only captured by their type markers.
-  * Negative finite numbers are marked with `0xfb`, positive finite numbers as `0xfc`.
+  * Negative infinity is marked by a sole `0x4a` ≙ `J`, positive infinity as a
+    sole `0x4d` ≙ `M`; these two non-finite numbers are only captured by their
+    typemarkers.
+  * Negative finite numbers are marked with `0x4b` ≙ `K`, positive finite
+    numbers as `0x4c` ≙ `L`.
 * Finite numbers are written into the result buffer using `Buffer.writeDoubleBE()`,
   which means that
   * all finite numbers take up 1 + 8 = 9 bytes of space;
@@ -314,8 +316,8 @@ Its characteristics are:
 
 ### Dates
 
-Dates are encoded with a leading type marker for dates (`0xf9` in case you where
-wondering), followed by 9 bytes necessary to [encode numbers](#numbers), since
+Dates are encoded with a leading typemarker for dates (`0x47` ≙ `G` in case you where
+wondering), followed by 9 bytes necessary to [encode finite numbers](#numbers), since
 H2C uses the underlying milliseconds-since-epoch (1st of January, 1970) to
 characterize dates. This means that
 
@@ -324,6 +326,15 @@ characterize dates. This means that
 * dates will be ordered according to their relative temporal ordering, earlier dates coming
   before later dates; however
 * additional information such as time zones will be irretrievably lost.
+
+As an experimental feature, two extreme dates:
+
+```coffee
+sentinels = HOLLERITH2[ 'CODEC' ][ 'sentinels' ]
+sentinels[ 'firstdate' ] = new Date -8640000000000000 # ≙ Tue, 20 Apr -271821 00:00:00 GMT
+sentinels[ 'lastdate'  ] = new Date +8640000000000000 # ≙ Sat, 13 Sep 275760 00:00:00 GMT
+```
+
 
 ### Variants
 
