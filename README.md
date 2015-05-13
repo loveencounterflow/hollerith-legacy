@@ -10,6 +10,7 @@
 		- [Dates](#dates)
 		- [Singular Values](#singular-values)
 	- [The Hollerith2 Phrase Structure](#the-hollerith2-phrase-structure)
+		- [SPO & POS](#spo-&-pos)
 - [XXXXXXX](#xxxxxxx)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
@@ -361,7 +362,7 @@ A so-called 'singular' encoding is used to capture the solitary values `null`,
 
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/082.jpg)
 
-If you've read [the section on H2C](#the-hollerith²-codec-h2c) you might have
+If you've read [the section on H2C](#the-hollerith2-codec-h2c) you might have
 noticed the restriction on DB keys mentioned there: While DB values are encoded
 as JSON and can, therefore, hold any value that is acceptable to
 `JSON.stringify()`, keys are encoded using the Hollerith² Codec, which accepts
@@ -369,6 +370,28 @@ only flat (unnested) lists whose elements may be numbers, texts, dates, or one
 of `null`, `false`, `true`. In this section, we will motivate why that is a good
 thing and how building an indexed, structured data collection is intended to
 work with Hollerith.
+
+### SPO & POS
+
+The Hollerith² data model may be characterized as a 'binary phrase database with
+transparent total indexing'. Let's take that apart for once.
+
+The term 'binary phrase' points out that facts are recorded in a format akin to
+phrases or sentences used in natural language. In spoken language, we
+distinguish the major roles as *subject* (that which is spoken about),
+*predicate* (the topic of the sentence, as it were), and *object* (what is being
+said about the subject).
+
+Let's clarify that by way of example.
+
+> The motivation to write Hollerith² comes from the desire to record and process
+> facts about [Chinese characters (a.k.a. Kanji in Japanese and Hanja in
+> Korean)](http://en.wikipedia.org/wiki/Chinese_characters), of which there are
+> many thousands encoded in Unicode, so our examples will draw from that data
+> collection. No example here is contrived; I will try and use only such
+> examples that are intelligible to people who are not acquainted with
+> East-Asian languages.
+
 
 
 # XXXXXXX
