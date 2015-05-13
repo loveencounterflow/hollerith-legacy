@@ -1,6 +1,11 @@
 
 
 
+
+
+
+
+
 ############################################################################################################
 njs_path                  = require 'path'
 # njs_fs                    = require 'fs'
@@ -22,8 +27,8 @@ echo                      = CND.echo.bind CND
 suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
 after                     = suspend.after
-# eventually                = suspend.eventually
-# immediately               = suspend.immediately
+eventually                = suspend.eventually
+immediately               = suspend.immediately
 # repeat_immediately        = suspend.repeat_immediately
 # every                     = suspend.every
 # #...........................................................................................................
@@ -41,6 +46,58 @@ BYTEWISE                  = require 'bytewise'
 CODEC                     = require './codec'
 PASSPHRASE                = require 'coffeenode-passphrase'
 ƒ                         = CND.format_number.bind CND
+
+CODEC_INSTRUMENTALIZED = {}
+times = {}
+
+#-----------------------------------------------------------------------------------------------------------
+start = ( name ) ->
+  target = times[ name ]?= []
+  target.push process.hrtime()
+  return null
+
+#-----------------------------------------------------------------------------------------------------------
+stop  = ( name ) ->
+  target = times[ name ]
+  target[ target.length - 1 ] = process.hrtime target[ target.length - 1 ]
+  # debug '©9IVO8', times
+  return null
+
+#-----------------------------------------------------------------------------------------------------------
+report  = ->
+  for name, dts of times
+    dt = [ 0, 0, ]
+    for [ millis, nanos, ] in dts
+      dt[ 0 ] += millis
+      dt[ 1 ] += nanos
+    loop
+      break if dt[ 1 ] < 1e9
+      dt[ 0 ] += +1
+      dt[ 1 ] += -1e9
+    nanos = "000000000#{dt[ 1 ]}"
+    nanos = nanos[ nanos.length - 9 .. nanos.length - 1 ]
+    urge "#{dt[ 0 ]}.#{nanos} #{name}"
+
+#-----------------------------------------------------------------------------------------------------------
+do ->
+  for name, value of CODEC
+    do ( name, value ) ->
+      if CND.isa_function value
+        f = ( P ... ) ->
+          start name
+          R = value.apply CODEC_INSTRUMENTALIZED, P
+          stop name
+          return R
+        CODEC_INSTRUMENTALIZED[ name ] = f
+      else
+        CODEC_INSTRUMENTALIZED[ name ] = value
+
+#-----------------------------------------------------------------------------------------------------------
+@test_h2c_instrumentalized = ( probes ) ->
+  t0 = +new Date()
+  CODEC_INSTRUMENTALIZED.encode probe for probe in probes
+  t1 = +new Date()
+  return t1 - t0
 
 #-----------------------------------------------------------------------------------------------------------
 @test_h2c = ( probes ) ->
@@ -84,12 +141,18 @@ PASSPHRASE                = require 'coffeenode-passphrase'
   #   ]
   probes = ( [ PASSPHRASE.get_passphrase(), values[ idx % values.length ] ] for idx in [ 1 .. n ] )
   help "generated #{ƒ probes.length} probes; now performing benchmarks"
-  bytewise_ms = @test_bytewise probes
-  h2c_ms      = @test_h2c      probes
-  json_ms     = @test_json     probes
-  urge "encode bytewise: #{ƒ bytewise_ms}ms (#{(bytewise_ms / json_ms * 100).toFixed 2}%)"
-  urge "encode h2c:      #{ƒ h2c_ms}ms (#{(h2c_ms / json_ms * 100).toFixed 2}%)"
-  urge "encode json:     #{ƒ json_ms}ms (#{(json_ms / json_ms * 100).toFixed 2}%)"
+  # bytewise_ms = @test_bytewise probes
+  # h2c_ms      = @test_h2c      probes
+  # json_ms     = @test_json     probes
+  # urge "encode bytewise: #{ƒ bytewise_ms}ms (#{(bytewise_ms / json_ms * 100).toFixed 2}%)"
+  # urge "encode h2c:      #{ƒ h2c_ms}ms (#{(h2c_ms / json_ms * 100).toFixed 2}%)"
+  # urge "encode json:     #{ƒ json_ms}ms (#{(json_ms / json_ms * 100).toFixed 2}%)"
+  debug '©0qFcb', @test_h2c_instrumentalized probes
+  report()
+  # f = =>
+  #   debug '©XuSUh', @test_h2c      probes
+  #   eventually -> f()
+  # f()
 
 ############################################################################################################
 unless module.parent?

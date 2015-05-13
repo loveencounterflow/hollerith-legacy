@@ -38,7 +38,6 @@ $                         = D.remit.bind D
 
 
 #-----------------------------------------------------------------------------------------------------------
-sorter              = ( a, b ) -> a.compare b
 last_unicode_chr    = ( String.fromCharCode 0xdbff ) + ( String.fromCharCode 0xdfff )
 ### should always be 3 in modern versions of NodeJS: ###
 max_bytes_per_chr   = Math.max ( new Buffer "\uffff" ).length, ( new Buffer last_unicode_chr ).length / 2
@@ -178,9 +177,9 @@ buffer_too_short_error = new Error "buffer too short"
 # TEXT
 #-----------------------------------------------------------------------------------------------------------
 @write_text = ( idx, text ) ->
-  text = text.replace /\x01/g, '\x01\x02'
-  text = text.replace /\x00/g, '\x01\x01'
-  length_estimate = max_bytes_per_chr * text.length + 3
+  text                              = text.replace /\x01/g, '\x01\x02'
+  text                              = text.replace /\x00/g, '\x01\x01'
+  length_estimate                   = max_bytes_per_chr * text.length + 3
   @grow_rbuffer length_estimate - rbuffer.length - idx - 1
   rbuffer[ idx                    ] = @type_text
   byte_count                        = rbuffer.write text, idx + 1
@@ -255,89 +254,6 @@ buffer_too_short_error = new Error "buffer too short"
     R.push value
   #.........................................................................................................
   return R
-
-#===========================================================================================================
-#
-#-----------------------------------------------------------------------------------------------------------
-@f = ->
-  buffers = []
-  for n in [ -10 .. +10 ]
-    buffer = new Buffer 9
-    @write_number buffer, n / 2, 0
-    buffers.push buffer
-  buffers.sort sorter
-  for buffer in buffers
-    debug '©eQulN', buffer, @read_number buffer, 0
-
-
-############################################################################################################
-unless module.parent?
-  # @f()
-
-  # b = new Buffer 9
-  # debug '©K3IC9', b
-  # @write_number b, -123.456, 0
-  # debug '©EH88B', @read_number b, 0
-
-  # text = 'abcdef中國皇帝𪜌'
-  texts = [
-    'abcde'
-    'abcde\x00'
-    'abcde\x01'
-    'abcde\x00\x01'
-    'abcde\x02'
-    ]
-  for text in texts
-    idx = 0
-    idx = @write_text   idx, text
-    debug '©RhCt9', ( rbuffer.slice 0, idx ), ( rpr @read_text rbuffer, 0 )
-  for text in texts
-    urge '©XLCqS', ( b = ( require 'bytewise' ).encode [ text, ] ).slice 1, b.length - 1
-
-  numbers = [
-    -3
-    -2
-    -1
-    0
-    +1
-    +2
-    +3
-    ]
-  for number in numbers
-    idx = 0
-    idx = @write_number   idx, number
-    switch type = rbuffer[ 0 ]
-      when @type_nnumber  then [ idx, value, ] = @read_nnumber  rbuffer, 0
-      when @type_pnumber  then [ idx, value, ] = @read_pnumber  rbuffer, 0
-      else throw new Error "unknown type marker 0x#{type.toString 16} at index #{idx}"
-    debug '©vQyrF', ( rbuffer.slice 0, idx ), ( rpr value )
-  for number in numbers
-    urge '©XLCqS', ( b = ( require 'bytewise' ).encode [ number, ] ).slice 1, b.length - 1
-
-
-#   debug '©aKjBW', idx = @write_number b, idx, -1234
-#   debug '©aKjBW', idx = @write_text   b, idx, 'XXXX'
-#   help '©w1rDL', b
-#   # help '©w1rDL', idx
-#   # debug '©w1rDL', b.toString 'utf-8', 1
-#   # b = b.slice 0, 5
-#   debug '©c7dYA', rpr @read_text b, 0
-#   debug '©c7dYA', rpr @read_text b, idx - 6
-#   c = b.slice 0, idx
-#   debug '©c7dYA', @decode c
-
-# # for n in [ 192, 193, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, ]
-# #   debug '©d9f7g', '0x' + n.toString 16
-
-#   debug '©yG4FD', new Buffer "\uffff"
-#   debug '©yG4FD', @encode [ 'foo', ]
-#   debug '©yG4FD', @encode [ 'foo', 1234, ]
-#   debug '©yG4FD', @encode [ 'foo', 1234, 'foo', ]
-#   debug '©yG4FD', @decode @encode [ 'foo', ]
-#   debug '©yG4FD', @decode @encode [ 'foo', 1234, ]
-#   debug '©yG4FD', @decode @encode [ 'foo', 1234, 'foo', ]
-
-
 
 
 

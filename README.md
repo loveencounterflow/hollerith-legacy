@@ -261,9 +261,10 @@ lists). The basic ideas are the following:
   entries in a a 'complex script' that uses decomposable sequences of diacritics and so on,
   it's your own repsonsibility to apply a Unicode Normalization Form or other transforms;
   such concerns are outside the scope of H2C.
-* To decode an encoded string, the buffer is searched for a zero byte; when it is found,
-  the part between the initial and the terminal markers is decoded as UTF-8, and
-  escaped 'low bytes' are unescaped.
+* To decode an encoded string, the buffer is searched, from the type marker byte
+  onwards, for a zero byte; when it is found, the part between the initial and
+  the terminal markers is decoded as UTF-8, and escaped 'low bytes' are
+  unescaped.
 
 ### Numbers
 
