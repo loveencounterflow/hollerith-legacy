@@ -208,6 +208,8 @@ the existing
 
 ## The Hollerith² Codec (H2C)
 
+![tape code pocket rule](https://github.com/loveencounterflow/hollerith2/raw/master/art/fairchild-tts-tape-code-pocket-rule-1200rgb-verso-rot0p6cw-crop-7744x1736-scale-1024x230.jpg)
+
 Hollerith comes with its own codec, dubbed the Hollerith² Codec, or H2C for
 short. It works like a subset of the [`bytewise`
 codec](https://github.com/deanlandolt/bytewise) whose core implementeation ideas
