@@ -270,11 +270,12 @@ Its characteristics are:
 
 * The beginning of numbers is indicated by a type marker byte that changes according
   to whether or not the number is finite and whether or not it is negative:
-  * negative infinity is marked by a sole `0xfa`, positive infinity as a sole
+  * Negative infinity is marked by a sole `0xfa`, positive infinity as a sole
     `0xfd`; these two non-finite numbers are only captured by their type markers.
-  * Negative numbers are marked with `0xfb`, positive numbers as `0xfc`.
+  * Negative finite numbers are marked with `0xfb`, positive finite numbers as `0xfc`.
 * Finite numbers are written into the result buffer using `Buffer.writeDoubleBE()`,
   which means that
+  * all finite numbers take up 1 + 8 = 9 bytes of space;
   * the lexicographical ordering of the binary representation of finite numbers
     is in direct relationship to the mathematical ordering of the values they represent;
   * no one is left behind, i.e. all the critical tiny, big and small values of
