@@ -9,7 +9,7 @@
 - [                                         Value        Length](#value--------length)
 	- [Numbers](#numbers)
 	- [Dates](#dates)
-	- [Variants](#variants)
+	- [Singular Values](#singular-values)
 - [xxx](#xxx)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
@@ -332,15 +332,22 @@ As an experimental feature, two extreme dates:
 ```coffee
 sentinels = HOLLERITH2[ 'CODEC' ][ 'sentinels' ]
 sentinels[ 'firstdate' ] = new Date -8640000000000000 # ≙ Tue, 20 Apr -271821 00:00:00 GMT
-sentinels[ 'lastdate'  ] = new Date +8640000000000000 # ≙ Sat, 13 Sep 275760 00:00:00 GMT
+sentinels[ 'lastdate'  ] = new Date +8640000000000000 # ≙ Sat, 13 Sep  275760 00:00:00 GMT
 ```
 
+are provided by the Hollerith² Codec module. According to [a website with
+copious information about JS Date
+objects](http://www.merlyn.demon.co.uk/js-datex.htm), these should represent the
+earliest and latest dates possible with JavaScript (in fact, if you try the
+above formulas with `1` subtracted or added to the arguments, you will get an
+`Invalid Date` error).
 
-### Variants
 
-A so-called 'variant' encoding is currently used to capture the solitary values
-`null`, `false` and `true`; these are expressed as the two-byte sequences `0xc0
-0x00`, `0xc0 0x01` and `0xc0 0x02`, respectively.
+### Singular Values
+
+A so-called 'singular' encoding is used to capture the solitary values `null`,
+`false` and `true`; these are expressed as their type markers `0x42` ≙ `B`
+`0x43` ≙ `C` `0x44` ≙ `D`, respectively.
 
 
 ## xxx
