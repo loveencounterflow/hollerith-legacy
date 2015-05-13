@@ -228,10 +228,11 @@ significant gain:
 
 ![Benchmarks](https://github.com/loveencounterflow/hollerith2/raw/master/art/Screen%20Shot%202015-05-13%20at%2002.03.48%20(2).png)
 
-H2C achieves these performance gains by being *much* more restrictive than bytewise;
-while bytewise strives to support all important JavaScript data types and do it
-in the browser as well as in NodeJS, H2C is not currently designed to run in the browser,
-and, more importantly, **it only supports flat lists as keys** whose elements can only be
+H2C achieves these performance gains by being *much* more restrictive than
+bytewise; while bytewise strives to support all JavaScript data types (including
+objects and nested lists) and to work in both the browser and in NodeJS, H2C is
+not currently designed to run in the browser, and, more importantly, **it only
+supports flat lists as keys** whose elements can only be
 
 * `null`,
 * `false`,
@@ -240,8 +241,8 @@ and, more importantly, **it only supports flat lists as keys** whose elements ca
 * Date objects, or
 * strings.
 
-It's very well possible that H2C will support more data types and user-defined data types
-in the future.
+It's very well possible that H2C will support more data types and / or
+user-defined data types in the future.
 
 ### Texts (Strings)
 
