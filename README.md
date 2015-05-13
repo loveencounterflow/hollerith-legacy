@@ -5,8 +5,8 @@
 - [What is LevelDB?](#what-is-leveldb)
 	- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
 - [The Hollerith² Codec (H2C)](#the-hollerith²-codec-h2c)
-	- [Numbers](#numbers)
 	- [Texts (Strings)](#texts-strings)
+	- [Numbers](#numbers)
 	- [Variants](#variants)
 - [xxx](#xxx)
 
@@ -242,24 +242,53 @@ and, more importantly, **it only supports flat lists as keys** whose elements ca
 It's very well possible that H2C will support more data types and user-defined data types
 in the future.
 
-### Numbers
-
 ### Texts (Strings)
 
-The H2C encoding for strings is binary compatible to the bytewise encoding of strings
-that are elements in lists (since H2C only encodes values in lists). The basic
-ideas are the following:
+The H2C encoding for strings is almost binary compatible to the bytewise
+encoding of strings that are elements in lists (since H2C only encodes values in
+lists). The basic ideas are the following:
 
 * The beginning of a string is indicated by a type marker byte (`0xfe` at the moment);
 * its end is indicated by a terminating zero byte (`0x00`).
 * Since `0x00` cannot occur inside a string, all occurrances of `0x00` bytes are replaced
   by the sequence `0x01 0x01`, and all occurrances of `0x01` bytes are replaced by the
-  sequence `0x01 0x02`.
-* The zero-byte-free string is encoded as UTF-8, which preserves Unicode code point ordering.
-* No other normalization is done on strings, so if you want to, say, index a database of
+  sequence `0x01 0x02`. That way, the lexicographic ordering of 'low bytes' is preserved.
+* The zero-byte-free string is encoded as UTF-8, which is an encoding that preserves
+  Unicode code point ordering.
+* No other normalization is done on strings, so if you want to, say, index a database with
   entries in a a 'complex script' that uses decomposable sequences of diacritics and so on,
-  it's your own repsonsibility to choose a Unicode Normalization Form.
-* To decode an encoded string, the buffer is searched for a zero byte; the
+  it's your own repsonsibility to apply a Unicode Normalization Form or other transforms;
+  such concerns are outside the scope of H2C.
+* To decode an encoded string, the buffer is searched for a zero byte; when it is found,
+  the part between the initial and the terminal markers is decoded as UTF-8, and
+  escaped 'low bytes' are unescaped.
+
+### Numbers
+
+Like H2C's string encoding, H2C's encoding of numbers has been copied from bytewise.
+Its characteristics are:
+
+* The beginning of numbers is indicated by a type marker byte that changes according
+  to whether or not the number is finite and whether or not it is negative:
+  * negative infinity is marked by a sole `0xfa`, positive infinity as a sole
+    `0xfd`; these two non-finite numbers are only captured by their type markers.
+  * Negative numbers are marked with `0xfb`, positive numbers as `0xfc`.
+* Finite numbers are written into the result buffer using `Buffer.writeDoubleBE()`,
+  which means that
+  * the lexicographical ordering of the binary representation of finite numbers
+    is in direct relationship to the mathematical ordering of the values they represent;
+  * no one is left behind, i.e. all the critical tiny, big and small values of
+    JavaScript (resp. the IEEE 754 standard) like `Number.MIN_VALUE`, `Number.EPSILON`,
+    `Number.MAX_SAFE_INTEGER` and so on are correctly handled without any distortions
+    or rounding errors.
+* The bytes of an encoded negative number are obtained by taking the absolute
+  value of that number, encoding it with `Buffer.writeDoubleBE()` and then
+  inversing its bits (so that e.g. `0x00` becomes `~0x00` == `0xff`); that way,
+  the mathematically correct ordering `... -3 ... -2 ... -1 ... -0.5 ...` is
+  obtained. Since the leading byte marker of negative numbers is smaller than
+  the one for positive numbers, all encoded keys with negative numbers will come
+  before any positive number (including zero).
+
 
 ### Variants
 
