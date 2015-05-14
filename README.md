@@ -546,21 +546,21 @@ to print out the buffers as strings. Unfortunately,
 Ｔ㊮㋚㊹⓪Ｔｃｏｍｐｏｎｅｎｔｓ⓪                                   ┊ ［＂㊮㋙㋕＂，＂㊯㊶㊶＂，＂㊮㊽㋡＂，＂㊭㋶㉝＂］
 Ｔ㊮㋻㋠⓪Ｔｃｏｍｐｏｎｅｎｔｓ⓪                                   ┊ ［＂㊮㋺㉝＂，＂㊮㋻㋟＂］
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Tä¸∎∎Tstrokecount∎                                              ┊ 2
-Tä¸∎∎Tstrokecount∎                                              ┊ 3
-Tå¤«∎Tstrokecount∎                                              ┊ 5
-Tå∎∎∎Tstrokecount∎                                              ┊ 11
-Tå½¢∎Tstrokecount∎                                              ┊ 7
-Tä¸∎∎Tcomponentcount∎                                           ┊ 1
-Tä¸∎∎Tcomponentcount∎                                           ┊ 1
-Tå¤«∎Tcomponentcount∎                                           ┊ 1
-Tå∎∎∎Tcomponentcount∎                                           ┊ 4
-Tå½¢∎Tcomponentcount∎                                           ┊ 2
-Tä¸∎∎Tcomponents∎                                               ┊ ["ä¸∎"]
-Tä¸∎∎Tcomponents∎                                               ┊ ["ä¸∎"]
-Tå¤«∎Tcomponents∎                                               ┊ ["å¤«"]
-Tå∎∎∎Tcomponents∎                                               ┊ ["å∎∎","æ∎∎","å∎£","ä¸∎"]
-Tå½¢∎Tcomponents∎                                               ┊ ["å¼∎","å½¡"]
+Tä¸∎∇Tstrokecount∇                                              ┊ 2
+Tä¸∎∇Tstrokecount∇                                              ┊ 3
+Tå¤«∇Tstrokecount∇                                              ┊ 5
+Tå∎∎∇Tstrokecount∇                                              ┊ 11
+Tå½¢∇Tstrokecount∇                                              ┊ 7
+Tä¸∎∇Tcomponentcount∇                                           ┊ 1
+Tä¸∎∇Tcomponentcount∇                                           ┊ 1
+Tå¤«∇Tcomponentcount∇                                           ┊ 1
+Tå∎∎∇Tcomponentcount∇                                           ┊ 4
+Tå½¢∇Tcomponentcount∇                                           ┊ 2
+Tä¸∎∇Tcomponents∇                                               ┊ ["ä¸∎"]
+Tä¸∎∇Tcomponents∇                                               ┊ ["ä¸∎"]
+Tå¤«∇Tcomponents∇                                               ┊ ["å¤«"]
+Tå∎∎∇Tcomponents∇                                               ┊ ["å∎∎","æ∎∎","å∎£","ä¸∎"]
+Tå½¢∇Tcomponents∇                                               ┊ ["å¼∎","å½¡"]
 ```
 
 
