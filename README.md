@@ -25,8 +25,9 @@ use LevelDB like 1969
 
 ## What is LevelDB?
 
-LevelDB is fast key/value store developed and opensourced by Google and made readily available to NodeJS
-folks as `npm install level` (see [level](https://github.com/level/level) and
+LevelDB is fast key / value embedded database engine developed and opensourced by
+Google and made readily available to NodeJS folks as `npm install level` (see
+[level](https://github.com/level/level) and
 [levelup](https://github.com/rvagg/node-levelup)).
 
 LevelDB is very focussed on doing this one thing—being a key/value store—and forgoes a lot of features
@@ -482,10 +483,11 @@ insertion:
 ```
 
 Hollerith will then do two things: first, it will split apart the
-Object, turning each primary phrase into a key / value pair (a 'facet');
-the key is encoded using the H2C codec, the value using `JSON.stringify`:
+Object, turning each primary phrase into a key / value pair (a 'facet'):
 
 ```
+key                                                               value
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [ '丁', 'strokecount',    ]                                    ┊  2
 [ '三', 'strokecount',    ]                                    ┊  3
 [ '夫', 'strokecount',    ]                                    ┊  5
@@ -501,6 +503,16 @@ the key is encoded using the H2C codec, the value using `JSON.stringify`:
 [ '夫', 'components',     ]                                    ┊  [ '夫', ]
 [ '國', 'components',     ]                                    ┊  [ '囗', '戈', '口', '一', ]
 [ '形', 'components',     ]                                    ┊  [ '开', '彡', ]
+```
+
+The key is then encoded using the H2C codec, the value using `JSON.stringify`.
+This results in two buffers per entry, which are written to the store just as if
+you had called `db = level 'route/to/db'; db.put key, value` directly. The
+result of this step is somewhat hard to visualize in a readable manner—we can
+either list the value of all the bytes in customary hexadecimal, or try
+to print out the buffers as strings. Unfortunately,
+
+```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 54 e4 b8 81 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 32
 54 e4 b8 89 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 33
@@ -533,6 +545,22 @@ the key is encoded using the H2C codec, the value using `JSON.stringify`:
 Ｔ㊮㋢㋩⓪Ｔｃｏｍｐｏｎｅｎｔｓ⓪                                   ┊ ［＂㊮㋢㋩＂］
 Ｔ㊮㋚㊹⓪Ｔｃｏｍｐｏｎｅｎｔｓ⓪                                   ┊ ［＂㊮㋙㋕＂，＂㊯㊶㊶＂，＂㊮㊽㋡＂，＂㊭㋶㉝＂］
 Ｔ㊮㋻㋠⓪Ｔｃｏｍｐｏｎｅｎｔｓ⓪                                   ┊ ［＂㊮㋺㉝＂，＂㊮㋻㋟＂］
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tä¸∎∎Tstrokecount∎                                              ┊ 2
+Tä¸∎∎Tstrokecount∎                                              ┊ 3
+Tå¤«∎Tstrokecount∎                                              ┊ 5
+Tå∎∎∎Tstrokecount∎                                              ┊ 11
+Tå½¢∎Tstrokecount∎                                              ┊ 7
+Tä¸∎∎Tcomponentcount∎                                           ┊ 1
+Tä¸∎∎Tcomponentcount∎                                           ┊ 1
+Tå¤«∎Tcomponentcount∎                                           ┊ 1
+Tå∎∎∎Tcomponentcount∎                                           ┊ 4
+Tå½¢∎Tcomponentcount∎                                           ┊ 2
+Tä¸∎∎Tcomponents∎                                               ┊ ["ä¸∎"]
+Tä¸∎∎Tcomponents∎                                               ┊ ["ä¸∎"]
+Tå¤«∎Tcomponents∎                                               ┊ ["å¤«"]
+Tå∎∎∎Tcomponents∎                                               ┊ ["å∎∎","æ∎∎","å∎£","ä¸∎"]
+Tå½¢∎Tcomponents∎                                               ┊ ["å¼∎","å½¡"]
 ```
 
 

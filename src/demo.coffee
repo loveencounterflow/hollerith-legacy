@@ -512,27 +512,27 @@ HOLLERITH.$pick_values = ->
     ㊩㊪㊫㊬㊭㊮㊯㊰㊀㊁㊂㊃㊄㊅㊆㊇㊈㊉㉈㉉㉊㉋㉌㉍㉎㉏⓵⓶⓷⓸⓹〓
     """
 
-  # aleph: """
-  #   БДИЛЦЧШЭЮƆƋƏƐƔƥƧƸψŐőŒœŊŁłЯɔɘɐɕəɞ
-  #   ␣!"#$%&'()*+,-./0123456789:;<=>?
-  #   @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_
-  #   `abcdefghijklmnopqrstuvwxyz{|}~ω
-  #   ΓΔΘΛΞΠΣΦΨΩαβγδεζηθικλμνξπρςστυφχ
-  #   Ж¡¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
-  #   ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
-  #   àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
-  #   """
+  aleph: """
+    БДИЛЦЧШЭЮƆƋƏƐƔƥƧƸψŐőŒœŊŁłЯɔɘɐɕəɞ
+    ␣!"#$%&'()*+,-./0123456789:;<=>?
+    @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_
+    `abcdefghijklmnopqrstuvwxyz{|}~ω
+    ΓΔΘΛΞΠΣΦΨΩαβγδεζηθικλμνξπρςστυφχ
+    Ж¡¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
+    ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
+    àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
+    """
 
-  # rdctn: """
-  #   ∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎
-  #   ␣!"#$%&'()*+,-./0123456789:;<=>?
-  #   @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_
-  #   `abcdefghijklmnopqrstuvwxyz{|}~∎
-  #   ∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎
-  #   ∎¡¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
-  #   ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
-  #   àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
-  #   """
+  rdctn: """
+    ∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎
+    ␣!"#$%&'()*+,-./0123456789:;<=>?
+    @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_
+    `abcdefghijklmnopqrstuvwxyz{|}~∎
+    ∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎
+    ∎¡¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
+    ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
+    àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
+    """
 
 
 
@@ -545,16 +545,9 @@ HOLLERITH.$pick_values = ->
 #-----------------------------------------------------------------------------------------------------------
 @compile_encodings = ->
   for name, encoding of @encodings
-    # debug '©moxO8', encoding.replace /\n+/g, ''
     encoding = @_chrs_of encoding.replace /\n+/g, ''
-    # debug '©bqIw4', ( encoding.join '---' ), encoding.length
-    for cid in [ 0 .. 84 ]
-      urge '©V65yw', cid, rpr encoding[ cid ]
-    # debug '©tSPcz', rpr encoding[ 'T'.codePointAt 0 ]
-    # debug '©tSPcz', rpr encoding[ 84 ]
     unless ( length = encoding.length ) is 256
       throw new Error "expected 256 characters, found #{length} in encoding #{rpr name}"
-    # debug '©XlrRT', encoding
     @encodings[ name ] = encoding
   return null
 
@@ -563,6 +556,7 @@ HOLLERITH.$pick_values = ->
 #-----------------------------------------------------------------------------------------------------------
 @show_encoding_sample = ->
   encoding  = @encodings[ 'dbcs2' ]
+  encoding  = @encodings[ 'rdctn' ]
   phrases   = [
     [ '丁', 'strokecount',     2,                          ]
     [ '三', 'strokecount',     3,                          ]
