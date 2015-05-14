@@ -472,61 +472,98 @@ HOLLERITH.$pick_values = ->
 """
 
 """
-〓！＂＃＄％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？
-＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿
-｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～〓
-〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
-〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
-〓ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏ〓〓〓〓〓
-〓ⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ〓〓〓〓〓
 
-⓪①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛
-㉜㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿
 ⓿❶❷❸❹❺❻❼❽❾❿⓫⓬⓭⓮⓯⓰⓱⓲⓳⓴
 ⓵⓶⓷⓸⓹⓺⓻⓼⓽⓾
 ㍘㍙㍚㍛㍜㍝㍞㍟㍠㍡㍢㍣㍤㍥㍦㍧㍨㍩㍪㍫㍬㍭㍮㍯㍰
-㏠㏡㏢㏣㏤㏥㏦㏧㏨㏩㏪㏫㏬㏭㏮㏯㏰㏱㏲㏳㏴㏵㏶㏷㏸㏹㏺㏻㏼㏽㏾
 ⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽⑾⑿⒀⒁⒂⒃⒄⒅⒆⒇
 ⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑⒒⒓⒔⒕⒖⒗⒘⒙⒚⒛
 ⒜⒝⒞⒟⒠⒡⒢⒣⒤⒥⒦⒧⒨⒩⒪⒫⒬⒭⒮⒯⒰⒱⒲⒳⒴⒵
 ㈠㈡㈢㈣㈤㈥㈦㈧㈨㈩
-㊀㊁㊂㊃㊄㊅㊆㊇㊈㊉
-㉈㉉㉊㉋㉌㉍㉎㉏
-㋐㋑㋒㋓㋔㋕㋖㋗㋘㋙㋚㋛㋜㋝㋞㋟㋠㋡㋢㋣㋤㋥㋦㋧㋨㋩㋪㋫㋬㋭㋮㋯㋰㋱㋲㋳㋴㋵㋶㋷㋸㋹㋺㋻㋼㋽㋾
+
 ㋀㋁㋂㋃㋄㋅㋆㋇㋈㋉㋊㋋
 
 ㈀㈁㈂㈃㈄㈅㈆㈇㈈㈉㈊㈋㈌㈍㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗㈘㈙㈚㈛㈜㈝㈞㈟
 ㈪㈫㈬㈭㈮㈯㈰㈱㈲㈳㈴㈵㈶㈷㈸㈹㈺㈻㈼㈽㈾㈿
 ㉀㉁㉂㉃㉄㉅㉆㉇
 ㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㉪㉫㉬㉭㉮㉯㉰㉱㉲㉳㉴㉵㉶㉷㉸㉹㉺㉻㉼㉽㉾㉿
-㊊㊋㊌㊍㊎㊏㊐㊑㊒㊓㊔㊕㊖㊗㊘㊙㊚㊛㊜㊝㊞㊟
-㊠㊡㊢㊣㊤㊥㊦㊧㊨㊩㊪㊫㊬㊭㊮㊯㊰
 ㌀㌁㌂㌃㌄㌅㌆㌇㌈㌉㌊㌋㌌㌍㌎㌏㌐㌑㌒㌓㌔㌕㌖㌗㌘㌙㌚㌛㌜㌝㌞㌟
 ㌠㌡㌢㌣㌤㌥㌦㌧㌨㌩㌪㌫㌬㌭㌮㌯㌰㌱㌲㌳㌴㌵㌶㌷㌸㌹㌺㌻㌼㌽㌾㌿
 ㍀㍁㍂㍃㍄㍅㍆㍇㍈㍉㍊㍋㍌㍍㍎㍏㍐㍑㍒㍓㍔㍕㍖㍗
-
-"""
-
-"""
 ∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎
 ⚀⚁⚂⚃⚄⚅⚀⚁⚂⚃⚄⚅⚀⚁⚂⚃⚄⚅⚀⚁⚂⚃⚄⚅⚀⚁⚂⚃⚄⚅⚄⚅
-БДИЛЦЧШЭЮƆƋƏƐƔƥƧƸψŐőŒœŊŁłЯɔɘɐɕəɞ
 ĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮį
-␣!"#$%&'()*+,-./0123456789:;<=>?
-@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_
-`abcdefghijklmnopqrstuvwxyz{|}~ω
-ΓΔΘΛΞΠΣΦΨΩαβγδεζηθικλμνξπρςστυφχ
-Ж¡¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
-ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
-àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
+    〓㏠㏡㏢㏣㏤㏥㏦㏧㏨㏩㏪㏫㏬㏭㏮㏯㏰㏱㏲㏳㏴㏵㏶㏷㏸㏹㏺㏻㏼㏽㏾
+    〓ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏ〓〓〓〓〓
+    〓ⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ〓〓〓〓〓
+
 """
+
+@encodings =
+
+  dbcs2: """
+    ⓪①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛
+    ㉜！＂＃＄％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？
+    ＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿
+    ｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～〇
+    ㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿㋐㋑㋒㋓㋔㋕㋖㋗㋘㋙㋚㋛㋜㋝
+    ㋞㋟㋠㋡㋢㋣㋤㋥㋦㋧㋨㋩㋪㋫㋬㋭㋮㋯㋰㋱㋲㋳㋴㋵㋶㋷㋸㋹㋺㋻㋼㋽
+    ㋾㊊㊋㊌㊍㊎㊏㊐㊑㊒㊓㊔㊕㊖㊗㊘㊙㊚㊛㊜㊝㊞㊟㊠㊡㊢㊣㊤㊥㊦㊧㊨
+    ㊩㊪㊫㊬㊭㊮㊯㊰㊀㊁㊂㊃㊄㊅㊆㊇㊈㊉㉈㉉㉊㉋㉌㉍㉎㉏⓵⓶⓷⓸⓹〓
+    """
+
+  # aleph: """
+  #   БДИЛЦЧШЭЮƆƋƏƐƔƥƧƸψŐőŒœŊŁłЯɔɘɐɕəɞ
+  #   ␣!"#$%&'()*+,-./0123456789:;<=>?
+  #   @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_
+  #   `abcdefghijklmnopqrstuvwxyz{|}~ω
+  #   ΓΔΘΛΞΠΣΦΨΩαβγδεζηθικλμνξπρςστυφχ
+  #   Ж¡¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
+  #   ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
+  #   àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
+  #   """
+
+  # rdctn: """
+  #   ∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎
+  #   ␣!"#$%&'()*+,-./0123456789:;<=>?
+  #   @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_
+  #   `abcdefghijklmnopqrstuvwxyz{|}~∎
+  #   ∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎
+  #   ∎¡¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
+  #   ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
+  #   àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
+  #   """
 
 
 
 
 #-----------------------------------------------------------------------------------------------------------
+@_chrs_of = ( text ) ->
+  text = text.split /([\ud800-\udbff].|.)/
+  return ( chr for chr in text when chr isnt '' )
+
+#-----------------------------------------------------------------------------------------------------------
+@compile_encodings = ->
+  for name, encoding of @encodings
+    # debug '©moxO8', encoding.replace /\n+/g, ''
+    encoding = @_chrs_of encoding.replace /\n+/g, ''
+    # debug '©bqIw4', ( encoding.join '---' ), encoding.length
+    for cid in [ 0 .. 84 ]
+      urge '©V65yw', cid, rpr encoding[ cid ]
+    # debug '©tSPcz', rpr encoding[ 'T'.codePointAt 0 ]
+    # debug '©tSPcz', rpr encoding[ 84 ]
+    unless ( length = encoding.length ) is 256
+      throw new Error "expected 256 characters, found #{length} in encoding #{rpr name}"
+    # debug '©XlrRT', encoding
+    @encodings[ name ] = encoding
+  return null
+
+@compile_encodings()
+
+#-----------------------------------------------------------------------------------------------------------
 @show_encoding_sample = ->
-  phrases = [
+  encoding  = @encodings[ 'dbcs2' ]
+  phrases   = [
     [ '丁', 'strokecount',     2,                          ]
     [ '三', 'strokecount',     3,                          ]
     [ '夫', 'strokecount',     5,                          ]
@@ -543,22 +580,21 @@ HOLLERITH.$pick_values = ->
     [ '國', 'components',      [ '囗', '戈', '口', '一', ], ]
     [ '形', 'components',      [ '开', '彡', ],             ]
     ]
-  # for [ sbj, prd, obj, ] in phrases
-  #   key   = ( HOLLERITH.CODEC.encode [ sbj, prd, ], )
-  #   value = ( new Buffer JSON.stringify obj )
-  #   key_rpr = []
-  #   for idx in [ 0 ... key.length ]
-  #     key_rpr.push String.fromCodePoint key[ idx ]
-  #   urge rpr key_rpr.join ''
-  chrs = []
-  for cid in [ 0 .. 255 ]
-    chrs.push String.fromCodePoint cid
-    chrs.push '\n' if cid > 0 and cid % 32 is 0
-  debug '©ZgY4D', chrs
-  help chrs.join ''
-  urge ( String.fromCodePoint cid for cid in [ 0x2400 .. 0x2426 ] ).join ''
-  urge ( String.fromCodePoint cid for cid in [ 0x24b6 .. 0x24e9 ] ).join ''
-  urge ( String.fromCodePoint cid for cid in [ 0xff01 .. 0xff60 ] ).join ''
+  for [ sbj, prd, obj, ] in phrases
+    key     = ( HOLLERITH.CODEC.encode [ sbj, prd, ], )
+    value   = ( new Buffer JSON.stringify obj )
+    key_rpr = ( encoding[ key[ idx ] ] for idx in [ 0 ... key.length ] ).join ''
+    urge key_rpr
+  # chrs = []
+  # for cid in [ 0 .. 255 ]
+  #   chrs.push String.fromCodePoint cid
+  #   chrs.push '\n' if cid > 0 and cid % 32 is 0
+  # debug '©ZgY4D', chrs
+  # help chrs.join ''
+  # urge ( String.fromCodePoint cid for cid in [ 0x2400 .. 0x2426 ] ).join ''
+  # urge ( String.fromCodePoint cid for cid in [ 0x24b6 .. 0x24e9 ] ).join ''
+  # urge ( String.fromCodePoint cid for cid in [ 0xff01 .. 0xff60 ] ).join ''
+
 
 ############################################################################################################
 unless module.parent?
@@ -579,5 +615,6 @@ unless module.parent?
   # @dump_jizura_db()
   # @find_good_kwic_sample_glyphs_2()
   @show_encoding_sample()
+  # @compile_encodings()
 
 
