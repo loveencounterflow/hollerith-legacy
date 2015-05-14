@@ -423,6 +423,27 @@ HOLLERITH.$pick_values = ->
       .pipe $ ( data, send ) -> send JSON.stringify data
       .pipe D.$show()
 
+#-----------------------------------------------------------------------------------------------------------
+@show_encoding_sample = ->
+  phrases = [
+    [ '丁', 'strokecount',     2,                          ]
+    [ '三', 'strokecount',     3,                          ]
+    [ '夫', 'strokecount',     5,                          ]
+    [ '國', 'strokecount',     11,                         ]
+    [ '形', 'strokecount',     7,                          ]
+    [ '丁', 'componentcount',  1,                          ]
+    [ '三', 'componentcount',  1,                          ]
+    [ '夫', 'componentcount',  1,                          ]
+    [ '國', 'componentcount',  4,                          ]
+    [ '形', 'componentcount',  2,                          ]
+    [ '丁', 'components',      [ '丁', ],                  ]
+    [ '三', 'components',      [ '三', ],                  ]
+    [ '夫', 'components',      [ '夫', ],                  ]
+    [ '國', 'components',      [ '囗', '戈', '口', '一', ], ]
+    [ '形', 'components',      [ '开', '彡', ],             ]
+    ]
+  for [ sbj, prd, obj, ] in phrases
+    help ( HOLLERITH.CODEC.encode [ sbj, prd, ], ), ( new Buffer JSON.stringify obj )
 
 ############################################################################################################
 unless module.parent?
@@ -441,6 +462,7 @@ unless module.parent?
   #   @find_good_kwic_sample_glyphs_2 db
   # @copy_jizura_db()
   # @dump_jizura_db()
-  @find_good_kwic_sample_glyphs_2()
+  # @find_good_kwic_sample_glyphs_2()
+  @show_encoding_sample()
 
 
