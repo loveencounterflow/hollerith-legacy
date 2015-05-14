@@ -473,11 +473,11 @@ and sent to the database engine:
 [ 夫, 'componentcount',  1,                          ]
 [ 國, 'componentcount',  4,                          ]
 [ 形, 'componentcount',  2,                          ]
-[ 丁, 'components',      [ '丁', ],                   ]
-[ 三, 'components',      [ '三', ],                   ]
-[ 夫, 'components',      [ '夫', ],                   ]
+[ 丁, 'components',      [ '丁', ],                  ]
+[ 三, 'components',      [ '三', ],                  ]
+[ 夫, 'components',      [ '夫', ],                  ]
 [ 國, 'components',      [ '囗', '戈', '口', '一', ], ]
-[ 形, 'components',      [ '开', '彡', ],            ]
+[ 形, 'components',      [ '开', '彡', ],             ]
 
 ```
 
