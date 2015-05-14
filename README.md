@@ -507,21 +507,60 @@ key                                                               value
 
 The key is then encoded using the H2C codec, the value using `JSON.stringify`.
 This results in two buffers per entry, which are written to the store just as if
-you had called `db = level 'route/to/db'; db.put key, value` directly. The
-result of this step is somewhat hard to visualize in a readable manner—we can
-either list the value of all the bytes in customary hexadecimal, or try
-to print out the buffers as strings. Unfortunately,
+you had called `db = level 'route/to/db'; db.put key, value` directly.
+
+The result of this step is somewhat hard to visualize in a readable manner—we
+can either list the value of all the bytes in hexadecimal, or try to print out
+the buffers as strings. Unfortunately, it so happens that for [historical
+reasons](http://en.wikipedia.org/wiki/ASCII), many Unicode code positions in the
+range `[ 0x00 .. 0xff ]` do not define 'printable', but rather 'control'
+characters such as newlines and tabulators. Also, when a text is encoded as
+UTF-8—which is basically what H2C and JSON do—then only characters between
+`0x00` and `0x7f` are preserved in a one-to-one fashion; all other characters
+are turned into sequences of between 2 and 3 bytes, not all of which correspond
+to 'nice' Unicode characters.
+
+For this reason, we have here adopted a customary encoding that preserves most
+printable Unicode codepoints in the range `[ 0x00 .. 0xff ]` and adds a few
+symbolic printable characters to make the output more readily interpretable. In
+detail:
+
+* `Δ` (`0x00`) symbolizes the important zero byte;
+* `≡` (`0x01 .. 0x1f`) symbolizes all 'unprintable' control characters;
+* `␣` (`0x20`) symbolizes the space character;
+* `∃` (`0x08 .. 0x9f`) symbolizes code points that occur as follow-up bytes
+  in UTF-8 byte sequences that do not have
+* `≢` (`0xa0`, `0xa1`, `0xf3 .. 0xfe`)
+* `∇` (`0xff`)
+
+Thus, our code table looks like this:
 
 ```
-     0123456789abcdef       0123456789abcdef
-0x00 Δ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡  0x01 ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡
-0x02 ␣!"#$%&'()*+,-./  0x03 0123456789:;<=>?
-0x04 @ABCDEFGHIJKLMNO  0x05 PQRSTUVWXYZ[\\]^_
-0x06 `abcdefghijklmno  0x07 pqrstuvwxyz{|}~≡
-0x08 ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃  0x09 ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃
-0x0a ≢≢¢£¤¥¦§¨©ª«¬Я®¯  0x0b °±²³´µ¶·¸¹º»¼½¾¿
-0x0c ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ  0x0d ÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
-0x0e àáâãäåæçèéêëìíîï  0x0f ðñò≢≢≢≢≢≢≢≢≢≢≢≢∇
+     0123456789abcdef 0123456789abcdef
+0x00 Δ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡ ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡ 0x10
+0x20 ␣!"#$%&'()*+,-./ 0123456789:;<=>? 0x30
+0x40 @ABCDEFGHIJKLMNO PQRSTUVWXYZ[\]^_ 0x50
+0x60 `abcdefghijklmno pqrstuvwxyz{|}~≡ 0x70
+0x80 ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃ ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃ 0x90
+0xa0 ≢≢¢£¤¥¦§¨©ª«¬Я®¯ °±²³´µ¶·¸¹º»¼½¾¿ 0xb0
+0xc0 ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ ÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß 0xd0
+0xe0 àáâãäåæçèéêëìíîï ðñò≢≢≢≢≢≢≢≢≢≢≢≢∇ 0xf0
+```
+
+Let's try out this encoding so we learn how to interpret the below
+illustrations. First, let's encode a string `'abcäöü'` in UTF-8 and
+look at the result:
+
+```
+text = new Buffer 'abcäöü'
+<Buffer 61 62 63 c3 a4 c3 b6 c3 bc>
+abcÃ¤Ã¶Ã¼
+```
+
+```
+text = new Buffer '一'
+<Buffer e4 b8 80>
+ä¸⊪
 ```
 
 
