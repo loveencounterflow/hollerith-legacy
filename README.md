@@ -518,7 +518,7 @@ to print out the buffers as strings. Unfortunately,
 0x02 ␣!"#$%&'()*+,-./  0x03 0123456789:;<=>?
 0x04 @ABCDEFGHIJKLMNO  0x05 PQRSTUVWXYZ[\\]^_
 0x06 `abcdefghijklmno  0x07 pqrstuvwxyz{|}~≡
-0x08 ⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪  0x09 ⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪
+0x08 ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃  0x09 ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃
 0x0a ≢≢¢£¤¥¦§¨©ª«¬Я®¯  0x0b °±²³´µ¶·¸¹º»¼½¾¿
 0x0c ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ  0x0d ÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
 0x0e àáâãäåæçèéêëìíîï  0x0f ðñò≢≢≢≢≢≢≢≢≢≢≢≢∇
@@ -544,21 +544,21 @@ to print out the buffers as strings. Unfortunately,
 54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 9b 97 22 2c 22 e6 88 88 22 2c 22 e5 8f a3 22 2c 22 e4 b8 80 22 5d
 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 bc 80 22 2c 22 e5 bd a1 22 5d
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Tä¸⊪ΔTstrokecountΔ                                             ┊ 2
-Tä¸⊪ΔTstrokecountΔ                                             ┊ 3
+Tä¸∃ΔTstrokecountΔ                                             ┊ 2
+Tä¸∃ΔTstrokecountΔ                                             ┊ 3
 Tå¤«ΔTstrokecountΔ                                             ┊ 5
-Tå⊪⊪ΔTstrokecountΔ                                             ┊ 11
+Tå∃∃ΔTstrokecountΔ                                             ┊ 11
 Tå½¢ΔTstrokecountΔ                                             ┊ 7
-Tä¸⊪ΔTcomponentcountΔ                                          ┊ 1
-Tä¸⊪ΔTcomponentcountΔ                                          ┊ 1
+Tä¸∃ΔTcomponentcountΔ                                          ┊ 1
+Tä¸∃ΔTcomponentcountΔ                                          ┊ 1
 Tå¤«ΔTcomponentcountΔ                                          ┊ 1
-Tå⊪⊪ΔTcomponentcountΔ                                          ┊ 4
+Tå∃∃ΔTcomponentcountΔ                                          ┊ 4
 Tå½¢ΔTcomponentcountΔ                                          ┊ 2
-Tä¸⊪ΔTcomponentsΔ                                              ┊ ["ä¸⊪"]
-Tä¸⊪ΔTcomponentsΔ                                              ┊ ["ä¸⊪"]
+Tä¸∃ΔTcomponentsΔ                                              ┊ ["ä¸∃"]
+Tä¸∃ΔTcomponentsΔ                                              ┊ ["ä¸∃"]
 Tå¤«ΔTcomponentsΔ                                              ┊ ["å¤«"]
-Tå⊪⊪ΔTcomponentsΔ                                              ┊ ["å⊪⊪","æ⊪⊪","å⊪£","ä¸⊪"]
-Tå½¢ΔTcomponentsΔ                                              ┊ ["å¼⊪","å½≢"]
+Tå∃∃ΔTcomponentsΔ                                              ┊ ["å∃∃","æ∃∃","å∃£","ä¸∃"]
+Tå½¢ΔTcomponentsΔ                                              ┊ ["å¼∃","å½≢"]
 ```
 
 
