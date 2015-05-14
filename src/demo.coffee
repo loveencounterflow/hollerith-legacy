@@ -581,9 +581,10 @@ HOLLERITH.$pick_values = ->
     key_rpr   = ( encoding[ key[ idx ] ] for idx in [ 0 ... key.length ] ).join ''
     value_rpr = ( encoding[ value[ idx ] ] for idx in [ 0 ... value.length ] ).join ''
     urge key_rpr, '┊', value_rpr
-  text = new Buffer '一'
-  text_rpr = ( encoding[ text[ idx ] ] for idx in [ 0 ... text.length ] ).join ''
-  help text, text_rpr
+  b = new Buffer '一x丁x丂'
+  # text = new Buffer '一'
+  text_rpr = ( encoding[ b[ idx ] ] for idx in [ 0 ... b.length ] ).join ''
+  help b, text_rpr
 
   # chrs = []
   # for cid in [ 0 .. 255 ]
