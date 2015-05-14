@@ -524,7 +524,7 @@ HOLLERITH.$pick_values = ->
     """
 
   rdctn: """
-    ∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎
+    ∇∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎
     ␣!"#$%&'()*+,-./0123456789:;<=>?
     @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_
     `abcdefghijklmnopqrstuvwxyz{|}~∎
