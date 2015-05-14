@@ -52,6 +52,22 @@ and, most interestingly:
 * **a `read ...` (`levelup`: `createReadStream`) operation that walks over keys, lexicographically
   ordered by their byte sequences; this can optionally be confined by setting a lower and an upper bound**.
 
+
+<!-- Now LevelDB—the DB engine underlying Hollerith²—is a key / value store that has
+exactly one value per key. All keys are lexicographically ordered, and there are
+only two ways to retrieve an entry from the datastore: either by giving the
+full, exact key that a value was stored under, or by iterating over all key /
+value pairs, optionally by giving a lower and / or an upper boundary for the
+keys.
+
+> There is no way in LevelDB to query values as such; the best you can do is to
+> retrieve (all or a subset of the) key / value pairs and sort out matching
+> values in your application code. This can make a lot of sense especially if
+> you can limit the amount of key / value pairs to look at, but becomes
+> unbearably slow if you have stored millions of facts and have to sift through
+> all of them in order to find the single needle in the haystack.
+ -->
+
 ### Lexicographic Order and UTF-8
 
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith.png)
@@ -362,26 +378,32 @@ A so-called 'singular' encoding is used to capture the solitary values `null`,
 
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/082.jpg)
 
-If you've read [the section on H2C](#the-hollerith2-codec-h2c) you might have
-noticed the restriction on DB keys mentioned there: While DB values are encoded
-as JSON and can, therefore, hold any value that is acceptable to
-`JSON.stringify()`, keys are encoded using the Hollerith² Codec, which accepts
-only flat (unnested) lists whose elements may be numbers, texts, dates, or one
-of `null`, `false`, `true`. In this section, we will motivate why that is a good
-thing and how building an indexed, structured data collection is intended to
-work with Hollerith.
+<!-- If you've read [the section on H2C](#the-hollerith2-codec-h2c) you might have
+noticed the restriction on DB facets mentioned there: While DB facet *values*
+are encoded as JSON and can, therefore, hold any value that is acceptable to
+`JSON.stringify()`, facet *keys* are encoded using the Hollerith² Codec, which
+accepts only flat (unnested) lists of numbers, texts, dates, or `null`, `false`,
+`true`. In this section, we will motivate why that is a good thing and how
+building an indexed, structured data collection is intended to work with
+Hollerith.
 
 ### SPO and POS
+ -->
 
 The Hollerith² data model may be characterized as a 'binary phrase database with
 transparent total indexing'. Let's take that apart for once.
 
-The term 'binary phrase' points out that facts are recorded in a format akin to
-phrases or sentences used in natural language. In spoken language, we
-distinguish the major roles of sentences as *subject* (that which is spoken
-about), *predicate* (the topic of the sentence, as it were), and *object* (what
-is being said about the subject). That may or may not be a linguistically
-correct explanation, but it's one that will serve us well for our purposes.
+The term 'phrase' points out that facts are recorded in a format akin to phrases
+or sentences used in natural language. In spoken language, we distinguish the
+major roles of sentences as *subject* (that which is spoken about), *predicate*
+(the topic of the sentence, as it were), and *object* (what is being said about
+the subject). That may or may not be a linguistically correct explanation, but
+it's one that will serve us well for our purposes.
+
+With 'binary phrase database' I mean that facts are recorded in two ways—once as
+a primary, main entry and once as a secondary, index entry; 'transparent total
+indexing' points out that this happens automatically and for all the fact
+phrases you enter into the DB.
 
 Let's clarify that by way of example.
 
@@ -400,14 +422,16 @@ while 形 is somewhere in the middle.
 
 One way to capture this difference in complexity is to simply count the strokes
 needed to write a given character. We find that 丁, 三, 夫, 國, and 形 are written
-using 2, 3, 5, 11, and 7 strokes, respectively. Another way to account for
-percevived complexity is to count from how many indivual parts a character is
-composed—a more promising approach, but also a much more contentious one, as it
-is often quite difficult to clearly delineate parts of characters in a an
-unequivocal fashion. Be that as it may, in my book 國 is analyzed as 囗戈口一, and 形
-as 开彡, while 丁, 三, and 夫 are counted as single components.
+using 2, 3, 5, 11, and 7 strokes, respectively.
 
-Using Hollerith phrases, we could record these finds as follows:
+Another way to account for percevived complexity is to count from how many
+indivual parts a character is composed—a more promising approach, but also a
+much more contentious one, as it is often quite difficult to clearly delineate
+parts of characters in an unequivocal fashion. Be that as it may, in my book 國
+is analyzed as 囗戈口一 and 形 as 开彡, while 丁, 三, and 夫 are counted as single
+components.
+
+Using Hollerith phrases, we can tentatively record these finds as follows:
 
 ```
 subject     predicate                     object
@@ -432,22 +456,8 @@ subject     predicate                     object
 
 ```
 
-These data can be readily read out as `夫` (has a) `strokecount` (of) `5`, or
-similar.
-
-Now LevelDB—the DB engine underlying Hollerith²—is a key / value store that has
-exactly one value per key. All keys are lexicographically ordered, and there are
-only two ways to retrieve an entry from the datastore: either by giving the
-full, exact key that a value was stored under, or by iterating over all key /
-value pairs, optionally by giving a lower and / or an upper boundary for the
-keys.
-
-> There is no way in LevelDB to query values as such; the best you can do is to
-> retrieve (all or a subset of the) key / value pairs and sort out matching
-> values in your application code. This can make a lot of sense especially if
-> you can limit the amount of key / value pairs to look at, but becomes
-> unbearably slow if you have stored millions of facts and have to sift through
-> all of them in order to find the single needle in the haystack.
+These data can be readily read out as `夫` (has a) `strokecount` (of) `5`,
+`形` (consists of the) `components` `[ 开,` (and)` `彡, ]`, and so on.
 
 Keeping in mind that  There is
 
