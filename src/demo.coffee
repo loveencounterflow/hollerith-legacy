@@ -448,7 +448,7 @@ HOLLERITH.$pick_values = ->
     key_rpr = []
     for idx in [ 0 ... key.length ]
       key_rpr.push String.fromCodePoint key[ idx ]
-    urge key_rpr
+    urge rpr key_rpr.join ''
 
 
 ############################################################################################################
