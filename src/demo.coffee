@@ -423,6 +423,55 @@ HOLLERITH.$pick_values = ->
       .pipe $ ( data, send ) -> send JSON.stringify data
       .pipe D.$show()
 
+# '\u0000',
+#   '\u0001',
+#   '\u0002',
+#   '\u0003',
+#   '\u0004',
+#   '\u0005',
+#   '\u0006',
+#   '\u0007',
+#   '\b',
+#   '\t',
+#   '\n',
+#   '\u000b',
+#   '\f',
+#   '\r',
+#   '\u000e',
+#   '\u000f',
+#   '\u0010',
+#   '\u0011',
+#   '\u0012',
+#   '\u0013',
+#   '\u0014',
+#   '\u0015',
+#   '\u0016',
+#   '\u0017',
+#   '\u0018',
+#   '\u0019',
+#   '\u001a',
+#   '\u001b',
+#   '\u001c',
+#   '\u001d',
+#   '\u001e',
+#   '\u001f',
+
+
+"""
+〇〓
+␀␁␂␃␄␅␆␇␈␉␊␋␌␍␎␏␐␑␒␓␔␕␖␗␘␙␚␛␜␝␞␟␠␡␢␣␤␥␦
+ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ
+！＂＃＄％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～｟｠
+!"#$%&'()*+,-./0123456789:;<=>?@
+ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`
+abcdefghijklmnopqrstuvwxyz{|}~
+
+¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿À
+ÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßà
+áâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
+"""
+
+
 #-----------------------------------------------------------------------------------------------------------
 @show_encoding_sample = ->
   phrases = [
@@ -442,14 +491,22 @@ HOLLERITH.$pick_values = ->
     [ '國', 'components',      [ '囗', '戈', '口', '一', ], ]
     [ '形', 'components',      [ '开', '彡', ],             ]
     ]
-  for [ sbj, prd, obj, ] in phrases
-    key   = ( HOLLERITH.CODEC.encode [ sbj, prd, ], )
-    value = ( new Buffer JSON.stringify obj )
-    key_rpr = []
-    for idx in [ 0 ... key.length ]
-      key_rpr.push String.fromCodePoint key[ idx ]
-    urge rpr key_rpr.join ''
-
+  # for [ sbj, prd, obj, ] in phrases
+  #   key   = ( HOLLERITH.CODEC.encode [ sbj, prd, ], )
+  #   value = ( new Buffer JSON.stringify obj )
+  #   key_rpr = []
+  #   for idx in [ 0 ... key.length ]
+  #     key_rpr.push String.fromCodePoint key[ idx ]
+  #   urge rpr key_rpr.join ''
+  chrs = []
+  for cid in [ 0 .. 255 ]
+    chrs.push String.fromCodePoint cid
+    chrs.push '\n' if cid > 0 and cid % 32 is 0
+  debug '©ZgY4D', chrs
+  help chrs.join ''
+  urge ( String.fromCodePoint cid for cid in [ 0x2400 .. 0x2426 ] ).join ''
+  urge ( String.fromCodePoint cid for cid in [ 0x24b6 .. 0x24e9 ] ).join ''
+  urge ( String.fromCodePoint cid for cid in [ 0xff01 .. 0xff60 ] ).join ''
 
 ############################################################################################################
 unless module.parent?
