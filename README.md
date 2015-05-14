@@ -566,9 +566,21 @@ see in place of those `▓` boxes depends; on my console, i get a space for the
 first two and something looking like a comma for the last box, but when i copy
 that into my text editor, the boxes all turn into zero-width spaces, which is
 confusing and not helpful. In our custom encoding, the bytes used to encode
-`'一x丁x丂'` are rendered as `ä¸⊪xä¸⊪xä¸⊪`, where `⊪` represents a (further
-unspecified) UTF-8 byte sequence continuation.
+`'一x丁x丂'` are rendered as `ä¸⊪xä¸⊪xä¸⊪`, where `⊪` represents three (further
+unspecified) UTF-8 sequence continuation bytes.
 
+Now let's take a look at the H2C encoding: Calling `HOLLERITH.CODEC.encode [
+'abc', 'def', ]` gives us `<Buffer 54 61 62 63 00 54 64 65 66 00>`, which may be
+rendered as `TabcΔTdefΔ`. The `T`s indicate the start of strings, while the
+`Δ`s—which symbolize `0x00` bytes—signal the end of strings; hence, our input
+value contined two strings, encoded as `T...ΔT...Δ`. Using `[ 'xxx', 42, ]` as
+input, we get `<Buffer 54 78 78 78 00 4c 40 45 00 00 00 00 00 00>`, which is
+visualized as `TxxxΔL@EΔΔΔΔΔΔ`. Here, `...ΔL...` shows the end of a string as
+`Δ` and the start of a positive finite number as `L`; the ensuing eight bytes
+`@EΔΔΔΔΔΔ` (which are mostly zero) encode the numerical value of `42` according
+to IEEE 754. FInally, `[ true, -1 / 7, ]` is encoded as `<Buffer 44 4b c0 3d b6
+db 6d b6 db 6d>`, which corresponds to `DKÀ=¶Ûm¶Ûm` (`D` encodes `true`, and `K`
+signals a negative finite number).
 
 
 

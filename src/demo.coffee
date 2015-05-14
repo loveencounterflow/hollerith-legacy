@@ -554,6 +554,11 @@ HOLLERITH.$pick_values = ->
 @compile_encodings()
 
 #-----------------------------------------------------------------------------------------------------------
+@rpr_of_buffer = ( buffer, encoding = 'rdctn' ) ->
+  encoding = @encodings[ encoding ] unless CND.isa_list encoding
+  return ( rpr buffer ) + ' ' + ( encoding[ buffer[ idx ] ] for idx in [ 0 ... buffer.length ] ).join ''
+
+#-----------------------------------------------------------------------------------------------------------
 @show_encoding_sample = ->
   encoding  = @encodings[ 'dbcs2' ]
   encoding  = @encodings[ 'aleph' ]
@@ -583,8 +588,9 @@ HOLLERITH.$pick_values = ->
     urge key_rpr, '┊', value_rpr
   b = new Buffer '一x丁x丂'
   # text = new Buffer '一'
-  text_rpr = ( encoding[ b[ idx ] ] for idx in [ 0 ... b.length ] ).join ''
+  text_rpr =
   help b, text_rpr
+  help @rpr_of_buffer HOLLERITH.CODEC.encode [ true, -1 / 7, ]
 
   # chrs = []
   # for cid in [ 0 .. 255 ]
