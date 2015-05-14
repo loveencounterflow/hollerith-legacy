@@ -486,21 +486,39 @@ Object, turning each primary phrase into a key / value pair (a 'facet');
 the key is encoded using the H2C codec, the value using `JSON.stringify`:
 
 ```
-[ '丁', 'strokecount',    ] ┊  2                         ┊ 54 e4 b8 81 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00>          ┊ <Buffer 32>
-[ '三', 'strokecount',    ] ┊  3                         ┊ 54 e4 b8 89 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00>          ┊ <Buffer 33>
-[ '夫', 'strokecount',    ] ┊  5                         ┊ 54 e5 a4 ab 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00>          ┊ <Buffer 35>
-[ '國', 'strokecount',    ] ┊  11                        ┊ 54 e5 9c 8b 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00>          ┊ <Buffer 31 31>
-[ '形', 'strokecount',    ] ┊  7                         ┊ 54 e5 bd a2 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00>          ┊ <Buffer 37>
-[ '丁', 'componentcount', ] ┊  1                         ┊ 54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00> ┊ <Buffer 31>
-[ '三', 'componentcount', ] ┊  1                         ┊ 54 e4 b8 89 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00> ┊ <Buffer 31>
-[ '夫', 'componentcount', ] ┊  1                         ┊ 54 e5 a4 ab 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00> ┊ <Buffer 31>
-[ '國', 'componentcount', ] ┊  4                         ┊ 54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00> ┊ <Buffer 34>
-[ '形', 'componentcount', ] ┊  2                         ┊ 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00> ┊ <Buffer 32>
-[ '丁', 'components',     ] ┊  [ '丁', ]                  ┊ 54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00>             ┊ <Buffer 5b 22 e4 b8 81 22 5d>
-[ '三', 'components',     ] ┊  [ '三', ]                  ┊ 54 e4 b8 89 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00>             ┊ <Buffer 5b 22 e4 b8 89 22 5d>
-[ '夫', 'components',     ] ┊  [ '夫', ]                  ┊ 54 e5 a4 ab 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00>             ┊ <Buffer 5b 22 e5 a4 ab 22 5d>
-[ '國', 'components',     ] ┊  [ '囗', '戈', '口', '一', ]   ┊ 54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00>             ┊ <Buffer 5b 22 e5 9b 97 22 2c 22 e6 88 88 22 2c 22 e5 8f a3 22 2c 22 e4 b8 80 22 5d>
-[ '形', 'components',     ] ┊  [ '开', '彡', ]             ┊ 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00>             ┊ <Buffer 5b 22 e5 bc 80 22 2c 22 e5 bd a1 22 5d>
+[ '丁', 'strokecount',    ]                                    ┊  2
+[ '三', 'strokecount',    ]                                    ┊  3
+[ '夫', 'strokecount',    ]                                    ┊  5
+[ '國', 'strokecount',    ]                                    ┊  11
+[ '形', 'strokecount',    ]                                    ┊  7
+[ '丁', 'componentcount', ]                                    ┊  1
+[ '三', 'componentcount', ]                                    ┊  1
+[ '夫', 'componentcount', ]                                    ┊  1
+[ '國', 'componentcount', ]                                    ┊  4
+[ '形', 'componentcount', ]                                    ┊  2
+[ '丁', 'components',     ]                                    ┊  [ '丁', ]
+[ '三', 'components',     ]                                    ┊  [ '三', ]
+[ '夫', 'components',     ]                                    ┊  [ '夫', ]
+[ '國', 'components',     ]                                    ┊  [ '囗', '戈', '口', '一', ]
+[ '形', 'components',     ]                                    ┊  [ '开', '彡', ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+54 e4 b8 81 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 32
+54 e4 b8 89 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 33
+54 e5 a4 ab 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 35
+54 e5 9c 8b 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 31 31
+54 e5 bd a2 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 37
+54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
+54 e4 b8 89 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
+54 e5 a4 ab 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
+54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 34
+54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 32
+54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e4 b8 81 22 5d
+54 e4 b8 89 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e4 b8 89 22 5d
+54 e5 a4 ab 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 a4 ab 22 5d
+54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 9b 97 22 2c 22 e6 88 88 22 2c 22 e5 8f a3 22 2c 22 e4 b8 80 22 5d
+54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 bc 80 22 2c 22 e5 bd a1 22 5d
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ```
 
 # XXXXXXX

@@ -443,7 +443,13 @@ HOLLERITH.$pick_values = ->
     [ '形', 'components',      [ '开', '彡', ],             ]
     ]
   for [ sbj, prd, obj, ] in phrases
-    help ( HOLLERITH.CODEC.encode [ sbj, prd, ], ), ( new Buffer JSON.stringify obj )
+    key   = ( HOLLERITH.CODEC.encode [ sbj, prd, ], )
+    value = ( new Buffer JSON.stringify obj )
+    key_rpr = []
+    for idx in [ 0 ... key.length ]
+      key_rpr.push String.fromCodePoint key[ idx ]
+    urge key_rpr
+
 
 ############################################################################################################
 unless module.parent?
