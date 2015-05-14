@@ -416,9 +416,9 @@ Let's clarify that by way of example.
 > East-Asian languages.
 
 Something very obvious that can be said about Chinese characters is that they
-var greatly in terms of complexity: for example, among the very common characters
-丁, 三, 夫, 國, 形 the characters 丁 and 三 are vastly easier to read and write than 國,
-while 形 is somewhere in the middle.
+vary greatly in terms of visual complexity: for example, among the very common
+characters 丁, 三, 夫, 國, 形 the characters 丁 and 三 are vastly easier to read and
+write than 國, while 形 is somewhere in the middle.
 
 One way to capture this difference in complexity is to simply count the strokes
 needed to write a given character. We find that 丁, 三, 夫, 國, and 形 are written
@@ -456,10 +456,32 @@ subject     predicate                     object
 
 ```
 
-These data can be readily read out as `夫` (has a) `strokecount` (of) `5`,
+The entries can be readily read out as `夫` (has a) `strokecount` (of) `5`,
 `形` (consists of the) `components` `[ 开,` (and)` `彡, ]`, and so on.
+These phrases will become our mainstay entries. In order to record them,
+each fact is bundled into a triple `[ S(ubject), P(redicate), O(bject) ]`
+and sent to the database engine:
 
-Keeping in mind that  There is
+```
+[ 丁, 'strokecount',     2,                          ]
+[ 三, 'strokecount',     3,                          ]
+[ 夫, 'strokecount',     5,                          ]
+[ 國, 'strokecount',     11,                         ]
+[ 形, 'strokecount',     7,                          ]
+[ 丁, 'componentcount',  1,                          ]
+[ 三, 'componentcount',  1,                          ]
+[ 夫, 'componentcount',  1,                          ]
+[ 國, 'componentcount',  4,                          ]
+[ 形, 'componentcount',  2,                          ]
+[ 丁, 'components',      [ '丁', ],                   ]
+[ 三, 'components',      [ '三', ],                   ]
+[ 夫, 'components',      [ '夫', ],                   ]
+[ 國, 'components',      [ '囗', '戈', '口', '一', ], ]
+[ 形, 'components',      [ '开', '彡', ],            ]
+
+```
+
+
 
 # XXXXXXX
 
