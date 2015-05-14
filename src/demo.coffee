@@ -505,7 +505,7 @@ HOLLERITH.$pick_values = ->
     ⓪①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛
     ㉜！＂＃＄％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？
     ＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿
-    ｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～〇
+    ｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～㉠
     ㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿㋐㋑㋒㋓㋔㋕㋖㋗㋘㋙㋚㋛㋜㋝
     ㋞㋟㋠㋡㋢㋣㋤㋥㋦㋧㋨㋩㋪㋫㋬㋭㋮㋯㋰㋱㋲㋳㋴㋵㋶㋷㋸㋹㋺㋻㋼㋽
     ㋾㊊㊋㊌㊍㊎㊏㊐㊑㊒㊓㊔㊕㊖㊗㊘㊙㊚㊛㊜㊝㊞㊟㊠㊡㊢㊣㊤㊥㊦㊧㊨
@@ -581,10 +581,11 @@ HOLLERITH.$pick_values = ->
     [ '形', 'components',      [ '开', '彡', ],             ]
     ]
   for [ sbj, prd, obj, ] in phrases
-    key     = ( HOLLERITH.CODEC.encode [ sbj, prd, ], )
-    value   = ( new Buffer JSON.stringify obj )
-    key_rpr = ( encoding[ key[ idx ] ] for idx in [ 0 ... key.length ] ).join ''
-    urge key_rpr
+    key       = ( HOLLERITH.CODEC.encode [ sbj, prd, ], )
+    value     = ( new Buffer JSON.stringify obj )
+    key_rpr   = ( encoding[ key[ idx ] ] for idx in [ 0 ... key.length ] ).join ''
+    value_rpr = ( encoding[ value[ idx ] ] for idx in [ 0 ... value.length ] ).join ''
+    urge key_rpr, '┊', value_rpr
   # chrs = []
   # for cid in [ 0 .. 255 ]
   #   chrs.push String.fromCodePoint cid
