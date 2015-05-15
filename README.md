@@ -141,6 +141,28 @@ one of
 * Date objects, or
 * strings.
 
+This means that when working with Hollerith², you will always have
+to use lists of JavaScript primitive types for the keys. This is a
+good thing: because of the way that the H2C encoding works, putting
+a number of lists like, say
+
+```
+[ 'sku', '3345-d', 'price', ]         # ⎫          ⎫
+[ 'sku', '3345-d', 'weight', ]        # ⎪          ⎬ `sku`, `3345-d`
+[ 'sku', '3345-d', 'description', ]   # ⎬ `sku`-   ⎭ subspace
+[ 'sku', '3348A',  'price', ]         # ⎪ subspace ⎫
+[ 'sku', '3348A',  'weight', ]        # ⎪          ⎬ `sku`, `3348A`
+[ 'sku', '3348A',  'description', ]   # ⎭          ⎭ subspace
+[ 'invoice', ( new_date "2012-01-30" ), '33421', ]
+[ 'invoice', ( new_date "2012-01-31" ), '54662', ]
+```
+
+into the DB will cause them to occupy clearly delineated portions of the ordered
+key space, meaning that it is easy to retrieve, say, all data related to
+stock-keeping units by searching for the prefix (a.k.a. incomplete key) `[
+'sku', ]`,
+
+
 <!--
 ```coffee
 tms = HOLLERITH2[ 'CODEC' ][ 'typemarkers' ]
