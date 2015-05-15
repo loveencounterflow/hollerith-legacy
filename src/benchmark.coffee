@@ -63,7 +63,7 @@ stop = ( name ) ->
   return null
 
 #-----------------------------------------------------------------------------------------------------------
-report = ( min_name ) ->
+report = ( n, min_name ) ->
   columnify_settings =
     config:
       dt:     { align: 'right' }
@@ -86,6 +86,7 @@ report = ( min_name ) ->
       rel:      "#{( dt / min ).toFixed 2}"
       max:      "#{( dt / max ).toFixed 2}"
     data.push entry
+  urge "time needed to process #{ƒ n} arbitrary strings (lower is better):"
   help '\n' + CND.columnify data, columnify_settings
 
 #-----------------------------------------------------------------------------------------------------------
@@ -140,7 +141,7 @@ report = ( min_name ) ->
   @test_new_buffer            probes
   @test_buffer_write          probes
   @test_string_replace        probes
-  report 'new Buffer JSON.stringify'
+  report n, 'new Buffer JSON.stringify'
 
 
 ############################################################################################################

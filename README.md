@@ -34,7 +34,15 @@
 
 > Use LevelDB like 1960s punched cards
 
+<!-- Hollerith² is a NodeJS v0.12.x-compatible library written in 100% CoffeeScript to
+write and read to and from  -->
 
+```
+npm install --save hollerith2
+```
+
+(In the near future, this will change to `npm install --save hollerith`, `hollerith2` being the
+release candidate for the next major version of `hollerith`.)
 
 # Theory
 
@@ -116,10 +124,13 @@ U+0041 (i.e. smaller than U+005c) and `a` is U+0061 (i.e. greater than U+005c);
 the net effect is that null bytes will sort *after* Basic Latin capital letters
 A—Z, but *before* Basic Latin lower case letters a—z.
 
-`bytewise` has none of these issues. Sadly, it is considerably slower than
-JSON. When you do `gulp --harmony build && node --harmony lib/benchmark.js`
-from inside the `hollerith2` directory to run some benchmarks, you will get an
-output like this:
+`bytewise` has none of these issues. Sadly, it is considerably slower than JSON.
+When you do `gulp --harmony build && node --harmony lib/benchmark.js` from
+inside the `hollerith2` directory to run some benchmarks, you will get an output
+like below; the figures in the `DT` column show the number of seconds needed to
+process 100'000 arbitrary strings; the `REL` column shows relative times in
+comparison to JSON, while the `MAX` column show relative times in comparison to
+the slowest test case:
 
 ```
 NAME                               DT  REL  MAX
