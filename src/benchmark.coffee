@@ -47,105 +47,101 @@ CODEC                     = require './codec'
 PASSPHRASE                = require 'coffeenode-passphrase'
 ƒ                         = CND.format_number.bind CND
 
+#-----------------------------------------------------------------------------------------------------------
 times = {}
 
 #-----------------------------------------------------------------------------------------------------------
 start = ( name ) ->
-  target = times[ name ]?= []
-  target.push process.hrtime()
+  whisper "start #{name}"
+  times[ name ] = process.hrtime()
   return null
 
 #-----------------------------------------------------------------------------------------------------------
-stop  = ( name ) ->
-  target = times[ name ]
-  target[ target.length - 1 ] = process.hrtime target[ target.length - 1 ]
-  # debug '©9IVO8', times
+stop = ( name ) ->
+  dt = process.hrtime times[ name ]
+  times[ name ] = dt[ 0 ] + dt[ 1 ] / 1e9
   return null
 
 #-----------------------------------------------------------------------------------------------------------
-report  = ->
-  for name, dts of times
-    dt = [ 0, 0, ]
-    for [ millis, nanos, ] in dts
-      dt[ 0 ] += millis
-      dt[ 1 ] += nanos
-    loop
-      break if dt[ 1 ] < 1e9
-      dt[ 0 ] += +1
-      dt[ 1 ] += -1e9
-    nanos = "000000000#{dt[ 1 ]}"
-    nanos = nanos[ nanos.length - 9 .. nanos.length - 1 ]
-    urge "#{dt[ 0 ]}.#{nanos} #{name}"
-
-#-----------------------------------------------------------------------------------------------------------
-do ->
-  for name, value of CODEC
-    continue unless name is 'encode'
-    do ( name, value ) ->
-      if CND.isa_function value
-        f = ( P ... ) ->
-          start name
-          R = value.apply CODEC, P
-          stop name
-          return R
-        CODEC[ name ] = f
-      else
-        CODEC[ name ] = value
+report = ( min_name ) ->
+  columnify_settings =
+    config:
+      dt:     { align: 'right' }
+      rel:    { align: 'right' }
+      max:    { align: 'right' }
+  if min_name?
+    min = times[ min_name ]
+  else
+    min = Math.min ( dt for _, dt of times )...
+  max = Math.max ( dt for _, dt of times )...
+  debug '©q6yuS', min, max
+  data = []
+  for name, dt of times
+    # nanos = "000000000#{dt[ 1 ]}"
+    # nanos = nanos[ nanos.length - 9 .. nanos.length - 1 ]
+    # urge "#{dt[ 0 ]}.#{nanos} #{name}"
+    entry =
+      name:     name
+      dt:       ( dt.toFixed 9 )
+      rel:      "#{( dt / min ).toFixed 2}"
+      max:      "#{( dt / max ).toFixed 2}"
+    data.push entry
+  help '\n' + CND.columnify data, columnify_settings
 
 #-----------------------------------------------------------------------------------------------------------
 @test_h2c = ( probes ) ->
-  t0 = +new Date()
+  start 'H2C.encode'
   CODEC.encode probe for probe in probes
-  t1 = +new Date()
-  return t1 - t0
+  stop 'H2C.encode'
 
 #-----------------------------------------------------------------------------------------------------------
 @test_bytewise = ( probes ) ->
-  t0 = +new Date()
+  start 'bytewise.encode'
   BYTEWISE.encode probe for probe in probes
-  t1 = +new Date()
-  return t1 - t0
+  stop 'bytewise.encode'
 
 #-----------------------------------------------------------------------------------------------------------
 @test_json = ( probes ) ->
-  t0 = +new Date()
-  JSON.stringify probe for probe in probes
-  t1 = +new Date()
-  return t1 - t0
+  start 'new Buffer JSON.stringify'
+  new Buffer JSON.stringify probe for probe in probes
+  stop 'new Buffer JSON.stringify'
+
+#-----------------------------------------------------------------------------------------------------------
+@test_new_buffer = ( probes ) ->
+  start 'new_buffer'
+  for probe in probes
+    b = new Buffer probe
+  stop 'new_buffer'
+
+#-----------------------------------------------------------------------------------------------------------
+@test_buffer_write = ( probes ) ->
+  b = new Buffer 1024
+  start 'buffer_write'
+  for probe in probes
+    b.write probe[ 0 ]
+  stop 'buffer_write'
+
+#-----------------------------------------------------------------------------------------------------------
+@test_string_replace = ( probes ) ->
+  start 'string_replace'
+  for probe in probes
+    x = probe[ 0 ].replace /a/g, '#'
+  stop 'string_replace'
 
 #-----------------------------------------------------------------------------------------------------------
 @main = ->
-  n = 1e5
-  # n = 10
-  # routes = ( PASSPHRASE.get_passphrase() for _ in [ 1 .. n ] )
+  n = 100000
   whisper "generating #{ƒ n} probes"
-  values = [
-    0
-    +Number.MIN_VALUE
-    +Number.EPSILON
-    +32451
-    +32451.5
-    +32452
-    +32453
-    +123456789
-    ]
-  # values = [
-  #   'xxxx'
-  #   ]
-  probes = ( [ PASSPHRASE.get_passphrase(), values[ idx % values.length ] ] for idx in [ 1 .. n ] )
+  probes = ( [ PASSPHRASE.get_passphrase(), ] for idx in [ 1 .. n ] )
   help "generated #{ƒ probes.length} probes; now performing benchmarks"
-  # bytewise_ms = @test_bytewise probes
-  # h2c_ms      = @test_h2c      probes
-  # json_ms     = @test_json     probes
-  # urge "encode bytewise: #{ƒ bytewise_ms}ms (#{(bytewise_ms / json_ms * 100).toFixed 2}%)"
-  # urge "encode h2c:      #{ƒ h2c_ms}ms (#{(h2c_ms / json_ms * 100).toFixed 2}%)"
-  # urge "encode json:     #{ƒ json_ms}ms (#{(json_ms / json_ms * 100).toFixed 2}%)"
-  debug '©0qFcb', @test_h2c probes
-  report()
-  # f = =>
-  #   debug '©XuSUh', @test_h2c      probes
-  #   eventually -> f()
-  # f()
+  @test_bytewise              probes
+  @test_json                  probes
+  @test_h2c                   probes
+  @test_new_buffer            probes
+  @test_buffer_write          probes
+  @test_string_replace        probes
+  report 'new Buffer JSON.stringify'
+
 
 ############################################################################################################
 unless module.parent?

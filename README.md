@@ -5,10 +5,12 @@
 	- [What is LevelDB?](#what-is-leveldb)
 		- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
 	- [The Hollerith2 Codec (H2C)](#the-hollerith2-codec-h2c)
-		- [Texts (Strings)](#texts-strings)
-		- [Numbers](#numbers)
-		- [Dates](#dates)
-		- [Singular Values](#singular-values)
+		- [Performance Considerations](#performance-considerations)
+		- [Encoding Details](#encoding-details)
+			- [Texts (Strings)](#texts-strings)
+			- [Numbers](#numbers)
+			- [Dates](#dates)
+			- [Singular Values](#singular-values)
 	- [The Hollerith2 Phrase Structure](#the-hollerith2-phrase-structure)
 		- [SPO and POS](#spo-and-pos)
 - [XXXXXXX](#xxxxxxx)
@@ -233,29 +235,58 @@ short. It works like a subset of the [`bytewise`
 codec](https://github.com/deanlandolt/bytewise) whose core implementation ideas
 are shamelessly re-implemented.
 
-H2C's reason for being is performance concerns: Sadly, `bytewise` is orders of
-magnitude slower than NodeJS' `JSON.stringify` which means that the performance
-of a LevelDB write stream that pipes into the `bytewise` codec gets quickly
-dominated by the relative slowness of `bytewise`. This is a shame because
-`bytewise` is technically a great codec when what you want is to `[ 'express',
-'hierarchies', ]` in `[ 'indexed', 'data', 42, ]` using `[ 'lists', 'of'
-'strings' 'and' 'values' ]` — which is *so* much better than trying to do the
-same using JSON and / or your ad-hoc [materialized
-path](http://en.wikipedia.org/wiki/Materialized_view) solution (using path
-separators that you have to escape in texts and padding numbers with zeros so
-they sort right).
+### Performance Considerations
 
-As it stands, `H2C.encode` is still a little over 7 times slower than
-`JSON.stringify`, but also almost 10 times faster than `bytewise`, which is a
-significant gain:
+The `bytewise` codec is one great idea; it allows us to build LevelDB keys from
+JavaScript lists of values that sort properly: keys encoded with `bytewise` will
+keep apart data types in their own segments of the key space, sort numbers
+properly by their magnitudes and correctly order strings by the lexicographic
+ordering imposed by their constituent Unicode code points. If you wanted to do the
+same just using strings as keys and JSON-like value seriealizations, you'd have to
+construct everything very carefully to ensure this same set of desirable properties.
 
-![Benchmarks](https://github.com/loveencounterflow/hollerith2/raw/master/art/Screen%20Shot%202015-05-13%20at%2002.03.48%20(2).png)
+Not least, since the JSON representation of integer numbers is a series of
+digits, you'd have to left-pad all your integers with zeroes to get it right;
+this is because the strings `'4'`, `'6'`, `'12'`, `'333'` sort as `'12'`,
+`'333'`, `'4'`, `'6'`. Only when padded with zeros they sort as `'004'`,
+`'006'`, `'012'`, `'333'`—but even this doesn't ensure proper sorting when
+numbers like `4.562e24` should occur. Even the JSON representation of strings
+may become a problem with some code points; for example, a null byte will be
+represented as the character sequence `"\u0000"` in JSON, with a literal slash
+as the first character. Now Unicode encodes the slash as U+005c, while `A` is
+U+0041 (i.e. smaller than U+005c) and `a` is U+0061 (i.e. greater than U+005c);
+the net effect is that null bytes will sort *after* Basic Latin capital letters
+A—Z, but *before* Basic Latin lower case letters a—z.
 
-H2C achieves these performance gains by being *much* more restrictive than
-`bytewise`; while `bytewise` strives to support all JavaScript data types (including
-objects and nested lists) and to work in both the browser and in NodeJS, H2C is
-not currently designed to run in the browser, and, more importantly, **it only
-supports flat lists as keys** whose elements can only be
+`bytewise` has none of these issues. Sadly, it is considerably slower than
+JSON. When you do `gulp --harmony build && node --harmony lib/benchmark.js`
+from inside the `hollerith2` directory to run some benchmarks, you will get an
+output like this:
+
+```
+NAME                               DT  REL  MAX
+bytewise.encode           4.498304699 9.09 1.00
+new Buffer JSON.stringify 0.494802098 1.00 0.11
+H2C.encode                0.626849639 1.27 0.14
+new_buffer                0.095245441 0.19 0.02
+buffer_write              0.055629900 0.11 0.01
+string_replace            0.034068078 0.07 0.01
+```
+
+Roughly speaking, `bytewise` achieves around 10% of the throughput achievable by
+encoding to JSON and then turning that string into a buffer. By comparison, the
+H2C codec allows for almost 80% throughput as compared to the JSON solution.
+Since it has not been aggressively optimized yet, further performance gains are
+not impossible in the future.
+
+### Encoding Details
+
+H2C achieves its good performance by being *much* more restrictive than
+`bytewise`. `bytewise` strives to support all JavaScript data types (including
+objects and nested lists) and to work in both the browser and in NodeJS. By
+contrast, H2C is not currently designed to run in the browser, and, more
+importantly, **it only supports flat lists as keys** whose elements can only be
+one of
 
 * `null`,
 * `false`,
@@ -264,9 +295,7 @@ supports flat lists as keys** whose elements can only be
 * Date objects, or
 * strings.
 
-It's very well possible that H2C will support more data types and / or
-user-defined data types in the future.
-
+<!--
 ```coffee
 tms = HOLLERITH2[ 'CODEC' ][ 'typemarkers' ]
 
@@ -284,8 +313,9 @@ tms[ 'pinfinity'  ] = 'M'.codePointAt 0 # 0x4d             1
 tms[ 'text'       ] = 'T'.codePointAt 0 # 0x54    (variable)
 tms[ 'hi'         ] =                     0xff             1
 ```
+ -->
 
-### Texts (Strings)
+#### Texts (Strings)
 
 The H2C encoding for strings is almost binary compatible to the `bytewise`
 encoding of strings that are elements in lists (since H2C only encodes values in
@@ -310,7 +340,7 @@ lists). The basic ideas are the following:
   the terminal markers is decoded as UTF-8, and escaped 'low bytes' are
   unescaped.
 
-### Numbers
+#### Numbers
 
 Like H2C's string encoding, H2C's encoding of numbers has been copied from `bytewise`.
 Its characteristics are:
@@ -339,7 +369,7 @@ Its characteristics are:
   the one for positive numbers, all encoded keys with negative numbers will
   collectively come before any positive number (including zero).
 
-### Dates
+#### Dates
 
 Dates are encoded with a leading typemarker for dates (`0x47 ≙ 'G'` in case you where
 wondering), followed by 9 bytes necessary to [encode finite numbers](#numbers), since
@@ -368,7 +398,7 @@ above formulas with `1` subtracted or added to the arguments, you will get an
 `Invalid Date` error).
 
 
-### Singular Values
+#### Singular Values
 
 A so-called 'singular' encoding is used to capture the solitary values `null`,
 `false` and `true`; these are expressed as their type markers `0x42 ≙ 'B'`
