@@ -164,7 +164,6 @@ CODEC                     = require './codec'
   [ '形', 'components',      [ '开', '彡', ],             ]
   ]
 
-
 #-----------------------------------------------------------------------------------------------------------
 @[ "write without error" ] = ( T, done ) ->
   probes_idx  = 0
@@ -879,6 +878,42 @@ CODEC                     = require './codec'
       .pipe D.$on_end => done()
   #.........................................................................................................
   return null
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read partial POS phrases" ] = ( T, done ) ->
+  probes_idx  = 0
+  idx         = -1
+  count       = 0
+  #.........................................................................................................
+  matchers = [
+    [ '𧷟1', 'guide/lineup/length', 1 ]
+    [ '𧷟2', 'guide/lineup/length', 2 ]
+    [ '𧷟3', 'guide/lineup/length', 3 ]
+    [ '𧷟4', 'guide/lineup/length', 4 ]
+    [ '𧷟', 'guide/lineup/length', 5 ]
+    [ '𧷟6', 'guide/lineup/length', 6 ]
+    [ '𧷟', 'guide/uchr/has', '八', 0 ]
+    [ '𧷟', 'guide/uchr/has', '刀', 1 ]
+    [ '𧷟', 'guide/uchr/has', '宀', 2 ]
+    [ '𧷟', 'guide/uchr/has', '貝', 4 ]
+    [ '𧷟', 'guide/uchr/has', '', 3 ]
+    ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    prefix    = [ 'pos', 'guide', ]
+    input     = HOLLERITH.create_phrasestream db, prefix, '*'
+    debug '©FphJK', input[ '%meta' ]
+    settings  = { indexed: no, }
+    input
+      .pipe $ ( phrase, send ) =>
+        count  += +1
+        idx    += +1
+        debug '©Sc5FG', phrase
+        # T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end =>
+        T.eq count, matchers.length
+        done()
 
 
 #===========================================================================================================

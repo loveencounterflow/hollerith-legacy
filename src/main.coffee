@@ -188,8 +188,10 @@ LODASH                    = require 'lodash'
 
 #-----------------------------------------------------------------------------------------------------------
 @create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->
-  R = @create_facetstream db, lo_hint, hi_hint
+  input = @create_facetstream db, lo_hint, hi_hint
+  R = input
     .pipe @$as_phrase db
+  R[ '%meta' ] = input[ '%meta' ]
   return R
 
 #-----------------------------------------------------------------------------------------------------------
@@ -205,8 +207,11 @@ LODASH                    = require 'lodash'
   if hi_hint? and not lo_hint?
     throw new Error "must give `lo_hint` when `hi_hint` is given"
   #.........................................................................................................
-  if lo_hint and not hi_hint?
+  if lo_hint? and not hi_hint?
     query       = @_query_from_prefix db, lo_hint
+  #.........................................................................................................
+  else if lo_hint? and hi_hint is '*'
+    query       = @_query_from_prefix db, lo_hint, '*'
   #.........................................................................................................
   else
     lo_hint_bfr = if lo_hint? then (        @_encode_key db, lo_hint )          else CODEC[ 'keys' ][ 'lo' ]
@@ -216,6 +221,8 @@ LODASH                    = require 'lodash'
   ### TAINT Should we test for well-formed entries here? ###
   R = db[ '%self' ].createReadStream query
   R = R.pipe $ ( { key, value }, send ) => send [ ( @_decode_key db, key ), ( @_decode_value db, value ), ]
+  R[ '%meta' ] = {}
+  R[ '%meta' ][ 'query' ] = query
   #.........................................................................................................
   return R
 
@@ -388,10 +395,19 @@ and the ordering in the resulting key. ###
 #===========================================================================================================
 # PREFIXES & QUERIES
 #-----------------------------------------------------------------------------------------------------------
-@_query_from_prefix = ( db, lo_hint ) ->
-  base  = @_encode_key db, lo_hint, 0xff
-  gte   = base.slice 0, base.length - 1
-  lte   = base.slice 0, base.length
+@_query_from_prefix = ( db, lo_hint, star ) ->
+  #.........................................................................................................
+  if star?
+    ### 'Asterisk' encoding: partial key segments match ###
+    gte   = @_encode_key db, lo_hint
+    lte   = @_encode_key db, lo_hint
+    lte[ lte.length - 1 ] = CODEC[ 'typemarkers'  ][ 'hi' ]
+  #.........................................................................................................
+  else
+    ### 'Classical' encoding: only full key segments match ###
+    base  = @_encode_key db, lo_hint, CODEC[ 'typemarkers'  ][ 'hi' ]
+    gte   = base.slice 0, base.length - 1
+    lte   = base.slice 0, base.length
   return { gte, lte, }
 
 

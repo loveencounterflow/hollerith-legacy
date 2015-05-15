@@ -149,18 +149,25 @@ a number of lists like, say
 ```
 [ 'sku', '3345-d', 'price', ]         # ⎫          ⎫
 [ 'sku', '3345-d', 'weight', ]        # ⎪          ⎬ `sku`, `3345-d`
-[ 'sku', '3345-d', 'description', ]   # ⎬ `sku`-   ⎭ subspace
+[ 'sku', '3345-d', 'description', ]   # ⎬ `sku`    ⎭ subspace
 [ 'sku', '3348A',  'price', ]         # ⎪ subspace ⎫
 [ 'sku', '3348A',  'weight', ]        # ⎪          ⎬ `sku`, `3348A`
 [ 'sku', '3348A',  'description', ]   # ⎭          ⎭ subspace
-[ 'invoice', ( new_date "2012-01-30" ), '33421', ]
-[ 'invoice', ( new_date "2012-01-31" ), '54662', ]
+[ 'invoice', ( new_date "2012-01-30" ), '33421', ] ⎫
+[ 'invoice', ( new_date "2012-01-30" ), '66345', ] ⎬ `invoice`
+[ 'invoice', ( new_date "2012-01-31" ), '54662', ] ⎭ subspace
 ```
 
 into the DB will cause them to occupy clearly delineated portions of the ordered
 key space, meaning that it is easy to retrieve, say, all data related to
 stock-keeping units by searching for the prefix (a.k.a. incomplete key) `[
-'sku', ]`,
+'sku', ]`; if you're only interested in the SKU designated `3348A`, you can
+iterate over that subspace using the prefix `[ 'sku', '3348A', ]`.
+
+In other words, desirable properties of DB indexes—namely, unique keys that are
+hierarchically partitioned into disjunct, addressable subspaces—fall out
+naturally from the rather simple, efficient and straight-forward encoding
+afforded by H2C.
 
 
 <!--
