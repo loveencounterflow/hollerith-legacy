@@ -11,6 +11,7 @@
 			- [Dates](#dates)
 			- [Singular Values](#singular-values)
 		- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
+		- [X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X](#x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x)
 	- [The Hollerith2 Phrase Structure](#the-hollerith2-phrase-structure)
 		- [SPO and POS](#spo-and-pos)
 - [XXXXXXX](#xxxxxxx)
@@ -405,6 +406,83 @@ the existing
 
  -->
 
+### X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+
+The buffers that we obtained in the previous step are somewhat hard to visualize
+in a readable manner—we can either list the value of all the bytes in
+hexadecimal, or try to print out the buffers as strings. Unfortunately, it turns
+out that for [historical reasons](http://en.wikipedia.org/wiki/ASCII), many
+Unicode code positions in the range `[ 0x00 .. 0xff ]` do not define 'printable'
+but rather 'control' characters such as newlines, tabulators and what not, and
+actually, the code points in the range `[ 0x80 .. 0x9f ]` do not even have
+specified jobs—they're defined as 'generic control' characters that are, in
+practice, nothing but unusable gaps in the code table.
+
+When a text is encoded as UTF-8—which is basically what H2C and JSON do—then
+only characters between `0x00` and `0x7f` are preserved in a one-to-one fashion;
+all other characters are turned into sequences of between 2 and 3 bytes, not all
+of which correspond to 'nice' Unicode characters.
+
+For this reason, we have here adopted a customary encoding that preserves most
+printable Unicode codepoints in the range `[ 0x00 .. 0xff ]` and adds a few
+symbolic printable characters to make the output more readily interpretable. In
+detail:
+
+* `Δ` (`0x00`) symbolizes the important zero byte;
+* `≡` (`0x01 .. 0x1f`) symbolizes all 'unprintable' control characters;
+* `␣` (`0x20`) symbolizes the space character;
+* `∃` (`0x08 .. 0x9f`) symbolizes code points that occur as follow-up bytes
+  in UTF-8 byte sequences that do not have
+* `≢` (`0xa0`, `0xa1`, `0xf3 .. 0xfe`)
+* `∇` (`0xff`)
+
+Thus, our code table looks like this:
+
+```
+     0123456789abcdef 0123456789abcdef
+0x00 Δ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡ ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡ 0x10
+0x20 ␣!"#$%&'()*+,-./ 0123456789:;<=>? 0x30
+0x40 @ABCDEFGHIJKLMNO PQRSTUVWXYZ[\]^_ 0x50
+0x60 `abcdefghijklmno pqrstuvwxyz{|}~≡ 0x70
+0x80 ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃ ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃ 0x90
+0xa0 ≢≢¢£¤¥¦§¨©ª«¬Я®¯ °±²³´µ¶·¸¹º»¼½¾¿ 0xb0
+0xc0 ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ ÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß 0xd0
+0xe0 àáâãäåæçèéêëìíîï ðñò≢≢≢≢≢≢≢≢≢≢≢≢∇ 0xf0
+```
+
+Let's try out this encoding so we learn how to interpret the below
+illustrations. First, let's encode a string `'abcäöü'` in UTF-8 and look at the
+result: `b = new Buffer 'abcäöü'` gives us `<Buffer 61 62 63 c3 a4 c3 b6 c3
+bc>`, the usual representation of a `Buffer` instance in the NodeJS REPL. Of
+course. `b.toString 'utf-8'` would give us back the original string, but
+decoding the same using `latin-1` (properly called ISO/IEC 8859-1)—which is an
+8bit encoding—gives us one printable character per byte: `'abcÃ¤Ã¶Ã¼'`.
+
+Things turn worse when doing the same with the string `'一x丁x丂'`. The buffer is
+logged as `<Buffer e4 b8 80 78 e4 b8 81 78 e4 b8 82>`, which turns into
+something like `'ä¸▓xä¸▓xä¸▓'` when decoded as `latin-1`. What you'll actually
+see in place of those `▓` boxes depends; in my console, i get a space for the
+first two and something looking like a comma for the last box, but when i copy
+that into my text editor, the boxes all turn into zero-width spaces, and when i
+publish a text containing those characters to GitHub, i get `�` in the browser.
+This is truly confusing and not helpful. In our custom encoding, the bytes used
+to encode `'一x丁x丂'` are rendered as `ä¸⊪xä¸⊪xä¸⊪`, where `⊪` represents three
+(further undifferentiated) UTF-8 sequence continuation bytes.
+
+Now let's take a look at the H2C encoding: Calling `HOLLERITH.CODEC.encode [
+'abc', 'def', ]` gives us `<Buffer 54 61 62 63 00 54 64 65 66 00>`, which may be
+rendered as `TabcΔTdefΔ`. The `T`s indicate the start of strings, while the
+`Δ`s—which symbolize `0x00` bytes—signal the end of strings; hence, our input
+value contined two strings, encoded as `T...ΔT...Δ`. Using `[ 'xxx', 42, ]` as
+input, we get `<Buffer 54 78 78 78 00 4c 40 45 00 00 00 00 00 00>`, which is
+visualized as `TxxxΔL@EΔΔΔΔΔΔ`. Here, `...ΔL...` shows the end of a string as
+`Δ` and the start of a positive finite number as `L`; the ensuing eight bytes
+`@EΔΔΔΔΔΔ` (which are mostly zero) encode the numerical value of `42` according
+to IEEE-754. FInally, `[ true, -1 / 7, ]` is encoded as `<Buffer 44 4b c0 3d b6
+db 6d b6 db 6d>`, which corresponds to `DKÀ=¶Ûm¶Ûm` (`D` encodes `true`, and `K`
+signals a negative finite number).
+
+
 
 ## The Hollerith2 Phrase Structure
 
@@ -559,79 +637,21 @@ result of `JSON.stringify` encoded in UTF-8. We are left with two buffers per
 entry, which are written to the store just as if you had called `db = level
 'route/to/db'; db.put key, value` directly.
 
-The buffers that we obtained in the previous step are somewhat hard to visualize
-in a readable manner—we can either list the value of all the bytes in
-hexadecimal, or try to print out the buffers as strings. Unfortunately, it turns
-out that for [historical reasons](http://en.wikipedia.org/wiki/ASCII), many
-Unicode code positions in the range `[ 0x00 .. 0xff ]` do not define 'printable'
-but rather 'control' characters such as newlines, tabulators and what not, and
-actually, the code points in the range `[ 0x80 .. 0x9f ]` do not even have
-specified jobs—they're defined as 'generic control' characters that are, in
-practice, nothing but unusable gaps in the code table.
-
-When a text is encoded as UTF-8—which is basically what H2C and JSON do—then
-only characters between `0x00` and `0x7f` are preserved in a one-to-one fashion;
-all other characters are turned into sequences of between 2 and 3 bytes, not all
-of which correspond to 'nice' Unicode characters.
-
-For this reason, we have here adopted a customary encoding that preserves most
-printable Unicode codepoints in the range `[ 0x00 .. 0xff ]` and adds a few
-symbolic printable characters to make the output more readily interpretable. In
-detail:
-
-* `Δ` (`0x00`) symbolizes the important zero byte;
-* `≡` (`0x01 .. 0x1f`) symbolizes all 'unprintable' control characters;
-* `␣` (`0x20`) symbolizes the space character;
-* `∃` (`0x08 .. 0x9f`) symbolizes code points that occur as follow-up bytes
-  in UTF-8 byte sequences that do not have
-* `≢` (`0xa0`, `0xa1`, `0xf3 .. 0xfe`)
-* `∇` (`0xff`)
-
-Thus, our code table looks like this:
-
-```
-     0123456789abcdef 0123456789abcdef
-0x00 Δ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡ ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡ 0x10
-0x20 ␣!"#$%&'()*+,-./ 0123456789:;<=>? 0x30
-0x40 @ABCDEFGHIJKLMNO PQRSTUVWXYZ[\]^_ 0x50
-0x60 `abcdefghijklmno pqrstuvwxyz{|}~≡ 0x70
-0x80 ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃ ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃ 0x90
-0xa0 ≢≢¢£¤¥¦§¨©ª«¬Я®¯ °±²³´µ¶·¸¹º»¼½¾¿ 0xb0
-0xc0 ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ ÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß 0xd0
-0xe0 àáâãäåæçèéêëìíîï ðñò≢≢≢≢≢≢≢≢≢≢≢≢∇ 0xf0
-```
-
-Let's try out this encoding so we learn how to interpret the below
-illustrations. First, let's encode a string `'abcäöü'` in UTF-8 and look at the
-result: `b = new Buffer 'abcäöü'` gives us `<Buffer 61 62 63 c3 a4 c3 b6 c3
-bc>`, the usual representation of a `Buffer` instance in the NodeJS REPL. Of
-course. `b.toString 'utf-8'` would give us back the original string, but
-decoding the same using `latin-1` (properly called ISO/IEC 8859-1)—which is an
-8bit encoding—gives us one printable character per byte: `'abcÃ¤Ã¶Ã¼'`.
-
-Things turn worse when doing the same with the string `'一x丁x丂'`. The buffer is
-logged as `<Buffer e4 b8 80 78 e4 b8 81 78 e4 b8 82>`, which turns into
-something like `'ä¸▓xä¸▓xä¸▓'` when decoded as `latin-1`. What you'll actually
-see in place of those `▓` boxes depends; in my console, i get a space for the
-first two and something looking like a comma for the last box, but when i copy
-that into my text editor, the boxes all turn into zero-width spaces, and when i
-publish a text containing those characters to GitHub, i get `�` in the browser.
-This is truly confusing and not helpful. In our custom encoding, the bytes used
-to encode `'一x丁x丂'` are rendered as `ä¸⊪xä¸⊪xä¸⊪`, where `⊪` represents three
-(further undifferentiated) UTF-8 sequence continuation bytes.
-
-Now let's take a look at the H2C encoding: Calling `HOLLERITH.CODEC.encode [
-'abc', 'def', ]` gives us `<Buffer 54 61 62 63 00 54 64 65 66 00>`, which may be
-rendered as `TabcΔTdefΔ`. The `T`s indicate the start of strings, while the
-`Δ`s—which symbolize `0x00` bytes—signal the end of strings; hence, our input
-value contined two strings, encoded as `T...ΔT...Δ`. Using `[ 'xxx', 42, ]` as
-input, we get `<Buffer 54 78 78 78 00 4c 40 45 00 00 00 00 00 00>`, which is
-visualized as `TxxxΔL@EΔΔΔΔΔΔ`. Here, `...ΔL...` shows the end of a string as
-`Δ` and the start of a positive finite number as `L`; the ensuing eight bytes
-`@EΔΔΔΔΔΔ` (which are mostly zero) encode the numerical value of `42` according
-to IEEE-754. FInally, `[ true, -1 / 7, ]` is encoded as `<Buffer 44 4b c0 3d b6
-db 6d b6 db 6d>`, which corresponds to `DKÀ=¶Ûm¶Ûm` (`D` encodes `true`, and `K`
-signals a negative finite number).
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
+X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X
 
 With that preparation, it becomes sort of easy to parse the below display which
 shows how our sample data about some Chinese characters are stored in a LevelDB
