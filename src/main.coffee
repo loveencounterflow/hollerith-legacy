@@ -21,6 +21,7 @@ suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
 #...........................................................................................................
 CODEC                     = @CODEC = require './codec'
+DUMP                      = @DUMP  = require './dump'
 _codec_encode             = CODEC.encode.bind CODEC
 _codec_decode             = CODEC.decode.bind CODEC
 #...........................................................................................................

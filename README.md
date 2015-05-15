@@ -328,7 +328,7 @@ Its characteristics are:
   * the lexicographical ordering of the binary representation of finite numbers
     is in direct relationship to the mathematical ordering of the values they represent;
   * no one is left behind, i.e. all the critical tiny, big and small values of
-    JavaScript (resp. the IEEE 754 standard) like `Number.MIN_VALUE`, `Number.EPSILON`,
+    JavaScript (resp. the IEEE-754 standard) like `Number.MIN_VALUE`, `Number.EPSILON`,
     `Number.MAX_SAFE_INTEGER` and so on are correctly handled without any distortions
     or rounding errors.
 * The bytes of an encoded negative number are obtained by taking the absolute
@@ -561,13 +561,14 @@ decoding the same using `latin-1` (properly called ISO/IEC 8859-1)—which is an
 
 Things turn worse when doing the same with the string `'一x丁x丂'`. The buffer is
 logged as `<Buffer e4 b8 80 78 e4 b8 81 78 e4 b8 82>`, which turns into
-something like `'ä¸▓xä¸▓xä¸▓'` when decoded as `latin-1`. What you'll actually
-see in place of those `▓` boxes depends; on my console, i get a space for the
+something like `'ä¸▓xä¸▓xä¸▓'` when decoded as `latin-1`. What you'll actually
+see in place of those `▓` boxes depends; in my console, i get a space for the
 first two and something looking like a comma for the last box, but when i copy
-that into my text editor, the boxes all turn into zero-width spaces, which is
-confusing and not helpful. In our custom encoding, the bytes used to encode
-`'一x丁x丂'` are rendered as `ä¸⊪xä¸⊪xä¸⊪`, where `⊪` represents three (further
-unspecified) UTF-8 sequence continuation bytes.
+that into my text editor, the boxes all turn into zero-width spaces, and when i
+publish a text containing those characters to GitHub, i get `�` in the browser.
+This is truly confusing and not helpful. In our custom encoding, the bytes used
+to encode `'一x丁x丂'` are rendered as `ä¸⊪xä¸⊪xä¸⊪`, where `⊪` represents three
+(further undifferentiated) UTF-8 sequence continuation bytes.
 
 Now let's take a look at the H2C encoding: Calling `HOLLERITH.CODEC.encode [
 'abc', 'def', ]` gives us `<Buffer 54 61 62 63 00 54 64 65 66 00>`, which may be
@@ -578,47 +579,109 @@ input, we get `<Buffer 54 78 78 78 00 4c 40 45 00 00 00 00 00 00>`, which is
 visualized as `TxxxΔL@EΔΔΔΔΔΔ`. Here, `...ΔL...` shows the end of a string as
 `Δ` and the start of a positive finite number as `L`; the ensuing eight bytes
 `@EΔΔΔΔΔΔ` (which are mostly zero) encode the numerical value of `42` according
-to IEEE 754. FInally, `[ true, -1 / 7, ]` is encoded as `<Buffer 44 4b c0 3d b6
+to IEEE-754. FInally, `[ true, -1 / 7, ]` is encoded as `<Buffer 44 4b c0 3d b6
 db 6d b6 db 6d>`, which corresponds to `DKÀ=¶Ûm¶Ûm` (`D` encodes `true`, and `K`
 signals a negative finite number).
 
+With that preparation, it becomes sort of easy to parse the below display which
+shows how our sample data about some Chinese characters are stored in a LevelDB
+instance. On the top we have the hexadecimal values of the bytes stored, and
+below that the readable representations of those byte sequences in our custom
+encoding:
 
 
 ```
+key                                                              value
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-54 e4 b8 81 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 32
-54 e4 b8 89 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 33
-54 e5 a4 ab 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 35
-54 e5 9c 8b 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 31 31
-54 e5 bd a2 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 37
-54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
-54 e4 b8 89 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
-54 e5 a4 ab 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
-54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 34
-54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 32
-54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e4 b8 81 22 5d
-54 e4 b8 89 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e4 b8 89 22 5d
-54 e5 a4 ab 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 a4 ab 22 5d
-54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 9b 97 22 2c 22 e6 88 88 22 2c 22 e5 8f a3 22 2c 22 e4 b8 80 22 5d
-54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 bc 80 22 2c 22 e5 bd a1 22 5d
+54 73 70 6f 00 54 e4 b8 81 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 32
+54 73 70 6f 00 54 e4 b8 89 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 33
+54 73 70 6f 00 54 e5 a4 ab 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 35
+54 73 70 6f 00 54 e5 9c 8b 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 31 31
+54 73 70 6f 00 54 e5 bd a2 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 37
+54 73 70 6f 00 54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
+54 73 70 6f 00 54 e4 b8 89 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
+54 73 70 6f 00 54 e5 a4 ab 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
+54 73 70 6f 00 54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 34
+54 73 70 6f 00 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 32
+54 73 70 6f 00 54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e4 b8 81 22 5d
+54 73 70 6f 00 54 e4 b8 89 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e4 b8 89 22 5d
+54 73 70 6f 00 54 e5 a4 ab 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 a4 ab 22 5d
+54 73 70 6f 00 54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 9b 97 22 2c 22 e6 88 88 22 2c 22 e5 8f a3 22 2c 22 e4 b8 80 22 5d
+54 73 70 6f 00 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 bc 80 22 2c 22 e5 bd a1 22 5d
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Tä¸∃ΔTstrokecountΔ                                             ┊ 2
-Tä¸∃ΔTstrokecountΔ                                             ┊ 3
-Tå¤«ΔTstrokecountΔ                                             ┊ 5
-Tå∃∃ΔTstrokecountΔ                                             ┊ 11
-Tå½¢ΔTstrokecountΔ                                             ┊ 7
-Tä¸∃ΔTcomponentcountΔ                                          ┊ 1
-Tä¸∃ΔTcomponentcountΔ                                          ┊ 1
-Tå¤«ΔTcomponentcountΔ                                          ┊ 1
-Tå∃∃ΔTcomponentcountΔ                                          ┊ 4
-Tå½¢ΔTcomponentcountΔ                                          ┊ 2
-Tä¸∃ΔTcomponentsΔ                                              ┊ ["ä¸∃"]
-Tä¸∃ΔTcomponentsΔ                                              ┊ ["ä¸∃"]
-Tå¤«ΔTcomponentsΔ                                              ┊ ["å¤«"]
-Tå∃∃ΔTcomponentsΔ                                              ┊ ["å∃∃","æ∃∃","å∃£","ä¸∃"]
-Tå½¢ΔTcomponentsΔ                                              ┊ ["å¼∃","å½≢"]
+TspoTä¸∃ΔTstrokecountΔ                                             ┊ 2
+TspoTä¸∃ΔTstrokecountΔ                                             ┊ 3
+TspoTå¤«ΔTstrokecountΔ                                             ┊ 5
+TspoTå∃∃ΔTstrokecountΔ                                             ┊ 11
+TspoTå½¢ΔTstrokecountΔ                                             ┊ 7
+TspoTä¸∃ΔTcomponentcountΔ                                          ┊ 1
+TspoTä¸∃ΔTcomponentcountΔ                                          ┊ 1
+TspoTå¤«ΔTcomponentcountΔ                                          ┊ 1
+TspoTå∃∃ΔTcomponentcountΔ                                          ┊ 4
+TspoTå½¢ΔTcomponentcountΔ                                          ┊ 2
+TspoTä¸∃ΔTcomponentsΔ                                              ┊ ["ä¸∃"]
+TspoTä¸∃ΔTcomponentsΔ                                              ┊ ["ä¸∃"]
+TspoTå¤«ΔTcomponentsΔ                                              ┊ ["å¤«"]
+TspoTå∃∃ΔTcomponentsΔ                                              ┊ ["å∃∃","æ∃∃","å∃£","ä¸∃"]
+TspoTå½¢ΔTcomponentsΔ                                              ┊ ["å¼∃","å½≢"]
 ```
 
+We can see at a glance that while this is how Hollerith *encodes* data, it isn't
+quite how LevelDB will *store* it, as it always keeps all key lexicographically
+ordered. No matter whatever which way you happened to send your keys to the DB,
+when you read them out again, they will come up in this order:
+
+```
+key                                                              value
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+54 73 70 6f 00 54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
+54 73 70 6f 00 54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e4 b8 81 22 5d
+54 73 70 6f 00 54 e4 b8 81 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 32
+54 73 70 6f 00 54 e4 b8 89 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
+54 73 70 6f 00 54 e4 b8 89 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e4 b8 89 22 5d
+54 73 70 6f 00 54 e4 b8 89 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 33
+54 73 70 6f 00 54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 34
+54 73 70 6f 00 54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 9b 97 22 2c 22 e6 88 88 22 2c 22 e5 8f a3 22 2c 22 e4 b8 80 22 5d
+54 73 70 6f 00 54 e5 9c 8b 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 31 31
+54 73 70 6f 00 54 e5 a4 ab 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
+54 73 70 6f 00 54 e5 a4 ab 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 a4 ab 22 5d
+54 73 70 6f 00 54 e5 a4 ab 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 35
+54 73 70 6f 00 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 32
+54 73 70 6f 00 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 bc 80 22 2c 22 e5 bd a1 22 5d
+54 73 70 6f 00 54 e5 bd a2 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 37
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TspoΔTä¸⊪ΔTcomponentcountΔ                                                    ┊ 1
+TspoΔTä¸⊪ΔTcomponentsΔ                                                        ┊ ["ä¸⊪"]
+TspoΔTä¸⊪ΔTstrokecountΔ                                                       ┊ 2
+TspoΔTä¸⊪ΔTcomponentcountΔ                                                    ┊ 1
+TspoΔTä¸⊪ΔTcomponentsΔ                                                        ┊ ["ä¸⊪"]
+TspoΔTä¸⊪ΔTstrokecountΔ                                                       ┊ 3
+TspoΔTå⊪⊪ΔTcomponentcountΔ                                                    ┊ 4
+TspoΔTå⊪⊪ΔTcomponentsΔ                                                        ┊ ["å⊪⊪","æ⊪⊪","å⊪£","ä¸⊪"]
+TspoΔTå⊪⊪ΔTstrokecountΔ                                                       ┊ 11
+TspoΔTå¤«ΔTcomponentcountΔ                                                    ┊ 1
+TspoΔTå¤«ΔTcomponentsΔ                                                        ┊ ["å¤«"]
+TspoΔTå¤«ΔTstrokecountΔ                                                       ┊ 5
+TspoΔTå½¢ΔTcomponentcountΔ                                                    ┊ 2
+TspoΔTå½¢ΔTcomponentsΔ                                                        ┊ ["å¼⊪","å½≢"]
+TspoΔTå½¢ΔTstrokecountΔ                                                       ┊ 7
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 'spo', '丁', 'componentcount' ]                                              ┊ 1
+[ 'spo', '丁', 'components' ]                                                  ┊ [ '丁' ]
+[ 'spo', '丁', 'strokecount' ]                                                 ┊ 2
+[ 'spo', '三', 'componentcount' ]                                              ┊ 1
+[ 'spo', '三', 'components' ]                                                  ┊ [ '三' ]
+[ 'spo', '三', 'strokecount' ]                                                 ┊ 3
+[ 'spo', '國', 'componentcount' ]                                              ┊ 4
+[ 'spo', '國', 'components' ]                                                  ┊ [ '囗', '戈', '口', '一' ]
+[ 'spo', '國', 'strokecount' ]                                                 ┊ 11
+[ 'spo', '夫', 'componentcount' ]                                              ┊ 1
+[ 'spo', '夫', 'components' ]                                                  ┊ [ '夫' ]
+[ 'spo', '夫', 'strokecount' ]                                                 ┊ 5
+[ 'spo', '形', 'componentcount' ]                                              ┊ 2
+[ 'spo', '形', 'components' ]                                                  ┊ [ '开', '彡' ]
+[ 'spo', '形', 'strokecount' ]                                                 ┊ 7
+```
 
 # XXXXXXX
 

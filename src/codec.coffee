@@ -117,7 +117,7 @@ read_singular = ( buffer, idx ) ->
     when tm_null  then value = null
     when tm_false then value = false
     when tm_true  then value = true
-    else throw new Error "not a variant at index #{idx}"
+    else throw new Error "unable to decode buffer at index #{idx} (#{rpr buffer})"
   return [ idx + bytecount_singular, value, ]
 
 
@@ -264,11 +264,4 @@ write = ( idx, value ) ->
     R.push value
   #.........................................................................................................
   return R
-
-
-
-
-
-
-
 

@@ -62,7 +62,7 @@ CODEC                     = require './codec'
 @_feed_test_data = ( db, probes_idx, handler ) ->
   switch probes_idx
     #-------------------------------------------------------------------------------------------------------
-    when 0
+    when 0, 2
       step ( resume ) =>
         yield HOLLERITH.clear db, resume
         input = D.create_throughstream()
@@ -143,6 +143,25 @@ CODEC                     = require './codec'
   'so|glyph:𪚧|strokeorder:35251525112511511|0'
   'so|glyph:𧑴|strokeorder:352515251214251214|0'
   'so|glyph:劬|strokeorder:3525153|0'
+  ]
+
+#-----------------------------------------------------------------------------------------------------------
+@_feed_test_data.probes.push [
+  [ '丁', 'strokecount',     2,                          ]
+  [ '三', 'strokecount',     3,                          ]
+  [ '夫', 'strokecount',     5,                          ]
+  [ '國', 'strokecount',     11,                         ]
+  [ '形', 'strokecount',     7,                          ]
+  [ '丁', 'componentcount',  1,                          ]
+  [ '三', 'componentcount',  1,                          ]
+  [ '夫', 'componentcount',  1,                          ]
+  [ '國', 'componentcount',  4,                          ]
+  [ '形', 'componentcount',  2,                          ]
+  [ '丁', 'components',      [ '丁', ],                  ]
+  [ '三', 'components',      [ '三', ],                  ]
+  [ '夫', 'components',      [ '夫', ],                  ]
+  [ '國', 'components',      [ '囗', '戈', '口', '一', ], ]
+  [ '形', 'components',      [ '开', '彡', ],             ]
   ]
 
 
@@ -839,6 +858,27 @@ CODEC                     = require './codec'
       matcher = matchers[ probe_idx ]
       T.eq probe, matcher
     leveldb.close -> done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read sample data (1)" ] = ( T, done ) ->
+  probes_idx  = 2
+  idx = -1
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    input = db[ '%self' ].createReadStream()
+    input
+      # .pipe D.$show()
+      .pipe $ ( { key, value, }, send ) => send [ key, value, ]
+      .pipe $ ( [ key, value, ], send ) =>
+        debug '©RluhF', ( HOLLERITH.CODEC.decode key ), ( JSON.parse value )
+        send [ key, value, ]
+      .pipe D.$collect()
+      .pipe $ ( facets, send ) =>
+        # debug '©FtmB4', facets
+        help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
+      .pipe D.$on_end => done()
+  #.........................................................................................................
+  return null
 
 
 #===========================================================================================================
