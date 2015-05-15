@@ -2,6 +2,7 @@
 
 
 - [hollerith](#hollerith)
+- [Theory](#theory)
 	- [What is LevelDB?](#what-is-leveldb)
 	- [The Hollerith2 Codec (H2C)](#the-hollerith2-codec-h2c)
 		- [Performance Considerations](#performance-considerations)
@@ -14,6 +15,7 @@
 		- [X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X](#x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x)
 	- [The Hollerith2 Phrase Structure](#the-hollerith2-phrase-structure)
 		- [SPO and POS](#spo-and-pos)
+- [Practice](#practice)
 - [XXXXXXX](#xxxxxxx)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
@@ -25,6 +27,7 @@
 
 use LevelDB like 1969
 
+# Theory
 
 ## What is LevelDB?
 
@@ -782,112 +785,31 @@ TspoΔTå½¢ΔTstrokecountΔ            ┊ 7
 [ 'spo', '形', 'strokecount' ]     ┊ 7
 ```
 
+# Practice
+
+```
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    prefix    = [ 'pos', 'guide', ]
+    input     = HOLLERITH.create_phrasestream db, prefix, '*'
+    debug '©FphJK', input[ '%meta' ]
+    settings  = { indexed: no, }
+    input
+      .pipe $ ( phrase, send ) =>
+        count  += +1
+        idx    += +1
+        debug '©Sc5FG', phrase
+        # T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end =>
+        T.eq count, matchers.length
+        done()
+```
+
 # XXXXXXX
 
-samples:
-
-```coffee
-gtfs:
-  stoptime:
-    id:               gtfs/stoptime/876
-    stop-id:          gtfs/stop/123
-    trip-id:          gtfs/trip/456
-    ...
-    arr:              15:38
-    dep:              15:38
-
-
-  stop:
-    id:               gtfs/stop/123
-    name:             Bayerischer+Platz
-    ...
-
-  trip:
-    id:               gtfs/trip/456
-    route-id:         gtfs/route/777
-    service-id:       gtfs/service/888
-
-  route:
-    id:               gtfs/route/777
-    name:             U4
-
-$ . | realm / type / idn
-$ : | realm / type / idn | name | value
-$ ^ | realm₀ / type₀ / idn₀|>realm₁ / type₁ / idn₁
-
-
-$:|gtfs/route/777|0|name|U4
-$:|gtfs/stop/123|0|name|Bayerischer+Platz
-$:|gtfs/stoptime/876|0|arr|15%2538
-$:|gtfs/stoptime/876|0|dep|15%2538
-$^|gtfs/stoptime/876|0|gtfs/stop/123
-$^|gtfs/stoptime/876|0|gtfs/trip/456
-$^|gtfs/trip/456|0|gtfs/route/777
-$^|gtfs/trip/456|0|gtfs/service/888
-
-
-  $^|gtfs/stoptime/876|gtfs/trip/456
-+                   $^|gtfs/trip/456|gtfs/route/777
-—————————————————————————————————————————————————————————
-= %^|gtfs/stoptime| 2               |gtfs/route/777|876
-+                                 $:|gtfs/route/777|name|U4
-—————————————————————————————————————————————————————————
-= %:|gtfs/stoptime/876              |gtfs/route/    name|U4
-
-# or
-
-= gtfs/stoptime/876|=gtfs/route|name:U4
-
-# or
-
-= gtfs/stoptime/876|=2>gtfs/route|name:U4|777
-
-
-
-  gtfs/stoptime/876|-1>gtfs/trip/456
-                        gtfs/trip/456|-1>gtfs/service/888
-——————————————————————————————————————————————————————————————————
-= gtfs/stoptime/876|-2>gtfs/service/888
-——————————————————————————————————————————————————————————————————
-
-
-% : | realm / type   | name | value | idn
-% ^ | realm₀ / type₀ | n | realm₁ / type₁ / idn₁ | idn₀
-
-%:|gtfs/route|0|name|U4|777
-%:|gtfs/stoptime|0|arr|15%2538|876
-%:|gtfs/stoptime|0|dep|15%2538|876
-%:|gtfs/stop|0|name|Bayerischer+Platz|123
-%^|gtfs/stoptime|0|gtfs/stop/123|876
-%^|gtfs/stoptime|0|gtfs/trip/456|876
-%^|gtfs/stoptime|1|gtfs/route/777|876
-%^|gtfs/stoptime|1|gtfs/service/888|876
-%^|gtfs/trip|0|gtfs/route/777|456
-%^|gtfs/trip|0|gtfs/service/888|456
-
-
-realm
-type
-name
-value
-idn
-
-joiner      |
-%
-escape_chr
-=
->
-:
-^
-```
 
 ```
-
-
-phrasetype  | subject       | object            | index
-pt          | label: theme  | predicate: value  | idx
-
-###
 
 so|glyph:字|gloss:letter, character, word|o:0
 ·········●●●··································
@@ -900,7 +822,6 @@ so|glyph:字|gloss:letter, character, word|o:0
 ●●·●·●···●●●·●·●●●··●··●···●·●·●●·●···●●···●··
 
 
-so|glyph:字|gloss:letter, character, word|o:0
 
 phrasetype  | subject         | object                  | index
             | theme : topic   | predicate : complement  | idx [ , idx ... ]
@@ -908,9 +829,6 @@ pt          | sk    : sv      | ok        : ov          | idx [ , idx ... ]
 
              conjunct
                                             adjunct
-
-###
-
 
 ```
 
@@ -954,73 +872,6 @@ os|guide/lineup/length:5|"𧷟"|
 	                      										 [spo|"八"|factor/strokeclass/wbf]="34"
 	                      										     [spo|"刀"|factor/strokeclass/wbf]="53"
 	                      										          [spo|"宀"|factor/strokeclass/wbf]=...
-
-
-###############################################
-
-
-key                                      	value
-
-....................................................
-# Primary Entries
-
-spo|"𧷟"|guide/lineup/length|            	5
-spo|"𧷟"|cp/cid|                         	163295
-spo|"𧷟"|guide/uchr/has|                 	["八","刀","宀","","貝"]
-spo|"𧷟"|rank/cjt|												5432
-spo|"八"|factor/strokeclass/wbf|					 "34"
-
-....................................................
-#	Secondary Entries
-
-pos|cp/cid:163295|"𧷟"|
-pos|factor/strokeclass/wbf:"34"|"八"|
-pos|guide/lineup/length:5|"𧷟"|
-pos|guide/uchr/has:"八"|"𧷟"|0
-pos|guide/uchr/has:"刀"|"𧷟"|1
-pos|guide/uchr/has:"宀"|"𧷟"|2
-pos|guide/uchr/has:""|"𧷟"|3
-pos|guide/uchr/has:"貝"|"𧷟"|4
-pos|rank/cjt:5432|"𧷟"|
-
-###############################################
-
-[ '𧷟', 'guide/lineup/length', 5,                                    ]
-[ '𧷟', 'cp/cid',              163295,                               ]
-[ '𧷟', 'guide/uchr/has',      [ '八', '刀', '宀', '', '貝', ],      ]
-
-
-
-
-###############################################
-X os|cp/cid:163295|𧷟
-X os|guide/lineup/length:5|𧷟
-ops|"八"|guide/uchr/has|"𧷟"|0
-ops|"刀"|guide/uchr/has|"𧷟"|1
-ops|"宀"|guide/uchr/has|"𧷟"|2
-ops|""|guide/uchr/has|"𧷟"|3
-ops|"貝"|guide/uchr/has|"𧷟"|4
-osp|"八"|"𧷟"|guide/uchr/has|0
-osp|"刀"|"𧷟"|guide/uchr/has|1
-osp|"宀"|"𧷟"|guide/uchr/has|2
-osp|""|"𧷟"|guide/uchr/has|3
-osp|"貝"|"𧷟"|guide/uchr/has|4
-
-
-
-###############################################
-set  		db,     s, p, o, [idx]
-_set 		db, pt, s, p, o, [idx]
-
-push  	db,     s, p, o
-
-get 		db, 		s, [idx]
-_get 		db,
-
-
-
-
-
 
 
 
