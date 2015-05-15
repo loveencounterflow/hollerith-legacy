@@ -661,7 +661,7 @@ encoding:
 
 
 ```
-key                                                              value
+key                                                                             value
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 54 73 70 6f 00 54 e4 b8 81 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 32
 54 73 70 6f 00 54 e4 b8 89 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 33
@@ -679,21 +679,21 @@ key                                                              value
 54 73 70 6f 00 54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 9b 97 22 2c 22 e6 88 88 22 2c 22 e5 8f a3 22 2c 22 e4 b8 80 22 5d
 54 73 70 6f 00 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 bc 80 22 2c 22 e5 bd a1 22 5d
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TspoTä¸∃ΔTstrokecountΔ                                             ┊ 2
-TspoTä¸∃ΔTstrokecountΔ                                             ┊ 3
-TspoTå¤«ΔTstrokecountΔ                                             ┊ 5
-TspoTå∃∃ΔTstrokecountΔ                                             ┊ 11
-TspoTå½¢ΔTstrokecountΔ                                             ┊ 7
-TspoTä¸∃ΔTcomponentcountΔ                                          ┊ 1
-TspoTä¸∃ΔTcomponentcountΔ                                          ┊ 1
-TspoTå¤«ΔTcomponentcountΔ                                          ┊ 1
-TspoTå∃∃ΔTcomponentcountΔ                                          ┊ 4
-TspoTå½¢ΔTcomponentcountΔ                                          ┊ 2
-TspoTä¸∃ΔTcomponentsΔ                                              ┊ ["ä¸∃"]
-TspoTä¸∃ΔTcomponentsΔ                                              ┊ ["ä¸∃"]
-TspoTå¤«ΔTcomponentsΔ                                              ┊ ["å¤«"]
-TspoTå∃∃ΔTcomponentsΔ                                              ┊ ["å∃∃","æ∃∃","å∃£","ä¸∃"]
-TspoTå½¢ΔTcomponentsΔ                                              ┊ ["å¼∃","å½≢"]
+TspoTä¸∃ΔTstrokecountΔ     ┊ 2
+TspoTä¸∃ΔTstrokecountΔ     ┊ 3
+TspoTå¤«ΔTstrokecountΔ     ┊ 5
+TspoTå∃∃ΔTstrokecountΔ     ┊ 11
+TspoTå½¢ΔTstrokecountΔ     ┊ 7
+TspoTä¸∃ΔTcomponentcountΔ  ┊ 1
+TspoTä¸∃ΔTcomponentcountΔ  ┊ 1
+TspoTå¤«ΔTcomponentcountΔ  ┊ 1
+TspoTå∃∃ΔTcomponentcountΔ  ┊ 4
+TspoTå½¢ΔTcomponentcountΔ  ┊ 2
+TspoTä¸∃ΔTcomponentsΔ      ┊ ["ä¸∃"]
+TspoTä¸∃ΔTcomponentsΔ      ┊ ["ä¸∃"]
+TspoTå¤«ΔTcomponentsΔ      ┊ ["å¤«"]
+TspoTå∃∃ΔTcomponentsΔ      ┊ ["å∃∃","æ∃∃","å∃£","ä¸∃"]
+TspoTå½¢ΔTcomponentsΔ      ┊ ["å¼∃","å½≢"]
 ```
 
 We can see at a glance that while this is how Hollerith *encodes* data, it isn't
@@ -720,37 +720,37 @@ key                                                              value
 54 73 70 6f 00 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 bc 80 22 2c 22 e5 bd a1 22 5d
 54 73 70 6f 00 54 e5 bd a2 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 37
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TspoΔTä¸⊪ΔTcomponentcountΔ                                                    ┊ 1
-TspoΔTä¸⊪ΔTcomponentsΔ                                                        ┊ ["ä¸⊪"]
-TspoΔTä¸⊪ΔTstrokecountΔ                                                       ┊ 2
-TspoΔTä¸⊪ΔTcomponentcountΔ                                                    ┊ 1
-TspoΔTä¸⊪ΔTcomponentsΔ                                                        ┊ ["ä¸⊪"]
-TspoΔTä¸⊪ΔTstrokecountΔ                                                       ┊ 3
-TspoΔTå⊪⊪ΔTcomponentcountΔ                                                    ┊ 4
-TspoΔTå⊪⊪ΔTcomponentsΔ                                                        ┊ ["å⊪⊪","æ⊪⊪","å⊪£","ä¸⊪"]
-TspoΔTå⊪⊪ΔTstrokecountΔ                                                       ┊ 11
-TspoΔTå¤«ΔTcomponentcountΔ                                                    ┊ 1
-TspoΔTå¤«ΔTcomponentsΔ                                                        ┊ ["å¤«"]
-TspoΔTå¤«ΔTstrokecountΔ                                                       ┊ 5
-TspoΔTå½¢ΔTcomponentcountΔ                                                    ┊ 2
-TspoΔTå½¢ΔTcomponentsΔ                                                        ┊ ["å¼⊪","å½≢"]
-TspoΔTå½¢ΔTstrokecountΔ                                                       ┊ 7
+TspoΔTä¸⊪ΔTcomponentcountΔ         ┊ 1
+TspoΔTä¸⊪ΔTcomponentsΔ             ┊ ["ä¸⊪"]
+TspoΔTä¸⊪ΔTstrokecountΔ            ┊ 2
+TspoΔTä¸⊪ΔTcomponentcountΔ         ┊ 1
+TspoΔTä¸⊪ΔTcomponentsΔ             ┊ ["ä¸⊪"]
+TspoΔTä¸⊪ΔTstrokecountΔ            ┊ 3
+TspoΔTå⊪⊪ΔTcomponentcountΔ         ┊ 4
+TspoΔTå⊪⊪ΔTcomponentsΔ             ┊ ["å⊪⊪","æ⊪⊪","å⊪£","ä¸⊪"]
+TspoΔTå⊪⊪ΔTstrokecountΔ            ┊ 11
+TspoΔTå¤«ΔTcomponentcountΔ         ┊ 1
+TspoΔTå¤«ΔTcomponentsΔ             ┊ ["å¤«"]
+TspoΔTå¤«ΔTstrokecountΔ            ┊ 5
+TspoΔTå½¢ΔTcomponentcountΔ         ┊ 2
+TspoΔTå½¢ΔTcomponentsΔ             ┊ ["å¼⊪","å½≢"]
+TspoΔTå½¢ΔTstrokecountΔ            ┊ 7
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[ 'spo', '丁', 'componentcount' ]                                              ┊ 1
-[ 'spo', '丁', 'components' ]                                                  ┊ [ '丁' ]
-[ 'spo', '丁', 'strokecount' ]                                                 ┊ 2
-[ 'spo', '三', 'componentcount' ]                                              ┊ 1
-[ 'spo', '三', 'components' ]                                                  ┊ [ '三' ]
-[ 'spo', '三', 'strokecount' ]                                                 ┊ 3
-[ 'spo', '國', 'componentcount' ]                                              ┊ 4
-[ 'spo', '國', 'components' ]                                                  ┊ [ '囗', '戈', '口', '一' ]
-[ 'spo', '國', 'strokecount' ]                                                 ┊ 11
-[ 'spo', '夫', 'componentcount' ]                                              ┊ 1
-[ 'spo', '夫', 'components' ]                                                  ┊ [ '夫' ]
-[ 'spo', '夫', 'strokecount' ]                                                 ┊ 5
-[ 'spo', '形', 'componentcount' ]                                              ┊ 2
-[ 'spo', '形', 'components' ]                                                  ┊ [ '开', '彡' ]
-[ 'spo', '形', 'strokecount' ]                                                 ┊ 7
+[ 'spo', '丁', 'componentcount' ]  ┊ 1
+[ 'spo', '丁', 'components' ]      ┊ [ '丁' ]
+[ 'spo', '丁', 'strokecount' ]     ┊ 2
+[ 'spo', '三', 'componentcount' ]  ┊ 1
+[ 'spo', '三', 'components' ]      ┊ [ '三' ]
+[ 'spo', '三', 'strokecount' ]     ┊ 3
+[ 'spo', '國', 'componentcount' ]  ┊ 4
+[ 'spo', '國', 'components' ]      ┊ [ '囗', '戈', '口', '一' ]
+[ 'spo', '國', 'strokecount' ]     ┊ 11
+[ 'spo', '夫', 'componentcount' ]  ┊ 1
+[ 'spo', '夫', 'components' ]      ┊ [ '夫' ]
+[ 'spo', '夫', 'strokecount' ]     ┊ 5
+[ 'spo', '形', 'componentcount' ]  ┊ 2
+[ 'spo', '形', 'components' ]      ┊ [ '开', '彡' ]
+[ 'spo', '形', 'strokecount' ]     ┊ 7
 ```
 
 # XXXXXXX
