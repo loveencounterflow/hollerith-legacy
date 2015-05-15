@@ -16,6 +16,13 @@
 	- [The Hollerith2 Phrase Structure](#the-hollerith2-phrase-structure)
 		- [SPO and POS](#spo-and-pos)
 - [Practice](#practice)
+	- [Inserting Data](#inserting-data)
+	- [Indexing Data](#indexing-data)
+	- [Deleting Data](#deleting-data)
+	- [Reading Data](#reading-data)
+		- [@create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->](#@create_phrasestream-=--db-lo_hint-=-null-hi_hint-=-null--->)
+		- [@create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->](#@create_facetstream-=--db-lo_hint-=-null-hi_hint-=-null--->)
+		- [@read_sub = ( db, settings, read ) ->](#@read_sub-=--db-settings-read--->)
 - [XXXXXXX](#xxxxxxx)
 
 > **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
@@ -25,7 +32,9 @@
 
 [![Build Status](https://travis-ci.org/loveencounterflow/hollerith2.png)](https://travis-ci.org/loveencounterflow/hollerith2)
 
-use LevelDB like 1969
+> Use LevelDB like 1960s punched cards
+
+
 
 # Theory
 
@@ -787,6 +796,8 @@ TspoΔTå½¢ΔTstrokecountΔ            ┊ 7
 
 # Practice
 
+## Inserting Data
+
 ```
   #.........................................................................................................
   step ( resume ) =>
@@ -805,6 +816,14 @@ TspoΔTå½¢ΔTstrokecountΔ            ┊ 7
         T.eq count, matchers.length
         done()
 ```
+
+## Indexing Data
+## Deleting Data
+## Reading Data
+### @create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->
+### @create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
+### @read_sub = ( db, settings, read ) ->
+
 
 # XXXXXXX
 
