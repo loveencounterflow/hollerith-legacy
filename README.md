@@ -482,8 +482,10 @@ insertion:
 [ '形', 'components',      [ '开', '彡', ],             ]
 ```
 
-Hollerith will then do a couple things: first, it will split apart the
-Object, turning each primary phrase into a key / value pair (a 'facet'):
+Hollerith will then do a couple things: first, it will split each phrase into a
+key and a value part, with the keys comprising both the subject and the
+predicate of each phrase while the objects become the values of the key / value
+pairs (a.k.a. 'facets'):
 
 ```
 key                             value
