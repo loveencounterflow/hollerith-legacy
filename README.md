@@ -482,42 +482,59 @@ insertion:
 [ '形', 'components',      [ '开', '彡', ],             ]
 ```
 
-Hollerith will then do two things: first, it will split apart the
+Hollerith will then do a couple things: first, it will split apart the
 Object, turning each primary phrase into a key / value pair (a 'facet'):
 
 ```
-key                                                               value
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[ '丁', 'strokecount',    ]                                    ┊  2
-[ '三', 'strokecount',    ]                                    ┊  3
-[ '夫', 'strokecount',    ]                                    ┊  5
-[ '國', 'strokecount',    ]                                    ┊  11
-[ '形', 'strokecount',    ]                                    ┊  7
-[ '丁', 'componentcount', ]                                    ┊  1
-[ '三', 'componentcount', ]                                    ┊  1
-[ '夫', 'componentcount', ]                                    ┊  1
-[ '國', 'componentcount', ]                                    ┊  4
-[ '形', 'componentcount', ]                                    ┊  2
-[ '丁', 'components',     ]                                    ┊  [ '丁', ]
-[ '三', 'components',     ]                                    ┊  [ '三', ]
-[ '夫', 'components',     ]                                    ┊  [ '夫', ]
-[ '國', 'components',     ]                                    ┊  [ '囗', '戈', '口', '一', ]
-[ '形', 'components',     ]                                    ┊  [ '开', '彡', ]
+key                             value
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ '丁', 'strokecount',    ]  ┊  2
+[ '三', 'strokecount',    ]  ┊  3
+[ '夫', 'strokecount',    ]  ┊  5
+[ '國', 'strokecount',    ]  ┊  11
+[ '形', 'strokecount',    ]  ┊  7
+[ '丁', 'componentcount', ]  ┊  1
+[ '三', 'componentcount', ]  ┊  1
+[ '夫', 'componentcount', ]  ┊  1
+[ '國', 'componentcount', ]  ┊  4
+[ '形', 'componentcount', ]  ┊  2
+[ '丁', 'components',     ]  ┊  [ '丁', ]
+[ '三', 'components',     ]  ┊  [ '三', ]
+[ '夫', 'components',     ]  ┊  [ '夫', ]
+[ '國', 'components',     ]  ┊  [ '囗', '戈', '口', '一', ]
+[ '形', 'components',     ]  ┊  [ '开', '彡', ]
 ```
 
-The key is then encoded using the H2C codec, the value using `JSON.stringify`.
-This results in two buffers per entry, which are written to the store just as if
-you had called `db = level 'route/to/db'; db.put key, value` directly.
+Next, a so-called phrasetype marker is prepended to each key. As there are
+primary and secondary phrases in Hollerith, there are two matching phrasetype
+markers as well, `'spo'` (for Subject—Predicate—Object) and `'pos'` (for
+Predicate—Object—Subject). We will first confine ourselves to the primary type
+marked `'spo'`, and this is what they look like now:
 
-The result of this step is somewhat hard to visualize in a readable manner—we
-can either list the value of all the bytes in hexadecimal, or try to print out
-the buffers as strings. Unfortunately, it turns out that for [historical
-reasons](http://en.wikipedia.org/wiki/ASCII), many Unicode code positions in the
-range `[ 0x00 .. 0xff ]` do not define 'printable' but rather 'control'
-characters such as newlines, tabulators and what not, and actually, the code
-points in the range `[ 0x80 .. 0x9f ]` do not even have specified jobs—they're
-defined as 'generic control' characters that are, in practice, nothing but
-unusable gaps in the code table.
+```
+key                                   value
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 'spo', '丁', 'strokecount',    ] ┊  2
+[ 'spo', '三', 'strokecount',    ] ┊  3
+[ 'spo', '夫', 'strokecount',    ] ┊  5
+...
+```
+
+At this point the keys are encoded using the H2C codec, and the values with what
+comes down to `new Buffer ( JSON.stringify value ), 'utf-8'`, that is, the
+result of `JSON.stringify` encoded in UTF-8. We are left with two buffers per
+entry, which are written to the store just as if you had called `db = level
+'route/to/db'; db.put key, value` directly.
+
+The buffers that we obtained in the previous step are somewhat hard to visualize
+in a readable manner—we can either list the value of all the bytes in
+hexadecimal, or try to print out the buffers as strings. Unfortunately, it turns
+out that for [historical reasons](http://en.wikipedia.org/wiki/ASCII), many
+Unicode code positions in the range `[ 0x00 .. 0xff ]` do not define 'printable'
+but rather 'control' characters such as newlines, tabulators and what not, and
+actually, the code points in the range `[ 0x80 .. 0x9f ]` do not even have
+specified jobs—they're defined as 'generic control' characters that are, in
+practice, nothing but unusable gaps in the code table.
 
 When a text is encoded as UTF-8—which is basically what H2C and JSON do—then
 only characters between `0x00` and `0x7f` are preserved in a one-to-one fashion;
