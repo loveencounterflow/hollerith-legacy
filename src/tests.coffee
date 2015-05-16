@@ -859,7 +859,7 @@ CODEC                     = require './codec'
     leveldb.close -> done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "read sample data (1)" ] = ( T, done ) ->
+@[ "read sample data" ] = ( T, done ) ->
   probes_idx  = 2
   idx = -1
   step ( resume ) =>
@@ -875,6 +875,7 @@ CODEC                     = require './codec'
       .pipe $ ( facets, send ) =>
         # debug '©FtmB4', facets
         help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
+        debug '©GJfL6', facets
       .pipe D.$on_end => done()
   #.........................................................................................................
   return null
