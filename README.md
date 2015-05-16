@@ -480,26 +480,27 @@ printable Unicode codepoints in the range `[ 0x00 .. 0xff ]` and adds a few
 symbolic printable characters to make the output more readily interpretable. In
 detail:
 
-* `Δ` (`0x00`) symbolizes the important zero byte;
+* `∇` (`0x00`) symbolizes the zero byte;
 * `≡` (`0x01 .. 0x1f`) symbolizes all 'unprintable' control characters;
 * `␣` (`0x20`) symbolizes the space character;
 * `∃` (`0x08 .. 0x9f`) symbolizes code points that occur as follow-up bytes
-  in UTF-8 byte sequences that do not have
-* `≢` (`0xa0`, `0xa1`, `0xf3 .. 0xfe`)
-* `∇` (`0xff`)
+  in UTF-8 byte sequences which do not have an printable representation in Unicode;
+* `≢` (`0xa0`, `0xa1`, `0xf3 .. 0xfe`) symbolizes code points that can not occur
+  in a weel-formed UTF-8 byte sequence;
+* `Δ` (`0xff`) symbolizes the highest byte.
 
 Thus, our code table looks like this:
 
 ```
      0123456789abcdef 0123456789abcdef
-0x00 Δ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡ ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡ 0x10
+0x00 ∇≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡ ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡ 0x10
 0x20 ␣!"#$%&'()*+,-./ 0123456789:;<=>? 0x30
 0x40 @ABCDEFGHIJKLMNO PQRSTUVWXYZ[\]^_ 0x50
 0x60 `abcdefghijklmno pqrstuvwxyz{|}~≡ 0x70
 0x80 ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃ ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃ 0x90
 0xa0 ≢≢¢£¤¥¦§¨©ª«¬Я®¯ °±²³´µ¶·¸¹º»¼½¾¿ 0xb0
 0xc0 ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ ÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß 0xd0
-0xe0 àáâãäåæçèéêëìíîï ðñò≢≢≢≢≢≢≢≢≢≢≢≢∇ 0xf0
+0xe0 àáâãäåæçèéêëìíîï ðñò≢≢≢≢≢≢≢≢≢≢≢≢Δ 0xf0
 ```
 
 Let's try out this encoding so we learn how to interpret the below
@@ -523,13 +524,13 @@ to encode `'一x丁x丂'` are rendered as `ä¸⊪xä¸⊪xä¸⊪`, where `⊪`
 
 Now let's take a look at the H2C encoding: Calling `HOLLERITH.CODEC.encode [
 'abc', 'def', ]` gives us `<Buffer 54 61 62 63 00 54 64 65 66 00>`, which may be
-rendered as `TabcΔTdefΔ`. The `T`s indicate the start of strings, while the
-`Δ`s—which symbolize `0x00` bytes—signal the end of strings; hence, our input
-value contined two strings, encoded as `T...ΔT...Δ`. Using `[ 'xxx', 42, ]` as
+rendered as `Tabc∇Tdef∇`. The `T`s indicate the start of strings, while the
+`∇`s—which symbolize `0x00` bytes—signal the end of strings; hence, our input
+value contined two strings, encoded as `T...∇T...∇`. Using `[ 'xxx', 42, ]` as
 input, we get `<Buffer 54 78 78 78 00 4c 40 45 00 00 00 00 00 00>`, which is
-visualized as `TxxxΔL@EΔΔΔΔΔΔ`. Here, `...ΔL...` shows the end of a string as
-`Δ` and the start of a positive finite number as `L`; the ensuing eight bytes
-`@EΔΔΔΔΔΔ` (which are mostly zero) encode the numerical value of `42` according
+visualized as `Txxx∇L@E∇∇∇∇∇∇`. Here, `...∇L...` shows the end of a string as
+`∇` and the start of a positive finite number as `L`; the ensuing eight bytes
+`@E∇∇∇∇∇∇` (which are mostly zero) encode the numerical value of `42` according
 to IEEE-754. FInally, `[ true, -1 / 7, ]` is encoded as `<Buffer 44 4b c0 3d b6
 db 6d b6 db 6d>`, which corresponds to `DKÀ=¶Ûm¶Ûm` (`D` encodes `true`, and `K`
 signals a negative finite number).
@@ -731,21 +732,21 @@ key                                                                             
 54 73 70 6f 00 54 e5 9c 8b 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 9b 97 22 2c 22 e6 88 88 22 2c 22 e5 8f a3 22 2c 22 e4 b8 80 22 5d
 54 73 70 6f 00 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 bc 80 22 2c 22 e5 bd a1 22 5d
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TspoTä¸∃ΔTstrokecountΔ     ┊ 2
-TspoTä¸∃ΔTstrokecountΔ     ┊ 3
-TspoTå¤«ΔTstrokecountΔ     ┊ 5
-TspoTå∃∃ΔTstrokecountΔ     ┊ 11
-TspoTå½¢ΔTstrokecountΔ     ┊ 7
-TspoTä¸∃ΔTcomponentcountΔ  ┊ 1
-TspoTä¸∃ΔTcomponentcountΔ  ┊ 1
-TspoTå¤«ΔTcomponentcountΔ  ┊ 1
-TspoTå∃∃ΔTcomponentcountΔ  ┊ 4
-TspoTå½¢ΔTcomponentcountΔ  ┊ 2
-TspoTä¸∃ΔTcomponentsΔ      ┊ ["ä¸∃"]
-TspoTä¸∃ΔTcomponentsΔ      ┊ ["ä¸∃"]
-TspoTå¤«ΔTcomponentsΔ      ┊ ["å¤«"]
-TspoTå∃∃ΔTcomponentsΔ      ┊ ["å∃∃","æ∃∃","å∃£","ä¸∃"]
-TspoTå½¢ΔTcomponentsΔ      ┊ ["å¼∃","å½≢"]
+TspoTä¸∃∇Tstrokecount∇     ┊ 2
+TspoTä¸∃∇Tstrokecount∇     ┊ 3
+TspoTå¤«∇Tstrokecount∇     ┊ 5
+TspoTå∃∃∇Tstrokecount∇     ┊ 11
+TspoTå½¢∇Tstrokecount∇     ┊ 7
+TspoTä¸∃∇Tcomponentcount∇  ┊ 1
+TspoTä¸∃∇Tcomponentcount∇  ┊ 1
+TspoTå¤«∇Tcomponentcount∇  ┊ 1
+TspoTå∃∃∇Tcomponentcount∇  ┊ 4
+TspoTå½¢∇Tcomponentcount∇  ┊ 2
+TspoTä¸∃∇Tcomponents∇      ┊ ["ä¸∃"]
+TspoTä¸∃∇Tcomponents∇      ┊ ["ä¸∃"]
+TspoTå¤«∇Tcomponents∇      ┊ ["å¤«"]
+TspoTå∃∃∇Tcomponents∇      ┊ ["å∃∃","æ∃∃","å∃£","ä¸∃"]
+TspoTå½¢∇Tcomponents∇      ┊ ["å¼∃","å½≢"]
 ```
 
 We can see at a glance that while this is how Hollerith *encodes* data, it isn't
@@ -772,21 +773,21 @@ key                                                              value
 54 73 70 6f 00 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 bc 80 22 2c 22 e5 bd a1 22 5d
 54 73 70 6f 00 54 e5 bd a2 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 37
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TspoΔTä¸⊪ΔTcomponentcountΔ         ┊ 1
-TspoΔTä¸⊪ΔTcomponentsΔ             ┊ ["ä¸⊪"]
-TspoΔTä¸⊪ΔTstrokecountΔ            ┊ 2
-TspoΔTä¸⊪ΔTcomponentcountΔ         ┊ 1
-TspoΔTä¸⊪ΔTcomponentsΔ             ┊ ["ä¸⊪"]
-TspoΔTä¸⊪ΔTstrokecountΔ            ┊ 3
-TspoΔTå⊪⊪ΔTcomponentcountΔ         ┊ 4
-TspoΔTå⊪⊪ΔTcomponentsΔ             ┊ ["å⊪⊪","æ⊪⊪","å⊪£","ä¸⊪"]
-TspoΔTå⊪⊪ΔTstrokecountΔ            ┊ 11
-TspoΔTå¤«ΔTcomponentcountΔ         ┊ 1
-TspoΔTå¤«ΔTcomponentsΔ             ┊ ["å¤«"]
-TspoΔTå¤«ΔTstrokecountΔ            ┊ 5
-TspoΔTå½¢ΔTcomponentcountΔ         ┊ 2
-TspoΔTå½¢ΔTcomponentsΔ             ┊ ["å¼⊪","å½≢"]
-TspoΔTå½¢ΔTstrokecountΔ            ┊ 7
+Tspo∇Tä¸⊪∇Tcomponentcount∇         ┊ 1
+Tspo∇Tä¸⊪∇Tcomponents∇             ┊ ["ä¸⊪"]
+Tspo∇Tä¸⊪∇Tstrokecount∇            ┊ 2
+Tspo∇Tä¸⊪∇Tcomponentcount∇         ┊ 1
+Tspo∇Tä¸⊪∇Tcomponents∇             ┊ ["ä¸⊪"]
+Tspo∇Tä¸⊪∇Tstrokecount∇            ┊ 3
+Tspo∇Tå⊪⊪∇Tcomponentcount∇         ┊ 4
+Tspo∇Tå⊪⊪∇Tcomponents∇             ┊ ["å⊪⊪","æ⊪⊪","å⊪£","ä¸⊪"]
+Tspo∇Tå⊪⊪∇Tstrokecount∇            ┊ 11
+Tspo∇Tå¤«∇Tcomponentcount∇         ┊ 1
+Tspo∇Tå¤«∇Tcomponents∇             ┊ ["å¤«"]
+Tspo∇Tå¤«∇Tstrokecount∇            ┊ 5
+Tspo∇Tå½¢∇Tcomponentcount∇         ┊ 2
+Tspo∇Tå½¢∇Tcomponents∇             ┊ ["å¼⊪","å½≢"]
+Tspo∇Tå½¢∇Tstrokecount∇            ┊ 7
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [ 'spo', '丁', 'componentcount' ]  ┊ 1
 [ 'spo', '丁', 'components' ]      ┊ [ '丁' ]

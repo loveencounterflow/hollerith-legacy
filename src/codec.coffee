@@ -2,39 +2,10 @@
 
 
 ############################################################################################################
-njs_path                  = require 'path'
-# njs_fs                    = require 'fs'
-join                      = njs_path.join
-#...........................................................................................................
 CND                       = require 'cnd'
 rpr                       = CND.rpr
 badge                     = 'HOLLERITH/CODEC'
-log                       = CND.get_logger 'plain',     badge
-info                      = CND.get_logger 'info',      badge
-whisper                   = CND.get_logger 'whisper',   badge
-alert                     = CND.get_logger 'alert',     badge
 debug                     = CND.get_logger 'debug',     badge
-warn                      = CND.get_logger 'warn',      badge
-help                      = CND.get_logger 'help',      badge
-urge                      = CND.get_logger 'urge',      badge
-echo                      = CND.echo.bind CND
-#...........................................................................................................
-suspend                   = require 'coffeenode-suspend'
-step                      = suspend.step
-after                     = suspend.after
-eventually                = suspend.eventually
-immediately               = suspend.immediately
-repeat_immediately        = suspend.repeat_immediately
-every                     = suspend.every
-#...........................................................................................................
-# BYTEWISE                  = require 'bytewise'
-# through                   = require 'through2'
-# LevelBatch                = require 'level-batch-stream'
-# BatchStream               = require 'batch-stream'
-# parallel                  = require 'concurrent-writable'
-D                         = require 'pipedreams2'
-$                         = D.remit.bind D
-#...........................................................................................................
 
 
 #-----------------------------------------------------------------------------------------------------------
@@ -55,6 +26,7 @@ tm_lo               = @[ 'typemarkers'  ][ 'lo'         ] = 0x00
 tm_null             = @[ 'typemarkers'  ][ 'null'       ] = 'B'.codePointAt 0
 tm_false            = @[ 'typemarkers'  ][ 'false'      ] = 'C'.codePointAt 0
 tm_true             = @[ 'typemarkers'  ][ 'true'       ] = 'D'.codePointAt 0
+tm_list             = @[ 'typemarkers'  ][ 'list'       ] = 'E'.codePointAt 0
 tm_date             = @[ 'typemarkers'  ][ 'date'       ] = 'G'.codePointAt 0
 tm_ninfinity        = @[ 'typemarkers'  ][ 'ninfinity'  ] = 'J'.codePointAt 0
 tm_nnumber          = @[ 'typemarkers'  ][ 'nnumber'    ] = 'K'.codePointAt 0
@@ -117,7 +89,7 @@ read_singular = ( buffer, idx ) ->
     when tm_null  then value = null
     when tm_false then value = false
     when tm_true  then value = true
-    else throw new Error "unable to decode buffer at index #{idx} (#{rpr buffer})"
+    else throw new Error "unable to decode 0x#{typemarker.toString 16} at index #{idx} (#{rpr buffer})"
   return [ idx + bytecount_singular, value, ]
 
 
@@ -179,7 +151,7 @@ read_date = ( buffer, idx ) ->
 
 
 #===========================================================================================================
-# TEXT
+# TEXTS
 #-----------------------------------------------------------------------------------------------------------
 write_text = ( idx, text ) ->
   text                              = text.replace /\x01/g, '\x01\x02'
@@ -207,6 +179,11 @@ read_text = ( buffer, idx ) ->
 
 
 #===========================================================================================================
+# LISTS
+#-----------------------------------------------------------------------------------------------------------
+
+
+#===========================================================================================================
 #
 #-----------------------------------------------------------------------------------------------------------
 write = ( idx, value ) ->
@@ -220,21 +197,12 @@ write = ( idx, value ) ->
 
 
 #===========================================================================================================
-#
+# PUBLIC API
 #-----------------------------------------------------------------------------------------------------------
-@encode = ( value, extra_byte ) ->
-  throw new Error "expected a list, got a #{type}" unless ( type = CND.type_of value ) is 'list'
-  idx = 0
-  for element in value
-    loop
-      try
-        idx = write idx, element
-        break
-      catch error
-        unless error is buffer_too_short_error
-          warn "detected problem with value #{rpr value}"
-          throw error
-        grow_rbuffer()
+@encode = ( key, extra_byte ) ->
+  rbuffer.fill 0x99
+  throw new Error "expected a list, got a #{type}" unless ( type = CND.type_of key ) is 'list'
+  idx = _encode key, 0, true
   #.........................................................................................................
   if extra_byte?
     rbuffer[ idx ]  = extra_byte
@@ -247,13 +215,41 @@ write = ( idx, value ) ->
   return R
 
 #-----------------------------------------------------------------------------------------------------------
+_encode = ( key, idx, is_top_level ) ->
+  last_element_idx = key.length - 1
+  for element, element_idx in key
+    loop
+      try
+        if CND.isa_list element
+          unless is_top_level and element_idx is last_element_idx
+            throw new Error "unable to write a list in non-final position"
+          rbuffer[ idx ]  = tm_list
+          idx            += +1
+          for sub_element in element
+            idx = _encode [ sub_element, ], idx, false
+        else
+          idx = write idx, element
+        break
+      catch error
+        unless error is buffer_too_short_error
+          warn "detected problem with key #{rpr key}"
+          throw error
+        grow_rbuffer()
+  #.........................................................................................................
+  return idx
+
+#-----------------------------------------------------------------------------------------------------------
 @decode = ( buffer ) ->
+  return ( _decode buffer, 0 )[ 1 ]
+
+#-----------------------------------------------------------------------------------------------------------
+_decode = ( buffer, idx ) ->
   R         = []
-  idx       = 0
   last_idx  = buffer.length - 1
   loop
     break if idx > last_idx
     switch type = buffer[ idx ]
+      when tm_list       then [ idx, value, ] = _decode         buffer, idx + 1
       when tm_text       then [ idx, value, ] = read_text       buffer, idx
       when tm_nnumber    then [ idx, value, ] = read_nnumber    buffer, idx
       when tm_ninfinity  then [ idx, value, ] = [ idx + 1, -Infinity, ]
@@ -263,5 +259,11 @@ write = ( idx, value ) ->
       else                    [ idx, value, ] = read_singular   buffer, idx
     R.push value
   #.........................................................................................................
-  return R
+  return [ idx, R ]
+
+
+
+
+
+
 
