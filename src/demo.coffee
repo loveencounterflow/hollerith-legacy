@@ -190,7 +190,7 @@ HOLLERITH.$pick_values = ->
   lte         = @_lte_from_gte gte
   input       = source_db[ '%self' ].createKeyStream { gte, lte, }
   batch_size  = 10000
-  output      = HOLLERITH.$write target_db, batch_size
+  output      = HOLLERITH.$write target_db, { batch: batch_size, }
   #.........................................................................................................
   input
     .pipe D.$count ( count ) -> help "read #{count} keys"

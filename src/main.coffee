@@ -90,7 +90,7 @@ LODASH                    = require 'lodash'
 #===========================================================================================================
 # WRITING
 #-----------------------------------------------------------------------------------------------------------
-@$write = ( db, buffer_size = 1000 ) ->
+@$write = ( db, settings ) ->
   ### Expects a Hollerith DB object and an optional buffer size; returns a stream transformer that does all
   of the following:
 
@@ -107,12 +107,16 @@ LODASH                    = require 'lodash'
 
   ###
   #.........................................................................................................
+  settings       ?= {}
+  buffer_size     = settings[ 'batch' ] ? 10000
+  # analyze_object  = settings[ 'analyze-object' ] = yes
+  buffer          = []
+  substrate       = db[ '%self' ]
+  batch_count     = 0
+  has_ended       = no
+  _send           = null
+  #.........................................................................................................
   throw new Error "buffer size must be positive integer, got #{rpr buffer_size}" unless buffer_size > 0
-  buffer      = []
-  substrate   = db[ '%self' ]
-  batch_count = 0
-  has_ended   = no
-  _send       = null
   #.........................................................................................................
   push = ( key, value ) =>
     value_bfr = if value? then @_encode_value db, value else @_zero_value_bfr
@@ -147,6 +151,7 @@ LODASH                    = require 'lodash'
         ### Do not create index entries in case `obj` is a POD: ###
         null
       #.....................................................................................................
+      # else if analyze_object and CND.isa_list obj
       else if CND.isa_list obj
         ### Create one index entry for each element in case `obj` is a list: ###
         for obj_element, obj_idx in obj
@@ -187,21 +192,21 @@ LODASH                    = require 'lodash'
 #   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->
-  input = @create_facetstream db, lo_hint, hi_hint
+@create_phrasestream = ( db, lo_hint = null, hi_hint = null, settings ) ->
+  input = @create_facetstream db, lo_hint, hi_hint, settings
   R = input
     .pipe @$as_phrase db
   R[ '%meta' ] = input[ '%meta' ]
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
+@create_facetstream = ( db, lo_hint = null, hi_hint = null, settings ) ->
   ###
-  * If no hint is given, all entries will be given in the stream.
-  * If both `lo_hint` and `hi_hint` are given, a query with lower and upper, inclusive boundaries is
+  * If neiter `lo` nor `hi` is given, the stream will iterate over all entries.
+  * If both `lo` and `hi` are given, a query with lower and upper, inclusive boundaries is
     issued.
-  * If only `lo_hint` is given, a prefix query is issued.
-  * If `hi_hint` is given but `lo_hint` is missing, an error is issued.
+  * If only `lo` is given, a prefix query is issued.
+  * If `hi` is given but `lo` is missing, an error is issued.
   ###
   #.........................................................................................................
   if hi_hint? and not lo_hint?
@@ -335,17 +340,17 @@ and the ordering in the resulting key. ###
     ( @new_key db, other_phrasetype, sk, sv, ok, ov, idx ), ]
 
 #-----------------------------------------------------------------------------------------------------------
-@as_phrase = ( db, key, value ) ->
+@as_phrase = ( db, key, value, normalize = yes ) ->
   switch phrasetype = key[ 0 ]
     when 'spo'
       throw new Error "illegal SPO key (length #{length})" unless ( length = key.length ) is 3
       throw new Error "illegal value (1) #{rpr value}" if value in [ undefined, ]
-      return [ key[ 1 ], key[ 2 ], value, ]
+      return [ phrasetype, key[ 1 ], key[ 2 ], value, ]
     when 'pos'
       throw new Error "illegal POS key (length #{length})" unless 4 <= ( length = key.length ) <= 5
       throw new Error "illegal value (2) #{rpr value}" if not ( value in [ null, ] )
-      [ _, prd, obj, sbj, idx, ] = key
-      return if idx? then [ sbj, prd, obj, idx, ] else [ sbj, prd, obj, ]
+      return [ phrasetype, key[ 3 ], key[ 1 ], key[ 2 ], key[ 4 ], ] if key[ 4 ]?
+      return [ phrasetype, key[ 3 ], key[ 1 ], key[ 2 ], ]
 
 #-----------------------------------------------------------------------------------------------------------
 @$as_phrase = ( db ) ->
