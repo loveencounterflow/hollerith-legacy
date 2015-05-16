@@ -214,8 +214,10 @@ LODASH                    = require 'lodash'
     query       = @_query_from_prefix db, lo_hint, '*'
   #.........................................................................................................
   else
-    lo_hint_bfr = if lo_hint? then (        @_encode_key db, lo_hint )          else CODEC[ 'keys' ][ 'lo' ]
-    hi_hint_bfr = if hi_hint? then ( @_query_from_prefix db, hi_hint )[ 'lte' ] else CODEC[ 'keys' ][ 'hi' ]
+    lo_hint_bfr = if lo_hint? then (        @_encode_key db, lo_hint )          else null
+    hi_hint_bfr = if hi_hint? then ( @_query_from_prefix db, hi_hint )[ 'lte' ] else null
+    # lo_hint_bfr = if lo_hint? then (        @_encode_key db, lo_hint )          else CODEC[ 'keys' ][ 'lo' ]
+    # hi_hint_bfr = if hi_hint? then ( @_query_from_prefix db, hi_hint )[ 'lte' ] else CODEC[ 'keys' ][ 'hi' ]
     query       = { gte: lo_hint_bfr, lte: hi_hint_bfr, }
   #.........................................................................................................
   ### TAINT Should we test for well-formed entries here? ###
@@ -371,11 +373,14 @@ and the ordering in the resulting key. ###
 #-----------------------------------------------------------------------------------------------------------
 @url_from_key = ( db, key ) ->
   if ( @_type_from_key db, key ) is 'list'
-    [ phrasetype, k0, v0, k1, v1, idx, ] = key
-    idx_rpr = if idx? then rpr idx else ''
-    ### TAINT should escape metachrs `|`, ':' ###
-    ### TAINT should use `rpr` on parts of speech (e.g. object value could be a number etc.) ###
-    return "#{phrasetype}|#{k0}:#{v0}|#{k1}:#{v1}|#{idx_rpr}"
+    [ phrasetype, tail..., ] = key
+    if phrasetype is 'spo'
+      [ sbj, prd, ] = tail
+      return "spo|#{sbj}|#{prd}|"
+    else
+      [ prd, obj, sbj, idx, ] = tail
+      idx_rpr = if idx? then rpr idx else ''
+      return "pos|#{prd}:#{obj}|#{sbj}|#{idx_rpr}"
   return "#{rpr key}"
 
 #-----------------------------------------------------------------------------------------------------------
@@ -385,9 +390,8 @@ and the ordering in the resulting key. ###
 #-----------------------------------------------------------------------------------------------------------
 @_type_from_key = ( db, key ) ->
   if Array.isArray key
-    throw new Error "illegal key: #{rpr key}" unless key.length is 6
-    [ phrasetype, first, second, idx, ] = key
-    throw new Error "illegal phrasetype: #{rpr key}" unless phrasetype in [ 'so', 'os', ]
+    # throw new Error "illegal key: #{rpr key}" unless key.length is 6
+    throw new Error "illegal phrasetype: #{rpr key}" unless key[ '0' ] in @phrasetypes
     return 'list'
   return 'other'
 

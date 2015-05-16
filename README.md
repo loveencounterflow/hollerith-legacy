@@ -498,7 +498,7 @@ Thus, our code table looks like this:
 0x40 @ABCDEFGHIJKLMNO PQRSTUVWXYZ[\]^_ 0x50
 0x60 `abcdefghijklmno pqrstuvwxyz{|}~≡ 0x70
 0x80 ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃ ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃ 0x90
-0xa0 ≢≢¢£¤¥¦§¨©ª«¬Я®¯ °±²³´µ¶·¸¹º»¼½¾¿ 0xb0
+0xa0 ∃∃¢£¤¥¦§¨©ª«¬Я®¯ °±²³´µ¶·¸¹º»¼½¾¿ 0xb0
 0xc0 ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ ÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß 0xd0
 0xe0 àáâãäåæçèéêëìíîï ðñò≢≢≢≢≢≢≢≢≢≢≢≢Δ 0xf0
 ```
@@ -519,7 +519,7 @@ first two and something looking like a comma for the last box, but when i copy
 that into my text editor, the boxes all turn into zero-width spaces, and when i
 publish a text containing those characters to GitHub, i get `�` in the browser.
 This is truly confusing and not helpful. In our custom encoding, the bytes used
-to encode `'一x丁x丂'` are rendered as `ä¸⊪xä¸⊪xä¸⊪`, where `⊪` represents three
+to encode `'一x丁x丂'` are rendered as `ä¸∃xä¸∃xä¸∃`, where `∃` represents three
 (further undifferentiated) UTF-8 sequence continuation bytes.
 
 Now let's take a look at the H2C encoding: Calling `HOLLERITH.CODEC.encode [
@@ -746,7 +746,7 @@ TspoTä¸∃∇Tcomponents∇      ┊ ["ä¸∃"]
 TspoTä¸∃∇Tcomponents∇      ┊ ["ä¸∃"]
 TspoTå¤«∇Tcomponents∇      ┊ ["å¤«"]
 TspoTå∃∃∇Tcomponents∇      ┊ ["å∃∃","æ∃∃","å∃£","ä¸∃"]
-TspoTå½¢∇Tcomponents∇      ┊ ["å¼∃","å½≢"]
+TspoTå½¢∇Tcomponents∇      ┊ ["å¼∃","å½∃"]
 ```
 
 We can see at a glance that while this is how Hollerith *encodes* data, it isn't
@@ -755,7 +755,7 @@ ordered. No matter whatever which way you happened to send your keys to the DB,
 when you read them out again, they will come up in this order:
 
 ```
-key                                                              value
+key                                                                             value
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 54 73 70 6f 00 54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 63 6f 75 6e 74 00 ┊ 31
 54 73 70 6f 00 54 e4 b8 81 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e4 b8 81 22 5d
@@ -773,37 +773,21 @@ key                                                              value
 54 73 70 6f 00 54 e5 bd a2 00 54 63 6f 6d 70 6f 6e 65 6e 74 73 00             ┊ 5b 22 e5 bc 80 22 2c 22 e5 bd a1 22 5d
 54 73 70 6f 00 54 e5 bd a2 00 54 73 74 72 6f 6b 65 63 6f 75 6e 74 00          ┊ 37
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Tspo∇Tä¸⊪∇Tcomponentcount∇         ┊ 1
-Tspo∇Tä¸⊪∇Tcomponents∇             ┊ ["ä¸⊪"]
-Tspo∇Tä¸⊪∇Tstrokecount∇            ┊ 2
-Tspo∇Tä¸⊪∇Tcomponentcount∇         ┊ 1
-Tspo∇Tä¸⊪∇Tcomponents∇             ┊ ["ä¸⊪"]
-Tspo∇Tä¸⊪∇Tstrokecount∇            ┊ 3
-Tspo∇Tå⊪⊪∇Tcomponentcount∇         ┊ 4
-Tspo∇Tå⊪⊪∇Tcomponents∇             ┊ ["å⊪⊪","æ⊪⊪","å⊪£","ä¸⊪"]
-Tspo∇Tå⊪⊪∇Tstrokecount∇            ┊ 11
-Tspo∇Tå¤«∇Tcomponentcount∇         ┊ 1
-Tspo∇Tå¤«∇Tcomponents∇             ┊ ["å¤«"]
-Tspo∇Tå¤«∇Tstrokecount∇            ┊ 5
-Tspo∇Tå½¢∇Tcomponentcount∇         ┊ 2
-Tspo∇Tå½¢∇Tcomponents∇             ┊ ["å¼⊪","å½≢"]
-Tspo∇Tå½¢∇Tstrokecount∇            ┊ 7
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[ 'spo', '丁', 'componentcount' ]  ┊ 1
-[ 'spo', '丁', 'components' ]      ┊ [ '丁' ]
-[ 'spo', '丁', 'strokecount' ]     ┊ 2
-[ 'spo', '三', 'componentcount' ]  ┊ 1
-[ 'spo', '三', 'components' ]      ┊ [ '三' ]
-[ 'spo', '三', 'strokecount' ]     ┊ 3
-[ 'spo', '國', 'componentcount' ]  ┊ 4
-[ 'spo', '國', 'components' ]      ┊ [ '囗', '戈', '口', '一' ]
-[ 'spo', '國', 'strokecount' ]     ┊ 11
-[ 'spo', '夫', 'componentcount' ]  ┊ 1
-[ 'spo', '夫', 'components' ]      ┊ [ '夫' ]
-[ 'spo', '夫', 'strokecount' ]     ┊ 5
-[ 'spo', '形', 'componentcount' ]  ┊ 2
-[ 'spo', '形', 'components' ]      ┊ [ '开', '彡' ]
-[ 'spo', '形', 'strokecount' ]     ┊ 7
+Tspo∇Tä¸∃∇Tcomponentcount∇           ┊ 1
+Tspo∇Tä¸∃∇Tcomponents∇               ┊ ["ä¸∃"]
+Tspo∇Tä¸∃∇Tstrokecount∇              ┊ 2
+Tspo∇Tä¸∃∇Tcomponentcount∇           ┊ 1
+Tspo∇Tä¸∃∇Tcomponents∇               ┊ ["ä¸∃"]
+Tspo∇Tä¸∃∇Tstrokecount∇              ┊ 3
+Tspo∇Tå∃∃∇Tcomponentcount∇           ┊ 4
+Tspo∇Tå∃∃∇Tcomponents∇               ┊ ["å∃∃","æ∃∃","å∃£","ä¸∃"]
+Tspo∇Tå∃∃∇Tstrokecount∇              ┊ 11
+Tspo∇Tå¤«∇Tcomponentcount∇           ┊ 1
+Tspo∇Tå¤«∇Tcomponents∇               ┊ ["å¤«"]
+Tspo∇Tå¤«∇Tstrokecount∇              ┊ 5
+Tspo∇Tå½¢∇Tcomponentcount∇           ┊ 2
+Tspo∇Tå½¢∇Tcomponents∇               ┊ ["å¼∃","å½∃"]
+Tspo∇Tå½¢∇Tstrokecount∇              ┊ 7
 ```
 
 # Practice

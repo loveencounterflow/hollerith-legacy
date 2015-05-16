@@ -71,20 +71,29 @@ HOLLERITH                 = require './main'
 
 #-----------------------------------------------------------------------------------------------------------
 ### TAINT code duplication ###
-@_$dump_keys = ( db, input, settings ) ->
+@_$dump_facets = ( db, input, settings ) ->
   { limit, colors, chrs, } = settings
   count     = 0
   #.........................................................................................................
-  return $ ( key, send, end ) =>
+  return $ ( facet, send, end ) =>
     #.......................................................................................................
-    if key?
+    if facet?
       count += +1
+      { key, value, } = facet
       if count < limit
-        key_rpr = HOLLERITH.url_from_key db, HOLLERITH._decode db, key
+        key_rpr     = HOLLERITH.url_from_key db, HOLLERITH._decode_key db, key
+        phrasetype  = key_rpr[ 0 .. 2 ]
         if colors
-          log ( CND.grey ƒ count ), ( CND.plum key_rpr ), ( CND.grey key.slice 0, 10 )
+          key_rpr   = ( CND.plum part for part in key_rpr.split '|' ).join CND.grey '|'
+        if phrasetype is 'spo' and value?
+          value     = value.toString 'utf-8'
+          value_rpr = ( rpr value ).replace /^'(.*)'$/, '$1'
+          value_rpr = CND.orange value_rpr if colors
         else
-          echo ( ƒ count ), key
+          value_rpr = ''
+        log ( CND.grey ƒ count ), key_rpr + value_rpr
+        # else
+        #   echo ( ƒ count ), key
         send key
       #.....................................................................................................
       input.emit 'end' if count >= limit
@@ -107,7 +116,7 @@ HOLLERITH                 = require './main'
     if key?
       key_count += +1
       if key_count < limit
-        key_rpr = HOLLERITH.url_from_key db, HOLLERITH._decode db, key
+        key_rpr = HOLLERITH.url_from_key db, HOLLERITH._decode_key db, key
         [ prefix, suffix_idx, ] = @_first_chrs_of key_rpr, chrs
         unless prefixes[ prefix ]?
           prefix_count       += +1
@@ -135,14 +144,17 @@ HOLLERITH                 = require './main'
   switch settings[ 'mode' ]
     when 'keys'
       if prefix?
-        # debug '©7fHvz', rpr prefix
-        query = HOLLERITH.new_query db, prefix
+        debug '©7fHvz', rpr prefix
+        ### TAINT use library method ###
+        key = prefix.split '|'
+        query = HOLLERITH._query_from_prefix db, key, '*'
+        urge '©g1y6J', key
         urge '©g1y6J', query[ 'gte' ]
         urge '©g1y6J', query[ 'lte' ]
-        input = db[ '%self' ].createKeyStream query
+        input = db[ '%self' ].createReadStream query
       else
-        input = db[ '%self' ].createKeyStream()
-      worker  = @_$dump_keys db, input, settings
+        input = db[ '%self' ].createReadStream()
+      worker  = @_$dump_facets db, input, settings
     when 'prefixes'
       input   = db[ '%self' ].createKeyStream()
       worker  = @_$dump_prefixes db, input, settings
@@ -184,8 +196,8 @@ HOLLERITH                 = require './main'
     ␣!"#$%&'()*+,-./0123456789:;<=>?
     @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_
     `abcdefghijklmnopqrstuvwxyz{|}~≡
-    ⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪⊪
-    ≢≢¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
+    ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃
+    ∃∃¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
     ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
     àáâãäåæçèéêëìíîïðñò≢≢≢≢≢≢≢≢≢≢≢≢Δ
     """
@@ -307,10 +319,10 @@ unless module.parent?
 
   # for cid in [ 0x00 .. 0xff ]
   #   debug '©lJ8nb', ( '0x' + ( if cid <= 0xf then '0' else '' ) + cid.toString 16 ), HOLLERITH._encode null, [ String.fromCodePoint cid, ]
-  # debug '©vfkkx', HOLLERITH._decode null, HOLLERITH.encode null, +Infinity
-  # debug '©vfkkx', HOLLERITH._decode null, HOLLERITH.encode null, -Infinity
-  # debug '©vfkkx', HOLLERITH._decode null, HOLLERITH.encode null, null
-  # debug '©vfkkx', HOLLERITH._decode null, HOLLERITH.encode null, undefined
+  # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, +Infinity
+  # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, -Infinity
+  # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, null
+  # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, undefined
   # CND.listen_to_keys ( P... ) ->
   #   debug '©WOmlj', P
   # process.stdin.resume()
