@@ -948,22 +948,38 @@ CODEC                     = require './codec'
         done()
 
 #-----------------------------------------------------------------------------------------------------------
+@[ "encode keys with list elements" ] = ( T, done ) ->
+  probes = [
+    [ 'foo', 'bar', ]
+    [ 'foo', [ 'bar', ], ]
+    [ [], 'bar', ]
+    [ 'foo', [], ]
+    [ [ 'foo', ], 'bar', ]
+    [ [ 42, ], 'bar', ]
+    [ 'foo', [ 42, ] ]
+    ]
+  for probe in probes
+    T.eq probe, HOLLERITH.CODEC.decode HOLLERITH.CODEC.encode probe
+  done()
+
+#-----------------------------------------------------------------------------------------------------------
 @[ "read and write phrases with unanalyzed lists" ] = ( T, done ) ->
   idx         = -1
   count       = 0
   #.........................................................................................................
   probes = [
-    [ 'probe#00', 'prd', [], ]
-    [ 'probe#01', 'prd', [ -1 ], ]
-    [ 'probe#02', 'prd', [  0 ], ]
-    [ 'probe#03', 'prd', [  1 ], ]
-    [ 'probe#04', 'prd', [  2 ], ]
-    [ 'probe#05', 'prd', [  2, -1, ], ]
-    [ 'probe#06', 'prd', [  2, 0, ], ]
-    [ 'probe#07', 'prd', [  2, 1, ], ]
-    [ 'probe#08', 'prd', [  2, 1, 0 ], ]
-    [ 'probe#09', 'prd', [  2, 2, ], ]
-    [ 'probe#10', 'prd', [  3 ], ]
+    [ 'probe#00', 'some-predicate', [], ]
+    [ 'probe#01', 'some-predicate', [ -1 ], ]
+    [ 'probe#02', 'some-predicate', [  0 ], ]
+    [ 'probe#03', 'some-predicate', [  1 ], ]
+    [ 'probe#04', 'some-predicate', [  2 ], ]
+    [ 'probe#05', 'some-predicate', [  2, -1, ], ]
+    [ 'probe#06', 'some-predicate', [  2, 0, ], ]
+    [ 'probe#07', 'some-predicate', [  2, 1, ], ]
+    [ 'probe#08', 'some-predicate', [  2, 1, 0 ], ]
+    [ 'probe#09', 'some-predicate', [  2, 2, ], ]
+    [ 'probe#10', 'some-predicate', [  2, [ 2, ], ], ]
+    [ 'probe#11', 'some-predicate', [  3 ], ]
     ]
   #.........................................................................................................
   write_probes = ( handler ) =>
@@ -971,7 +987,10 @@ CODEC                     = require './codec'
       yield HOLLERITH.clear db, resume
       input = D.create_throughstream()
       input
-        .pipe HOLLERITH.$write db
+        # .pipe ( [ sbj, prd, obj, ], send ) =>
+        #   if prd is 'some-predicate' # always the case in this example
+        #     obj
+        .pipe HOLLERITH.$write db, solids: [ 'some-predicate', ]
         .pipe D.$on_end =>
           urge "test data written"
           handler()

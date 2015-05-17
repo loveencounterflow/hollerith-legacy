@@ -6,7 +6,7 @@ CND                       = require 'cnd'
 rpr                       = CND.rpr
 badge                     = 'HOLLERITH/CODEC'
 debug                     = CND.get_logger 'debug',     badge
-warn                      = CND.get_logger 'warn',     badge
+warn                      = CND.get_logger 'warn',      badge
 
 
 #-----------------------------------------------------------------------------------------------------------
@@ -173,15 +173,28 @@ read_text = ( buffer, idx ) ->
     stop_idx += +1
     break if ( byte = buffer[ stop_idx ] ) is tm_lo
     throw new Error "runaway string at index #{idx}" unless byte?
-  text = buffer.toString 'utf-8', idx + 1, stop_idx
-  text = text.replace /\x01\x02/g, '\x01'
-  text = text.replace /\x01\x01/g, '\x00'
-  return [ stop_idx + 1, text, ]
+  R = buffer.toString 'utf-8', idx + 1, stop_idx
+  R = R.replace /\x01\x02/g, '\x01'
+  R = R.replace /\x01\x01/g, '\x00'
+  return [ stop_idx + 1, R, ]
 
 
 #===========================================================================================================
 # LISTS
 #-----------------------------------------------------------------------------------------------------------
+### TAINT remove is_top_level if not used ###
+read_list = ( buffer, idx, is_top_level ) ->
+  # urge '©J2d6R', buffer[ idx ], buffer[ idx ] is tm_text
+  # throw new Error "unable to read nested list at index #{idx}" unless is_top_level
+  throw new Error "not a list at index #{idx}" unless buffer[ idx ] is tm_list
+  R     = []
+  idx  += +1
+  loop
+    break if ( byte = buffer[ idx ] ) is tm_lo
+    [ idx, value, ] = _decode buffer, idx, false, true
+    R.push value[ 0 ]
+    throw new Error "runaway list at index #{idx}" unless byte?
+  return [ idx + 1, R, ]
 
 
 #===========================================================================================================
@@ -216,18 +229,21 @@ write = ( idx, value ) ->
   return R
 
 #-----------------------------------------------------------------------------------------------------------
+### TAINT remove is_top_level if not used ###
 _encode = ( key, idx, is_top_level ) ->
   last_element_idx = key.length - 1
   for element, element_idx in key
     loop
       try
         if CND.isa_list element
-          unless is_top_level and element_idx is last_element_idx
-            throw new Error "unable to write a list in non-final position"
+          # unless is_top_level
+          #   throw new Error "unable to encode nested list"
           rbuffer[ idx ]  = tm_list
           idx            += +1
           for sub_element in element
             idx = _encode [ sub_element, ], idx, false
+          rbuffer[ idx ]  = tm_lo
+          idx            += +1
         else
           idx = write idx, element
         break
@@ -241,16 +257,17 @@ _encode = ( key, idx, is_top_level ) ->
 
 #-----------------------------------------------------------------------------------------------------------
 @decode = ( buffer ) ->
-  return ( _decode buffer, 0 )[ 1 ]
+  return ( _decode buffer, 0, true, false )[ 1 ]
 
 #-----------------------------------------------------------------------------------------------------------
-_decode = ( buffer, idx ) ->
+### TAINT remove is_top_level if not used ###
+_decode = ( buffer, idx, is_top_level, single ) ->
   R         = []
   last_idx  = buffer.length - 1
   loop
     break if idx > last_idx
     switch type = buffer[ idx ]
-      when tm_list       then [ idx, value, ] = _decode         buffer, idx + 1
+      when tm_list       then [ idx, value, ] = read_list       buffer, idx, is_top_level
       when tm_text       then [ idx, value, ] = read_text       buffer, idx
       when tm_nnumber    then [ idx, value, ] = read_nnumber    buffer, idx
       when tm_ninfinity  then [ idx, value, ] = [ idx + 1, -Infinity, ]
@@ -259,12 +276,11 @@ _decode = ( buffer, idx ) ->
       when tm_date       then [ idx, value, ] = read_date       buffer, idx
       else                    [ idx, value, ] = read_singular   buffer, idx
     R.push value
+    break if single
   #.........................................................................................................
   return [ idx, R ]
 
 
-
-
-
-
+# debug ( require './dump' ).rpr_of_buffer null, buffer = @encode [ 'aaa', [], ]
+# debug '©tP5xQ', @decode buffer
 

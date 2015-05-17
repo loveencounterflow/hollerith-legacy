@@ -107,14 +107,14 @@ LODASH                    = require 'lodash'
 
   ###
   #.........................................................................................................
-  settings       ?= {}
-  buffer_size     = settings[ 'batch' ] ? 10000
-  # analyze_object  = settings[ 'analyze-object' ] = yes
-  buffer          = []
-  substrate       = db[ '%self' ]
-  batch_count     = 0
-  has_ended       = no
-  _send           = null
+  settings         ?= {}
+  buffer_size       = settings[ 'batch'  ] ? 10000
+  solid_predicates  = settings[ 'solids' ] ? []
+  buffer            = []
+  substrate         = db[ '%self' ]
+  batch_count       = 0
+  has_ended         = no
+  _send             = null
   #.........................................................................................................
   throw new Error "buffer size must be positive integer, got #{rpr buffer_size}" unless buffer_size > 0
   #.........................................................................................................
@@ -125,10 +125,6 @@ LODASH                    = require 'lodash'
   flush = =>
     if buffer.length > 0
       batch_count += +1
-      # ### --- ###
-      # for { key, value, } in buffer
-      #   debug '©AbDU1', ( @_decode_key db, key ), ( @_decode_key db, value )
-      # ### --- ###
       substrate.batch buffer, ( error ) =>
         throw error if error?
         batch_count += -1
@@ -138,12 +134,10 @@ LODASH                    = require 'lodash'
       _send.end()
   #.........................................................................................................
   return $ ( spo, send, end ) =>
-    # debug '©BpJQt', spo
     _send = send
     if spo?
       [ sbj, prd, obj, ] = spo
       push [ 'spo', sbj, prd, ], obj
-      # debug '©OYmaD', [ 'spo', sbj, prd, ], obj
       ### TAINT what to send, if anything? ###
       # send entry
       #.....................................................................................................
@@ -151,11 +145,13 @@ LODASH                    = require 'lodash'
         ### Do not create index entries in case `obj` is a POD: ###
         null
       #.....................................................................................................
-      # else if analyze_object and CND.isa_list obj
       else if CND.isa_list obj
-        ### Create one index entry for each element in case `obj` is a list: ###
-        for obj_element, obj_idx in obj
-          push [ 'pos', prd, obj_element, sbj, obj_idx, ]
+        if prd in solid_predicates
+          push [ 'pos', prd, obj, sbj, ]
+        else
+          ### Create one index entry for each element in case `obj` is a list: ###
+          for obj_element, obj_idx in obj
+            push [ 'pos', prd, obj_element, sbj, obj_idx, ]
       #.....................................................................................................
       else
         ### Create one index entry for `obj` otherwise: ###

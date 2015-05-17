@@ -74,6 +74,7 @@ HOLLERITH                 = require './main'
 @_$dump_facets = ( db, input, settings ) ->
   { limit, colors, chrs, } = settings
   count     = 0
+  write     = if colors then log else echo
   #.........................................................................................................
   return $ ( facet, send, end ) =>
     #.......................................................................................................
@@ -91,7 +92,7 @@ HOLLERITH                 = require './main'
           value_rpr = CND.orange value_rpr if colors
         else
           value_rpr = ''
-        log ( CND.grey ƒ count ), key_rpr + value_rpr
+        write ( CND.grey ƒ count ), key_rpr + value_rpr
         # else
         #   echo ( ƒ count ), key
         send key
