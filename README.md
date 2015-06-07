@@ -170,15 +170,15 @@ good thing: because of the way that the H2C encoding works, putting
 a number of lists like, say
 
 ```
-[ 'sku', '3345-d', 'price', ]         # ⎫          ⎫
-[ 'sku', '3345-d', 'weight', ]        # ⎪          ⎬ `sku`, `3345-d`
-[ 'sku', '3345-d', 'description', ]   # ⎬ `sku`    ⎭ subspace
-[ 'sku', '3348A',  'price', ]         # ⎪ subspace ⎫
-[ 'sku', '3348A',  'weight', ]        # ⎪          ⎬ `sku`, `3348A`
-[ 'sku', '3348A',  'description', ]   # ⎭          ⎭ subspace
-[ 'invoice', ( new_date "2012-01-30" ), '33421', ] ⎫
-[ 'invoice', ( new_date "2012-01-30" ), '66345', ] ⎬ `invoice`
-[ 'invoice', ( new_date "2012-01-31" ), '54662', ] ⎭ subspace
+[ 'sku', '3345-d', 'price', ]                       # ⎫          ⎫
+[ 'sku', '3345-d', 'weight', ]                      # ⎪          ⎬ `sku`, `3345-d`
+[ 'sku', '3345-d', 'description', ]                 # ⎬ `sku`    ⎭ subspace
+[ 'sku', '3348A',  'price', ]                       # ⎪ subspace ⎫
+[ 'sku', '3348A',  'weight', ]                      # ⎪          ⎬ `sku`, `3348A`
+[ 'sku', '3348A',  'description', ]                 # ⎭          ⎭ subspace
+[ 'invoice', ( new_date "2012-01-30" ), '33421', ]  # ⎫
+[ 'invoice', ( new_date "2012-01-30" ), '66345', ]  # ⎬ `invoice`
+[ 'invoice', ( new_date "2012-01-31" ), '54662', ]  # ⎭ subspace
 ```
 
 into the DB will cause them to occupy clearly delineated portions of the ordered

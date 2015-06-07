@@ -5,6 +5,7 @@
   "main": "lib/main.js",
   "dependencies": {
     "batch-stream": "^0.1.2",
+    "bloom-stream": "^0.5.0",
     "cnd": "^1.0.1",
     "coffeenode-docopt": "^0.1.0",
     "coffeenode-suspend": "^0.1.10",

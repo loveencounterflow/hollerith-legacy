@@ -115,12 +115,14 @@ LODASH                    = require 'lodash'
   batch_count       = 0
   has_ended         = no
   _send             = null
+  R                 = D.create_throughstream()
   #.........................................................................................................
   throw new Error "buffer size must be positive integer, got #{rpr buffer_size}" unless buffer_size > 0
   #.........................................................................................................
   push = ( key, value ) =>
+    key_bfr   = @_encode_key db, key
     value_bfr = if value? then @_encode_value db, value else @_zero_value_bfr
-    buffer.push { type: 'put', key: ( @_encode_key db, key ), value: value_bfr, }
+    buffer.push { type: 'put', key: key_bfr, value: value_bfr, }
   #.........................................................................................................
   flush = =>
     if buffer.length > 0
@@ -133,37 +135,54 @@ LODASH                    = require 'lodash'
     else
       _send.end()
   #.........................................................................................................
-  return $ ( spo, send, end ) =>
-    _send = send
-    if spo?
-      [ sbj, prd, obj, ] = spo
-      push [ 'spo', sbj, prd, ], obj
-      ### TAINT what to send, if anything? ###
-      # send entry
-      #.....................................................................................................
-      if CND.isa_pod obj
-        ### Do not create index entries in case `obj` is a POD: ###
-        null
-      #.....................................................................................................
-      else if CND.isa_list obj
-        if prd in solid_predicates
-          push [ 'pos', prd, obj, sbj, ]
-        else
-          ### Create one index entry for each element in case `obj` is a list: ###
-          for obj_element, obj_idx in obj
-            push [ 'pos', prd, obj_element, sbj, obj_idx, ]
-      #.....................................................................................................
-      else
-        ### Create one index entry for `obj` otherwise: ###
-        push [ 'pos', prd, obj, sbj, ]
-      #.....................................................................................................
-      flush() if buffer.length >= buffer_size
+  R = R
     #.......................................................................................................
-    ### Flush remaining buffered entries to DB ###
-    if end?
-      has_ended = yes
-      flush()
+    .pipe $ ( spo, send, end ) =>
+      _send = send
+      if spo?
+        [ sbj, prd, obj, ] = spo
+        push [ 'spo', sbj, prd, ], obj
+        ### TAINT what to send, if anything? ###
+        # send entry
+        #...................................................................................................
+        if CND.isa_pod obj
+          ### Do not create index entries in case `obj` is a POD: ###
+          null
+        #...................................................................................................
+        else if CND.isa_list obj
+          if prd in solid_predicates
+            push [ 'pos', prd, obj, sbj, ]
+          else
+            ### Create one index entry for each element in case `obj` is a list: ###
+            for obj_element, obj_idx in obj
+              push [ 'pos', prd, obj_element, sbj, obj_idx, ]
+        #...................................................................................................
+        else
+          ### Create one index entry for `obj` otherwise: ###
+          push [ 'pos', prd, obj, sbj, ]
+        #...................................................................................................
+        flush() if buffer.length >= buffer_size
+      #.....................................................................................................
+      ### Flush remaining buffered entries to DB ###
+      if end?
+        has_ended = yes
+        flush()
+    #.......................................................................................................
+    .pipe @_$ensure_unique db
+  #.........................................................................................................
+  return R
 
+#-----------------------------------------------------------------------------------------------------------
+@_$ensure_unique = ( db ) ->
+  #.........................................................................................................
+  Bloom   = require 'bloom-stream'
+  ### Bloom.forCapacity(capacity, errorRate, seed, hashType, streamOpts) ###
+  bloom   = Bloom.forCapacity 1e1, 1
+  return $ ( data, send ) ->
+    send.error new Error "unexpected data: #{rpr data}" unless data[ 'type' ] is 'put'
+    debug '©38dZl', data
+    key_bfr = data[ 'key' ]
+    return send data unless bloom.has key_bfr
 
 #===========================================================================================================
 # READING
@@ -186,6 +205,7 @@ LODASH                    = require 'lodash'
 #   ### TAINT Should we test for well-formed entries here? ###
 #   R = R.pipe $ ( bkey, send ) => send @_decode_key db, bkey
 #   return R
+
 
 #-----------------------------------------------------------------------------------------------------------
 @create_phrasestream = ( db, lo_hint = null, hi_hint = null, settings ) ->
