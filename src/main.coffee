@@ -35,6 +35,9 @@ step                      = suspend.step
 repeat_immediately        = suspend.repeat_immediately
 #...........................................................................................................
 LODASH                    = require 'lodash'
+#...........................................................................................................
+### https://github.com/b3nj4m/bloom-stream ###
+Bloom                     = require 'bloom-stream'
 
 
 #-----------------------------------------------------------------------------------------------------------
@@ -80,11 +83,91 @@ LODASH                    = require 'lodash'
 @clear = ( db, handler ) ->
   step ( resume ) =>
     route = db[ '%self' ][ 'location' ]
+    whisper "closing DB"
     yield db[ '%self' ].close resume
+    # whisper "erasing DB"
     yield leveldown.destroy route, resume
+    # whisper "re-opening DB"
     yield db[ '%self' ].open resume
     # help "erased and re-opened LevelDB at #{route}"
     handler null
+
+# #===========================================================================================================
+# # WRITING
+# #-----------------------------------------------------------------------------------------------------------
+# @$write = ( db, settings ) ->
+#   ### Expects a Hollerith DB object and an optional buffer size; returns a stream transformer that does all
+#   of the following:
+
+#   * It expects an SO key for which it will generate a corresponding OS key.
+#   * A corresponding OS key is formulated except when the SO key's object value is a JS object / a POD (since
+#     in that case, the value serialization is jolly useless as an index).
+#   * It sends on both the SO and the OS key downstream for optional further processing.
+#   * It forms a proper `node-level`-compatible batch record for each key and collect all records
+#     in a buffer.
+#   * Whenever the buffer has outgrown the given buffer size, the buffer will be written into the DB using
+#     `levelup`'s `batch` command.
+#   * When the last pending batch has been written into the DB, the `end` event is called on the stream
+#     and may be detected downstream.
+
+#   ###
+#   #.........................................................................................................
+#   settings         ?= {}
+#   buffer_size       = settings[ 'batch'  ] ? 10000
+#   solid_predicates  = settings[ 'solids' ] ? []
+#   buffer            = []
+#   substrate         = db[ '%self' ]
+#   batch_count       = 0
+#   has_ended         = no
+#   _send             = null
+#   #.........................................................................................................
+#   throw new Error "buffer size must be positive integer, got #{rpr buffer_size}" unless buffer_size > 0
+#   #.........................................................................................................
+#   push = ( key, value ) =>
+#     value_bfr = if value? then @_encode_value db, value else @_zero_value_bfr
+#     buffer.push { type: 'put', key: ( @_encode_key db, key ), value: value_bfr, }
+#   #.........................................................................................................
+#   flush = =>
+#     if buffer.length > 0
+#       batch_count += +1
+#       substrate.batch buffer, ( error ) =>
+#         throw error if error?
+#         batch_count += -1
+#         _send.end() if has_ended and batch_count < 1
+#       buffer = []
+#     else
+#       _send.end()
+#   #.........................................................................................................
+#   return $ ( spo, send, end ) =>
+#     _send = send
+#     if spo?
+#       [ sbj, prd, obj, ] = spo
+#       push [ 'spo', sbj, prd, ], obj
+#       ### TAINT what to send, if anything? ###
+#       # send entry
+#       #.....................................................................................................
+#       if CND.isa_pod obj
+#         ### Do not create index entries in case `obj` is a POD: ###
+#         null
+#       #.....................................................................................................
+#       else if CND.isa_list obj
+#         if prd in solid_predicates
+#           push [ 'pos', prd, obj, sbj, ]
+#         else
+#           ### Create one index entry for each element in case `obj` is a list: ###
+#           for obj_element, obj_idx in obj
+#             push [ 'pos', prd, obj_element, sbj, obj_idx, ]
+#       #.....................................................................................................
+#       else
+#         ### Create one index entry for `obj` otherwise: ###
+#         push [ 'pos', prd, obj, sbj, ]
+#       #.....................................................................................................
+#       flush() if buffer.length >= buffer_size
+#     #.......................................................................................................
+#     ### Flush remaining buffered entries to DB ###
+#     if end?
+#       has_ended = yes
+#       flush()
 
 
 #===========================================================================================================
@@ -119,9 +202,7 @@ LODASH                    = require 'lodash'
   #.........................................................................................................
   throw new Error "buffer size must be positive integer, got #{rpr buffer_size}" unless buffer_size > 0
   #.........................................................................................................
-  push = ( key, value ) =>
-    key_bfr   = @_encode_key db, key
-    value_bfr = if value? then @_encode_value db, value else @_zero_value_bfr
+  push = ( key_bfr, value_bfr ) =>
     buffer.push { type: 'put', key: key_bfr, value: value_bfr, }
   #.........................................................................................................
   flush = =>
@@ -133,56 +214,217 @@ LODASH                    = require 'lodash'
         _send.end() if has_ended and batch_count < 1
       buffer = []
     else
-      _send.end()
+      if has_ended
+        _send.end()
   #.........................................................................................................
-  R = R
+  R
     #.......................................................................................................
-    .pipe $ ( spo, send, end ) =>
-      _send = send
-      if spo?
-        [ sbj, prd, obj, ] = spo
-        push [ 'spo', sbj, prd, ], obj
-        ### TAINT what to send, if anything? ###
-        # send entry
+    .pipe $ ( spo, send ) =>
+      ### Analyze SPO key and send all necessary POS facets: ###
+      [ sbj, prd, obj, ] = spo
+      send [ [ 'spo', sbj, prd, ], obj, ]
+      obj_type = CND.type_of obj
+      #.....................................................................................................
+      unless obj_type is 'pod'
         #...................................................................................................
-        if CND.isa_pod obj
-          ### Do not create index entries in case `obj` is a POD: ###
-          null
-        #...................................................................................................
-        else if CND.isa_list obj
-          if prd in solid_predicates
-            push [ 'pos', prd, obj, sbj, ]
-          else
-            ### Create one index entry for each element in case `obj` is a list: ###
-            for obj_element, obj_idx in obj
-              push [ 'pos', prd, obj_element, sbj, obj_idx, ]
+        if ( obj_type is 'list' ) and not ( prd in solid_predicates )
+          for obj_element, obj_idx in obj
+            send [ [ 'pos', prd, obj_element, sbj, obj_idx, ], ]
         #...................................................................................................
         else
-          ### Create one index entry for `obj` otherwise: ###
-          push [ 'pos', prd, obj, sbj, ]
-        #...................................................................................................
+          send [ [ 'pos', prd, obj, sbj, ], ]
+    #.......................................................................................................
+    .pipe $ ( facet, send ) =>
+      ### Encode facet: ###
+      [ key, value, ] = facet
+      key_bfr         = @_encode_key db, key
+      value_bfr       = if value? then @_encode_value db, value else @_zero_value_bfr
+      send [ key_bfr, value_bfr, ]
+    #.......................................................................................................
+    # .pipe @_$send_later()
+    # .pipe @_$ensure_unique db
+    .pipe @_$pull()
+    .pipe @_$take()
+    #.......................................................................................................
+    .pipe $ ( facet_bfrs, send, end ) =>
+      ### Organize buffering: ###
+      _send = send
+      if facet_bfrs?
+        # debug '©CERW0', facet_bfrs
+        push facet_bfrs...
         flush() if buffer.length >= buffer_size
       #.....................................................................................................
-      ### Flush remaining buffered entries to DB ###
       if end?
         has_ended = yes
         flush()
-    #.......................................................................................................
-    .pipe @_$ensure_unique db
   #.........................................................................................................
   return R
 
 #-----------------------------------------------------------------------------------------------------------
+@_$send_later = ->
+  #.........................................................................................................
+  R     = D.create_throughstream()
+  count = 0
+  _end  = null
+  #.....................................................................................................
+  send_end = =>
+    if _end? and count <= 0
+      _end()
+    else
+      setImmediate send_end
+  #.....................................................................................................
+  R
+    .pipe $ ( data, send, end ) =>
+      if data?
+        count += +1
+        setImmediate =>
+          count += -1
+          send data
+          debug '©MxyBi', count
+      if end?
+        _end = end
+  #.....................................................................................................
+  send_end()
+  return R
+
+#-----------------------------------------------------------------------------------------------------------
+@_$pull = ->
+  queue     = []
+  # _send     = null
+  is_first  = yes
+  pull = ->
+    if queue.length > 0
+      return queue.pop()
+    else
+      return [ 'empty', ]
+  return $ ( data, send, end ) =>
+    if is_first
+      is_first = no
+      send pull
+    if data?
+      queue.unshift [ 'data', data, ]
+    if end?
+      queue.unshift [ 'end', end, ]
+
+#-----------------------------------------------------------------------------------------------------------
+@_$take = ->
+  return $ ( pull, send ) =>
+    # debug '©vKkJf', pull
+    # debug '©vKkJf', pull()
+    process = =>
+      [ type, data, ] = pull()
+      # debug '©bamOB', [ type, data, ]
+      switch type
+        when 'data'   then send data
+        when 'empty'  then null
+        when 'end'    then return send.end()
+        else send.error new Error "unknown event type #{rpr type}"
+      setImmediate process
+    process()
+
+#-----------------------------------------------------------------------------------------------------------
 @_$ensure_unique = ( db ) ->
   #.........................................................................................................
-  Bloom   = require 'bloom-stream'
-  ### Bloom.forCapacity(capacity, errorRate, seed, hashType, streamOpts) ###
-  bloom   = Bloom.forCapacity 1e1, 1
-  return $ ( data, send ) ->
-    send.error new Error "unexpected data: #{rpr data}" unless data[ 'type' ] is 'put'
-    debug '©38dZl', data
-    key_bfr = data[ 'key' ]
-    return send data unless bloom.has key_bfr
+  # bloom   = Bloom.forCapacity 1e7, 0.1
+  bloom     = Bloom.forCapacity 1e1, 1
+  rq_count  = 0
+  queue     = []
+  _end      = null
+  _send     = null
+  #.........................................................................................................
+  process_queue = =>
+    if _end? and rq_count < 1 and queue.length < 1
+      _end()
+      return
+    setImmediate process_queue
+  #.........................................................................................................
+  R = D.create_throughstream()
+    #.......................................................................................................
+    .pipe $ ( facet_bfrs, send, end ) ->
+      _send = send
+      if facet_bfrs?
+        debug '©nuSIj', facet_bfrs
+        queue.unshift facet_bfrs
+      if end?
+        _end = end
+  #.........................................................................................................
+  return R
+
+# #-----------------------------------------------------------------------------------------------------------
+# @_$ensure_unique = ( db ) ->
+#   #.........................................................................................................
+#   # bloom   = Bloom.forCapacity 1e7, 0.1
+#   bloom     = Bloom.forCapacity 1e1, 1
+#   rq_count  = 0
+#   buffer    = []
+#   _end      = null
+#   _send     = null
+#   R         = D.create_throughstream()
+#   #.........................................................................................................
+#   flush = =>
+#     return if buffer.length is 0
+#     #.......................................................................................................
+#     if rq_count > 0
+#       setImmediate flush
+#       return null
+#     #.......................................................................................................
+#     _send buffer.pop()
+#     setImmediate flush
+#     #.......................................................................................................
+#     return null
+#   #.........................................................................................................
+#   R
+#     .pipe $ ( facet_bfrs, send, end ) =>
+#       _send = send
+#       if facet_bfrs?
+#         buffer.splice 0, 0, facet_bfrs
+#       flush()
+#       if end?
+#         flush()
+#     .pipe $ ( facet_bfrs, send, end ) =>
+#       #.....................................................................................................,,
+#       if facet_bfrs?
+#         [ key_bfr, _, ]   = facet_bfrs
+#         may_be_known_key  = bloom.has key_bfr
+#         bloom.write key_bfr
+#         #.....................................................................................................
+#         if may_be_known_key
+#           rq_count += +1
+#           debug '©QS6kF', 'may_be_known_key', rq_count, @_decode_key db, key_bfr
+#           #...................................................................................................
+#           db[ '%self' ].get key_bfr, ( error ) =>
+#             rq_count += -1
+#             debug '©QS6kF', 'may_be_known_key', rq_count, _end?, @_decode_key db, key_bfr
+#             #.................................................................................................
+#             if error?
+#               if error[ 'type' ] is 'NotFoundError'
+#                 urge '©9d0Uq', 'sending', @_decode_key db, key_bfr
+#                 send facet_bfrs
+#               else
+#                 send.error error
+#             #.................................................................................................
+#             else
+#               send.error new Error "key already in DB: #{rpr @_decode_key db, key_bfr}"
+#             #.................................................................................................
+#             if rq_count <= 0 and _end?
+#               # warn '©JOQLb-1', 'end'
+#               bloom.end()
+#               # _end()
+#         #.....................................................................................................
+#         else
+#           send facet_bfrs
+#       #.....................................................................................................,,
+#       if end?
+#         ### TAINT should write bloom.export to DB ###
+#         debug '©dJcbk', buffer
+#         if rq_count > 0
+#           _end = end
+#         else
+#           warn '©JOQLb-2', 'end'
+#           bloom.end()
+#           end()
+#   #.........................................................................................................
+#   return R
 
 #===========================================================================================================
 # READING
@@ -249,21 +491,20 @@ LODASH                    = require 'lodash'
   #.........................................................................................................
   return R
 
-#-----------------------------------------------------------------------------------------------------------
-@read_many = ( db, hint = null ) ->
-  ### Hints are interpreted as partial secondary (POS) keys. ###
+# #-----------------------------------------------------------------------------------------------------------
+# @read_many = ( db, hint = null ) ->
+#   ### Hints are interpreted as partial secondary (POS) keys. ###
 
-#-----------------------------------------------------------------------------------------------------------
-@read_one = ( db, key, fallback = @_misfit, handler ) ->
-  ### Hints are interpreted as complete primary (SPO) keys. ###
-  switch arity = arguments.length
-    when 3
-      handler   = fallback
-      fallback  = @_misfit
-    when 4 then null
-    else throw new Error "expected 3 or 4 arguments, got #{arity}"
-  #.........................................................................................................
-  db[ '%self' ].get key, handler
+# #-----------------------------------------------------------------------------------------------------------
+# @_read_one = ( db, key, fallback = @_misfit, handler ) ->
+#   switch arity = arguments.length
+#     when 3
+#       handler   = fallback
+#       fallback  = @_misfit
+#     when 4 then null
+#     else throw new Error "expected 3 or 4 arguments, got #{arity}"
+#   #.........................................................................................................
+#   db[ '%self' ].get key, handler
 
 #-----------------------------------------------------------------------------------------------------------
 @read_sub = ( db, settings, read ) ->
