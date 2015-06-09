@@ -489,6 +489,15 @@ CODEC                     = require './codec'
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "read with sub-read (3)" ] = ( T, done ) ->
+  step ( resume ) =>
+    yield @_read_with_sub_read_3 T, batch: 0,    resume
+    yield @_read_with_sub_read_3 T, batch: 3,    resume
+    yield @_read_with_sub_read_3 T, batch: 5,    resume
+    yield @_read_with_sub_read_3 T, batch: 1000, resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@_read_with_sub_read_3 = ( T, write_settings, done ) ->
   probes_idx  = 0
   idx         = -1
   count       = 0
@@ -502,17 +511,17 @@ CODEC                     = require './codec'
     ]
   #.........................................................................................................
   step ( resume ) =>
-    yield @_feed_test_data db, probes_idx, resume
-    prefix    = [ 'pos', 'guide/uchr/has', ]
-    input     = HOLLERITH.create_phrasestream db, prefix
-    settings  = { indexed: no, }
+    yield @_feed_test_data db, probes_idx, write_settings, resume
+    prefix        = [ 'pos', 'guide/uchr/has', ]
+    input         = HOLLERITH.create_phrasestream db, prefix
+    read_settings = { indexed: no, }
     input
-      .pipe HOLLERITH.read_sub db, settings, ( phrase ) =>
+      .pipe HOLLERITH.read_sub db, read_settings, ( phrase ) =>
         [ _, glyph, prd, guide, ] = phrase
         prefix                    = [ 'spo', guide, 'factor/strokeclass/wbf', ]
         sub_input                 = HOLLERITH.create_phrasestream db, prefix
         return [ glyph, sub_input, ]
-      .pipe HOLLERITH.read_sub db, settings, ( xphrase ) =>
+      .pipe HOLLERITH.read_sub db, read_settings, ( xphrase ) =>
         [ glyph, [ _, guide, prd, shapeclass, ] ] = xphrase
         prefix                                    = [ 'spo', guide, 'rank/cjt', ]
         sub_input                                 = HOLLERITH.create_phrasestream db, prefix
