@@ -89,7 +89,7 @@ Bloom                     = require 'bloom-stream'
     yield leveldown.destroy route, resume
     # whisper "re-opening DB"
     yield db[ '%self' ].open resume
-    # help "erased and re-opened LevelDB at #{route}"
+    whisper "erased and re-opened LevelDB at #{route}"
     handler null
 
 # #===========================================================================================================
@@ -216,7 +216,7 @@ Bloom                     = require 'bloom-stream'
           if buffer.length > 0
             flush send, end
           else
-            end()
+            setImmediate end
   #.........................................................................................................
   R
     #.......................................................................................................
@@ -242,71 +242,34 @@ Bloom                     = require 'bloom-stream'
       value_bfr       = if value? then @_encode_value db, value else @_zero_value_bfr
       send [ key_bfr, value_bfr, ]
     #.......................................................................................................
+    .pipe @_$defer()
+    #.......................................................................................................
     .pipe $write()
   #.........................................................................................................
   return R
 
-  #-----------------------------------------------------------------------------------------------------------
-@_$send_later = ->
-  #.........................................................................................................
-  R     = D.create_throughstream()
+#-----------------------------------------------------------------------------------------------------------
+@_$defer = ->
   count = 0
-  _end  = null
-  #.....................................................................................................
-  send_end = =>
-    if _end? and count <= 0
-      _end()
+  #.........................................................................................................
+  end_later = ( end ) =>
+    # debug '©KfgQ5', count
+    if count <= 0
+      end()
     else
-      setImmediate send_end
-  #.....................................................................................................
-  R
+      setImmediate => end_later end
+  #.........................................................................................................
+  R = D.create_throughstream()
     .pipe $ ( data, send, end ) =>
       if data?
         count += +1
+        # debug '©i6sna', count
         setImmediate =>
-          count += -1
           send data
-          debug '©MxyBi', count
+          count += -1
+          # debug '©wSQVK', count
       if end?
-        _end = end
-  #.....................................................................................................
-  send_end()
-  return R
-
-#-----------------------------------------------------------------------------------------------------------
-@_$pull = ->
-  queue     = []
-  # _send     = null
-  is_first  = yes
-  pull = ->
-    if queue.length > 0
-      return queue.pop()
-    else
-      return [ 'empty', ]
-  return $ ( data, send, end ) =>
-    if is_first
-      is_first = no
-      send pull
-    if data?
-      queue.unshift [ 'data', data, ]
-    if end?
-      queue.unshift [ 'end', end, ]
-
-#-----------------------------------------------------------------------------------------------------------
-@_$take = ->
-  return $ ( pull, send ) =>
-    # debug '©vKkJf', pull
-    # debug '©vKkJf', pull()
-    process = =>
-      [ type, data, ] = pull()
-      # debug '©bamOB', [ type, data, ]
-      switch type
-        when 'data'   then send data
-        when 'empty'  then null
-        when 'end'    then return send.end()
-        else send.error new Error "unknown event type #{rpr type}"
-      setImmediate process
-    process()
+        end_later end
 
 #-----------------------------------------------------------------------------------------------------------
 @_$ensure_unique = ( db ) ->
@@ -319,21 +282,36 @@ Bloom                     = require 'bloom-stream'
   _send     = null
   #.........................................................................................................
   process_queue = =>
-    if _end? and rq_count < 1 and queue.length < 1
+    if queue.length >= 1
+      [ key_bfr, _, ] = queue.pop()
+      if bloom.has key_bfr
+        rq_count += +1
+
+    if _end? and rq_count <= 0 and queue.length <= 0
       _end()
       return
     setImmediate process_queue
   #.........................................................................................................
   R = D.create_throughstream()
-    #.......................................................................................................
-    .pipe $ ( facet_bfrs, send, end ) ->
-      _send = send
-      if facet_bfrs?
-        debug '©nuSIj', facet_bfrs
-        queue.unshift facet_bfrs
+    .pipe $ ( data, send, end ) =>
+      if data?
+        setImmediate =>
+          # debug '©qt9X7', rpr data
+          send data
+          # end() if end?
       if end?
-        _end = end
-  #.........................................................................................................
+        setImmediate =>
+          end()
+  #   #.......................................................................................................
+  #   .pipe $ ( facet_bfrs, send, end ) =>
+  #     _send = send
+  #     if facet_bfrs?
+  #       debug '©nuSIj', facet_bfrs
+  #       queue.unshift facet_bfrs
+  #     if end?
+  #       _end = end
+  # #.........................................................................................................
+  # process_queue()
   return R
 
 # #-----------------------------------------------------------------------------------------------------------

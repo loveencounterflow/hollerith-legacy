@@ -69,44 +69,43 @@ CODEC                     = require './codec'
     else
       throw new Error "expected 3 or 4 arguments, got #{arity}"
   #.........................................................................................................
-  whisper "writing test data with settings #{rpr settings}"
-  #.........................................................................................................
-  switch probes_idx
-    #-------------------------------------------------------------------------------------------------------
-    when 0, 2
-      step ( resume ) =>
-        yield HOLLERITH.clear db, resume
-        input = D.create_throughstream()
+  step ( resume ) =>
+    yield HOLLERITH.clear db, resume
+    whisper "writing test dataset ##{probes_idx} with settings #{rpr settings}"
+    input = D.create_throughstream()
+    #.......................................................................................................
+    switch probes_idx
+      #-----------------------------------------------------------------------------------------------------
+      when 0, 2
         input
           .pipe HOLLERITH.$write db, settings
           # .pipe D.$show()
           .pipe D.$on_end =>
-            urge "test data written"
+            whisper "test data written"
             handler null
         #...................................................................................................
         for probe in @_feed_test_data.probes[ probes_idx ]
           # key = HOLLERITH.new_so_key db, probe...
           # debug '©WV0j2', probe
           input.write probe
+          yield setImmediate resume
         input.end()
-    #-------------------------------------------------------------------------------------------------------
-    when 1
-      step ( resume ) =>
-        yield HOLLERITH.clear db, resume
-        input = D.create_throughstream()
+      #-----------------------------------------------------------------------------------------------------
+      when 1
         input
           .pipe HOLLERITH.$write db, settings
           # .pipe D.$show()
           .pipe D.$on_end =>
-            urge "test data written"
+            whisper "test data written"
             handler null
         #...................................................................................................
         for url_key in @_feed_test_data.probes[ probes_idx ]
           key = HOLLERITH.key_from_url db, url_key
           input.write key
+          yield setImmediate resume
         input.end()
-    #-------------------------------------------------------------------------------------------------------
-    else return handler new Error "illegal probes index #{rpr probes_idx}"
+      #-------------------------------------------------------------------------------------------------------
+      else return handler new Error "illegal probes index #{rpr probes_idx}"
   #.........................................................................................................
   return null
 
@@ -119,7 +118,7 @@ CODEC                     = require './codec'
   [ '𧷟2', 'guide/lineup/length',              2,                                   ]
   [ '𧷟3', 'guide/lineup/length',              3,                                   ]
   [ '𧷟4', 'guide/lineup/length',              4,                                   ]
-  [ '𧷟', 'guide/lineup/length',              5,                                    ]
+  [ '𧷟', 'guide/lineup/length',               5,                                   ]
   [ '𧷟6', 'guide/lineup/length',              6,                                   ]
   [ '𧷟', 'cp/cid',                           163295,                               ]
   [ '𧷟', 'guide/uchr/has',                   [ '八', '刀', '宀', '', '貝', ],      ]
@@ -200,8 +199,10 @@ CODEC                     = require './codec'
 @[ "write without error" ] = ( T, done ) ->
   probes_idx  = 0
   idx = -1
+  write_settings =
+    batch: 10
   step ( resume ) =>
-    yield @_feed_test_data db, probes_idx, resume
+    yield @_feed_test_data db, probes_idx, write_settings, resume
     done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -909,18 +910,21 @@ CODEC                     = require './codec'
   probes_idx  = 2
   idx = -1
   step ( resume ) =>
+    debug '©bUJhI', 'XX'
     yield @_feed_test_data db, probes_idx, resume
+    debug '©PRzA5', 'XX'
     input = db[ '%self' ].createReadStream()
     input
-      # .pipe D.$show()
+      .pipe D.$show()
       .pipe $ ( { key, value, }, send ) => send [ key, value, ]
       .pipe $ ( [ key, value, ], send ) =>
-        debug '©RluhF', ( HOLLERITH.CODEC.decode key ), ( JSON.parse value )
+        # debug '©RluhF', ( HOLLERITH.CODEC.decode key ), ( JSON.parse value )
         send [ key, value, ]
       .pipe D.$collect()
       .pipe $ ( facets, send ) =>
         # debug '©FtmB4', facets
         help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
+        # process.exit() # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         buffer = new Buffer JSON.stringify [ '开', '彡' ]
         debug '©GJfL6', HOLLERITH.DUMP.rpr_of_buffer null, buffer
       .pipe D.$on_end => done()
@@ -1131,8 +1135,11 @@ clear_leveldb = ( leveldb, handler ) ->
   step ( resume ) =>
     route = leveldb[ 'location' ]
     yield leveldb.close resume
+    whisper "closed LevelDB"
     yield leveldown.destroy route, resume
+    whisper "destroyed LevelDB"
     yield leveldb.open resume
+    whisper "re-opened LevelDB"
     # help "erased and re-opened LevelDB at #{route}"
     handler null
 
