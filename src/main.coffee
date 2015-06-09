@@ -201,6 +201,7 @@ Bloom                     = require 'bloom-stream'
       flush = ( send, end ) =>
         _buffer = buffer
         buffer  = []
+        debug '©nZTZt', "flushing #{_buffer.length}"
         substrate.batch _buffer, ( error ) =>
           send.error error if error?
           if end?
@@ -243,6 +244,12 @@ Bloom                     = require 'bloom-stream'
       send [ key_bfr, value_bfr, ]
     #.......................................................................................................
     .pipe @_$defer()
+    .pipe @_$ensure_unique db
+    .pipe $ ( data, send, end ) ->
+      send data if data?
+      if end?
+        debug '©CooNp', 'detected end'
+        end()
     #.......................................................................................................
     .pipe $write()
   #.........................................................................................................
@@ -276,6 +283,7 @@ Bloom                     = require 'bloom-stream'
   #.........................................................................................................
   # bloom   = Bloom.forCapacity 1e7, 0.1
   bloom     = Bloom.forCapacity 1e1, 1
+  substrate = db[ '%self' ]
   rq_count  = 0
   queue     = []
   _end      = null
@@ -283,35 +291,49 @@ Bloom                     = require 'bloom-stream'
   #.........................................................................................................
   process_queue = =>
     if queue.length >= 1
-      [ key_bfr, _, ] = queue.pop()
-      if bloom.has key_bfr
+      [ key_bfr, value_bfr, ] = queue.pop()
+      may_be_known_key        = bloom.has key_bfr
+      bloom.write key_bfr
+      #.....................................................................................................
+      if may_be_known_key
         rq_count += +1
-
+        debug '©QS6kF', 'may_be_known_key', rq_count, @_decode_key db, key_bfr
+        #...................................................................................................
+        substrate.get key_bfr, ( error ) =>
+          #.................................................................................................
+          if error?
+            if error[ 'type' ] is 'NotFoundError'
+              urge '©9d0Uq', 'sending', @_decode_key db, key_bfr
+              _send [ key_bfr, value_bfr, ]
+            else
+              _send.error error
+          #.................................................................................................
+          else
+            _send.error new Error "key already in DB: #{rpr @_decode_key db, key_bfr}"
+      #.....................................................................................................
+      else
+        ### TAINT may send rightaway, as we're already deferred ###
+        setImmediate => _send [ key_bfr, value_bfr, ]
+    #.......................................................................................................
     if _end? and rq_count <= 0 and queue.length <= 0
+      debug '©995dk', "calling _end"
       _end()
       return
+    #.......................................................................................................
     setImmediate process_queue
   #.........................................................................................................
   R = D.create_throughstream()
-    .pipe $ ( data, send, end ) =>
-      if data?
-        setImmediate =>
-          # debug '©qt9X7', rpr data
-          send data
-          # end() if end?
+    #.......................................................................................................
+    .pipe $ ( facet_bfrs, send, end ) =>
+      _send = send
+      if facet_bfrs?
+        debug '©nuSIj', @_decode_key db, facet_bfrs[ 0 ]
+        queue.unshift facet_bfrs
       if end?
-        setImmediate =>
-          end()
-  #   #.......................................................................................................
-  #   .pipe $ ( facet_bfrs, send, end ) =>
-  #     _send = send
-  #     if facet_bfrs?
-  #       debug '©nuSIj', facet_bfrs
-  #       queue.unshift facet_bfrs
-  #     if end?
-  #       _end = end
-  # #.........................................................................................................
-  # process_queue()
+        debug '©AzApU', "setting _end"
+        _end = end
+  #.........................................................................................................
+  process_queue()
   return R
 
 # #-----------------------------------------------------------------------------------------------------------
@@ -349,34 +371,18 @@ Bloom                     = require 'bloom-stream'
 #       #.....................................................................................................,,
 #       if facet_bfrs?
 #         [ key_bfr, _, ]   = facet_bfrs
-#         may_be_known_key  = bloom.has key_bfr
-#         bloom.write key_bfr
-#         #.....................................................................................................
-#         if may_be_known_key
-#           rq_count += +1
-#           debug '©QS6kF', 'may_be_known_key', rq_count, @_decode_key db, key_bfr
-#           #...................................................................................................
-#           db[ '%self' ].get key_bfr, ( error ) =>
-#             rq_count += -1
-#             debug '©QS6kF', 'may_be_known_key', rq_count, _end?, @_decode_key db, key_bfr
-#             #.................................................................................................
-#             if error?
-#               if error[ 'type' ] is 'NotFoundError'
-#                 urge '©9d0Uq', 'sending', @_decode_key db, key_bfr
-#                 send facet_bfrs
-#               else
-#                 send.error error
-#             #.................................................................................................
-#             else
-#               send.error new Error "key already in DB: #{rpr @_decode_key db, key_bfr}"
-#             #.................................................................................................
-#             if rq_count <= 0 and _end?
-#               # warn '©JOQLb-1', 'end'
-#               bloom.end()
-#               # _end()
-#         #.....................................................................................................
-#         else
-#           send facet_bfrs
+        #   #...................................................................................................
+        #   db[ '%self' ].get key_bfr, ( error ) =>
+        #     rq_count += -1
+        #     debug '©QS6kF', 'may_be_known_key', rq_count, _end?, @_decode_key db, key_bfr
+        #     #.................................................................................................
+        #     if rq_count <= 0 and _end?
+        #       # warn '©JOQLb-1', 'end'
+        #       bloom.end()
+        #       # _end()
+        # #.....................................................................................................
+        # else
+        #   send facet_bfrs
 #       #.....................................................................................................,,
 #       if end?
 #         ### TAINT should write bloom.export to DB ###
