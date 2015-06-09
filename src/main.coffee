@@ -57,8 +57,8 @@ Bloom                     = require 'bloom-stream'
   level_settings =
     'keyEncoding':          'binary'
     'valueEncoding':        'binary'
-    'createIfMissing':      true
-    'errorIfExists':        false
+    'createIfMissing':      yes
+    'errorIfExists':        no
     'compression':          yes
     'sync':                 no
   #.........................................................................................................
@@ -174,48 +174,49 @@ Bloom                     = require 'bloom-stream'
 # WRITING
 #-----------------------------------------------------------------------------------------------------------
 @$write = ( db, settings ) ->
-  ### Expects a Hollerith DB object and an optional buffer size; returns a stream transformer that does all
-  of the following:
-
-  * It expects an SO key for which it will generate a corresponding OS key.
-  * A corresponding OS key is formulated except when the SO key's object value is a JS object / a POD (since
-    in that case, the value serialization is jolly useless as an index).
-  * It sends on both the SO and the OS key downstream for optional further processing.
-  * It forms a proper `node-level`-compatible batch record for each key and collect all records
-    in a buffer.
-  * Whenever the buffer has outgrown the given buffer size, the buffer will be written into the DB using
-    `levelup`'s `batch` command.
-  * When the last pending batch has been written into the DB, the `end` event is called on the stream
-    and may be detected downstream.
-
-  ###
   #.........................................................................................................
   settings         ?= {}
   buffer_size       = settings[ 'batch'  ] ? 10000
   solid_predicates  = settings[ 'solids' ] ? []
-  buffer            = []
   substrate         = db[ '%self' ]
-  batch_count       = 0
-  has_ended         = no
-  _send             = null
   R                 = D.create_throughstream()
   #.........................................................................................................
-  throw new Error "buffer size must be positive integer, got #{rpr buffer_size}" unless buffer_size > 0
+  if buffer_size < 0
+    throw new Error "buffer size must be positive integer, got #{rpr buffer_size}"
   #.........................................................................................................
-  push = ( key_bfr, value_bfr ) =>
-    buffer.push { type: 'put', key: key_bfr, value: value_bfr, }
+  else if buffer_size < 2
+    $write = =>
+      return $ ( facet_bfrs, send, end ) =>
+        if facet_bfrs?
+          substrate.put facet_bfrs..., =>
+            if end?
+              end()
+        else if end?
+          end()
   #.........................................................................................................
-  flush = =>
-    if buffer.length > 0
-      batch_count += +1
-      substrate.batch buffer, ( error ) =>
-        throw error if error?
-        batch_count += -1
-        _send.end() if has_ended and batch_count < 1
+  else
+    $write = =>
       buffer = []
-    else
-      if has_ended
-        _send.end()
+      #.....................................................................................................
+      flush = ( send, end ) =>
+        _buffer = buffer
+        buffer  = []
+        substrate.batch _buffer, ( error ) =>
+          send.error error if error?
+          if end?
+            end()
+      #.....................................................................................................
+      return $ ( facet_bfrs, send, end ) =>
+        if facet_bfrs?
+          [ key_bfr, value_bfr, ] = facet_bfrs
+          buffer.push { type: 'put', key: key_bfr, value: value_bfr, }
+          if buffer.length >= buffer_size
+            flush send, end
+        else if end?
+          if buffer.length > 0
+            flush send, end
+          else
+            end()
   #.........................................................................................................
   R
     #.......................................................................................................
@@ -241,26 +242,11 @@ Bloom                     = require 'bloom-stream'
       value_bfr       = if value? then @_encode_value db, value else @_zero_value_bfr
       send [ key_bfr, value_bfr, ]
     #.......................................................................................................
-    # .pipe @_$send_later()
-    # .pipe @_$ensure_unique db
-    .pipe @_$pull()
-    .pipe @_$take()
-    #.......................................................................................................
-    .pipe $ ( facet_bfrs, send, end ) =>
-      ### Organize buffering: ###
-      _send = send
-      if facet_bfrs?
-        # debug '©CERW0', facet_bfrs
-        push facet_bfrs...
-        flush() if buffer.length >= buffer_size
-      #.....................................................................................................
-      if end?
-        has_ended = yes
-        flush()
+    .pipe $write()
   #.........................................................................................................
   return R
 
-#-----------------------------------------------------------------------------------------------------------
+  #-----------------------------------------------------------------------------------------------------------
 @_$send_later = ->
   #.........................................................................................................
   R     = D.create_throughstream()
@@ -568,8 +554,8 @@ Bloom                     = require 'bloom-stream'
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@_encode_value = ( db, value      ) -> JSON.stringify value
-@_decode_value = ( db, value_bfr  ) -> JSON.parse     value_bfr.toString 'utf-8'
+@_encode_value = ( db, value      ) -> new Buffer ( JSON.stringify value ), 'utf-8'
+@_decode_value = ( db, value_bfr  ) -> JSON.parse value_bfr.toString 'utf-8'
 
 #-----------------------------------------------------------------------------------------------------------
 ### NB Argument ordering for these function is always subject before object, regardless of the phrasetype
