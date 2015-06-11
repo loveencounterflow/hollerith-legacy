@@ -35,21 +35,9 @@ $                         = D.remit.bind D
 HOLLERITH                 = require './main'
 db                        = null
 #...........................................................................................................
-BYTEWISE                  = require 'bytewise'
 levelup                   = require 'levelup'
 leveldown                 = require 'leveldown'
 CODEC                     = require './codec'
-
-
-# #-----------------------------------------------------------------------------------------------------------
-# @_encode_list = ( list ) ->
-#   ( list[ idx ] = BYTEWISE.encode value ) for value, idx in list
-#   return list
-
-# #-----------------------------------------------------------------------------------------------------------
-# @_decode_list = ( list ) ->
-#   ( list[ idx ] = BYTEWISE.decode value ) for value, idx in list
-#   return list
 
 # #-----------------------------------------------------------------------------------------------------------
 # @_sort_list = ( list ) ->

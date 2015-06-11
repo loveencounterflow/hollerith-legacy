@@ -242,9 +242,10 @@ Bloom                     = require 'bloom-stream'
       key_bfr         = @_encode_key db, key
       value_bfr       = if value? then @_encode_value db, value else @_zero_value_bfr
       send [ key_bfr, value_bfr, ]
+    # #.......................................................................................................
+    # .pipe @_$defer()
+    # .pipe @_$ensure_unique db
     #.......................................................................................................
-    .pipe @_$defer()
-    .pipe @_$ensure_unique db
     .pipe $ ( data, send, end ) ->
       send data if data?
       if end?
@@ -255,86 +256,86 @@ Bloom                     = require 'bloom-stream'
   #.........................................................................................................
   return R
 
-#-----------------------------------------------------------------------------------------------------------
-@_$defer = ->
-  count = 0
-  #.........................................................................................................
-  end_later = ( end ) =>
-    # debug '©KfgQ5', count
-    if count <= 0
-      end()
-    else
-      setImmediate => end_later end
-  #.........................................................................................................
-  R = D.create_throughstream()
-    .pipe $ ( data, send, end ) =>
-      if data?
-        count += +1
-        # debug '©i6sna', count
-        setImmediate =>
-          send data
-          count += -1
-          # debug '©wSQVK', count
-      if end?
-        end_later end
+# #-----------------------------------------------------------------------------------------------------------
+# @_$defer = ->
+#   count = 0
+#   #.........................................................................................................
+#   end_later = ( end ) =>
+#     # debug '©KfgQ5', count
+#     if count <= 0
+#       end()
+#     else
+#       setImmediate => end_later end
+#   #.........................................................................................................
+#   R = D.create_throughstream()
+#     .pipe $ ( data, send, end ) =>
+#       if data?
+#         count += +1
+#         # debug '©i6sna', count
+#         setImmediate =>
+#           send data
+#           count += -1
+#           # debug '©wSQVK', count
+#       if end?
+#         end_later end
 
-#-----------------------------------------------------------------------------------------------------------
-@_$ensure_unique = ( db ) ->
-  #.........................................................................................................
-  # bloom   = Bloom.forCapacity 1e7, 0.1
-  bloom     = Bloom.forCapacity 1e1, 1
-  substrate = db[ '%self' ]
-  rq_count  = 0
-  queue     = []
-  _end      = null
-  _send     = null
-  #.........................................................................................................
-  process_queue = =>
-    if queue.length >= 1
-      [ key_bfr, value_bfr, ] = queue.pop()
-      may_be_known_key        = bloom.has key_bfr
-      bloom.write key_bfr
-      #.....................................................................................................
-      if may_be_known_key
-        rq_count += +1
-        debug '©QS6kF', 'may_be_known_key', rq_count, @_decode_key db, key_bfr
-        #...................................................................................................
-        substrate.get key_bfr, ( error ) =>
-          #.................................................................................................
-          if error?
-            if error[ 'type' ] is 'NotFoundError'
-              urge '©9d0Uq', 'sending', @_decode_key db, key_bfr
-              _send [ key_bfr, value_bfr, ]
-            else
-              _send.error error
-          #.................................................................................................
-          else
-            _send.error new Error "key already in DB: #{rpr @_decode_key db, key_bfr}"
-      #.....................................................................................................
-      else
-        ### TAINT may send rightaway, as we're already deferred ###
-        setImmediate => _send [ key_bfr, value_bfr, ]
-    #.......................................................................................................
-    if _end? and rq_count <= 0 and queue.length <= 0
-      debug '©995dk', "calling _end"
-      _end()
-      return
-    #.......................................................................................................
-    setImmediate process_queue
-  #.........................................................................................................
-  R = D.create_throughstream()
-    #.......................................................................................................
-    .pipe $ ( facet_bfrs, send, end ) =>
-      _send = send
-      if facet_bfrs?
-        debug '©nuSIj', @_decode_key db, facet_bfrs[ 0 ]
-        queue.unshift facet_bfrs
-      if end?
-        debug '©AzApU', "setting _end"
-        _end = end
-  #.........................................................................................................
-  process_queue()
-  return R
+# #-----------------------------------------------------------------------------------------------------------
+# @_$ensure_unique = ( db ) ->
+#   #.........................................................................................................
+#   # bloom   = Bloom.forCapacity 1e7, 0.1
+#   bloom     = Bloom.forCapacity 1e1, 1
+#   substrate = db[ '%self' ]
+#   rq_count  = 0
+#   queue     = []
+#   _end      = null
+#   _send     = null
+#   #.........................................................................................................
+#   process_queue = =>
+#     if queue.length >= 1
+#       [ key_bfr, value_bfr, ] = queue.pop()
+#       may_be_known_key        = bloom.has key_bfr
+#       bloom.write key_bfr
+#       #.....................................................................................................
+#       if may_be_known_key
+#         rq_count += +1
+#         debug '©QS6kF', 'may_be_known_key', rq_count, @_decode_key db, key_bfr
+#         #...................................................................................................
+#         substrate.get key_bfr, ( error ) =>
+#           #.................................................................................................
+#           if error?
+#             if error[ 'type' ] is 'NotFoundError'
+#               urge '©9d0Uq', 'sending', @_decode_key db, key_bfr
+#               _send [ key_bfr, value_bfr, ]
+#             else
+#               _send.error error
+#           #.................................................................................................
+#           else
+#             _send.error new Error "key already in DB: #{rpr @_decode_key db, key_bfr}"
+#       #.....................................................................................................
+#       else
+#         ### TAINT may send rightaway, as we're already deferred ###
+#         setImmediate => _send [ key_bfr, value_bfr, ]
+#     #.......................................................................................................
+#     if _end? and rq_count <= 0 and queue.length <= 0
+#       debug '©995dk', "calling _end"
+#       _end()
+#       return
+#     #.......................................................................................................
+#     setImmediate process_queue
+#   #.........................................................................................................
+#   R = D.create_throughstream()
+#     #.......................................................................................................
+#     .pipe $ ( facet_bfrs, send, end ) =>
+#       _send = send
+#       if facet_bfrs?
+#         debug '©nuSIj', @_decode_key db, facet_bfrs[ 0 ]
+#         queue.unshift facet_bfrs
+#       if end?
+#         debug '©AzApU', "setting _end"
+#         _end = end
+#   #.........................................................................................................
+#   process_queue()
+#   return R
 
 # #-----------------------------------------------------------------------------------------------------------
 # @_$ensure_unique = ( db ) ->
