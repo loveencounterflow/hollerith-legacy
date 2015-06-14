@@ -92,83 +92,6 @@ Bloom                     = require 'bloom-stream'
     whisper "erased and re-opened LevelDB at #{route}"
     handler null
 
-# #===========================================================================================================
-# # WRITING
-# #-----------------------------------------------------------------------------------------------------------
-# @$write = ( db, settings ) ->
-#   ### Expects a Hollerith DB object and an optional buffer size; returns a stream transformer that does all
-#   of the following:
-
-#   * It expects an SO key for which it will generate a corresponding OS key.
-#   * A corresponding OS key is formulated except when the SO key's object value is a JS object / a POD (since
-#     in that case, the value serialization is jolly useless as an index).
-#   * It sends on both the SO and the OS key downstream for optional further processing.
-#   * It forms a proper `node-level`-compatible batch record for each key and collect all records
-#     in a buffer.
-#   * Whenever the buffer has outgrown the given buffer size, the buffer will be written into the DB using
-#     `levelup`'s `batch` command.
-#   * When the last pending batch has been written into the DB, the `end` event is called on the stream
-#     and may be detected downstream.
-
-#   ###
-#   #.........................................................................................................
-#   settings         ?= {}
-#   buffer_size       = settings[ 'batch'  ] ? 10000
-#   solid_predicates  = settings[ 'solids' ] ? []
-#   buffer            = []
-#   substrate         = db[ '%self' ]
-#   batch_count       = 0
-#   has_ended         = no
-#   _send             = null
-#   #.........................................................................................................
-#   throw new Error "buffer size must be positive integer, got #{rpr buffer_size}" unless buffer_size > 0
-#   #.........................................................................................................
-#   push = ( key, value ) =>
-#     value_bfr = if value? then @_encode_value db, value else @_zero_value_bfr
-#     buffer.push { type: 'put', key: ( @_encode_key db, key ), value: value_bfr, }
-#   #.........................................................................................................
-#   flush = =>
-#     if buffer.length > 0
-#       batch_count += +1
-#       substrate.batch buffer, ( error ) =>
-#         throw error if error?
-#         batch_count += -1
-#         _send.end() if has_ended and batch_count < 1
-#       buffer = []
-#     else
-#       _send.end()
-#   #.........................................................................................................
-#   return $ ( spo, send, end ) =>
-#     _send = send
-#     if spo?
-#       [ sbj, prd, obj, ] = spo
-#       push [ 'spo', sbj, prd, ], obj
-#       ### TAINT what to send, if anything? ###
-#       # send entry
-#       #.....................................................................................................
-#       if CND.isa_pod obj
-#         ### Do not create index entries in case `obj` is a POD: ###
-#         null
-#       #.....................................................................................................
-#       else if CND.isa_list obj
-#         if prd in solid_predicates
-#           push [ 'pos', prd, obj, sbj, ]
-#         else
-#           ### Create one index entry for each element in case `obj` is a list: ###
-#           for obj_element, obj_idx in obj
-#             push [ 'pos', prd, obj_element, sbj, obj_idx, ]
-#       #.....................................................................................................
-#       else
-#         ### Create one index entry for `obj` otherwise: ###
-#         push [ 'pos', prd, obj, sbj, ]
-#       #.....................................................................................................
-#       flush() if buffer.length >= buffer_size
-#     #.......................................................................................................
-#     ### Flush remaining buffered entries to DB ###
-#     if end?
-#       has_ended = yes
-#       flush()
-
 
 #===========================================================================================================
 # WRITING
@@ -176,250 +99,51 @@ Bloom                     = require 'bloom-stream'
 @$write = ( db, settings ) ->
   #.........................................................................................................
   settings         ?= {}
-  buffer_size       = settings[ 'batch'  ] ? 10000
+  batch_size        = settings[ 'batch'  ] ? 10000
   solid_predicates  = settings[ 'solids' ] ? []
   substrate         = db[ '%self' ]
   R                 = D.create_throughstream()
   #.........................................................................................................
-  if buffer_size < 0
-    throw new Error "buffer size must be positive integer, got #{rpr buffer_size}"
-  #.........................................................................................................
-  else if buffer_size < 2
-    $write = =>
-      return $ ( facet_bfrs, send, end ) =>
-        if facet_bfrs?
-          substrate.put facet_bfrs..., =>
-            if end?
-              end()
-        else if end?
-          end()
-  #.........................................................................................................
-  else
-    $write = =>
-      buffer = []
+  $index = => $ ( spo, send ) =>
+    ### Analyze SPO key and send all necessary POS facets: ###
+    [ sbj, prd, obj, ] = spo
+    send [ [ 'spo', sbj, prd, ], obj, ]
+    obj_type = CND.type_of obj
+    #.......................................................................................................
+    unless obj_type is 'pod'
       #.....................................................................................................
-      flush = ( send, end ) =>
-        _buffer = buffer
-        buffer  = []
-        debug '©nZTZt', "flushing #{_buffer.length}"
-        substrate.batch _buffer, ( error ) =>
-          send.error error if error?
-          if end?
-            end()
+      if ( obj_type is 'list' ) and not ( prd in solid_predicates )
+        for obj_element, obj_idx in obj
+          send [ [ 'pos', prd, obj_element, sbj, obj_idx, ], ]
       #.....................................................................................................
-      return $ ( facet_bfrs, send, end ) =>
-        if facet_bfrs?
-          [ key_bfr, value_bfr, ] = facet_bfrs
-          buffer.push { type: 'put', key: key_bfr, value: value_bfr, }
-          if buffer.length >= buffer_size
-            flush send, end
-        else if end?
-          if buffer.length > 0
-            flush send, end
-          else
-            setImmediate end
+      else
+        send [ [ 'pos', prd, obj, sbj, ], ]
+  #.........................................................................................................
+  $encode = => $ ( facet, send ) =>
+    [ key, value, ] = facet
+    phrasetype      = key[ 0 ]
+    key_bfr         = @_encode_key db, key
+    value_bfr       = if value? then @_encode_value db, value else @_zero_value_bfr
+    send [ phrasetype, key_bfr, value_bfr, ]
+  #.........................................................................................................
+  $as_batch_entry = => $ ( facet_bfr_plus, send ) =>
+    [ phrasetype, key_bfr, value_bfr, ] = facet_bfr_plus
+    send type: 'put', key: key_bfr, value: value_bfr
+  #.........................................................................................................
+  $write = => $ ( batch, send ) =>
+    substrate.batch batch
   #.........................................................................................................
   R
-    #.......................................................................................................
-    .pipe $ ( spo, send ) =>
-      ### Analyze SPO key and send all necessary POS facets: ###
-      [ sbj, prd, obj, ] = spo
-      send [ [ 'spo', sbj, prd, ], obj, ]
-      obj_type = CND.type_of obj
-      #.....................................................................................................
-      unless obj_type is 'pod'
-        #...................................................................................................
-        if ( obj_type is 'list' ) and not ( prd in solid_predicates )
-          for obj_element, obj_idx in obj
-            send [ [ 'pos', prd, obj_element, sbj, obj_idx, ], ]
-        #...................................................................................................
-        else
-          send [ [ 'pos', prd, obj, sbj, ], ]
-    #.......................................................................................................
-    .pipe $ ( facet, send ) =>
-      ### Encode facet: ###
-      [ key, value, ] = facet
-      key_bfr         = @_encode_key db, key
-      value_bfr       = if value? then @_encode_value db, value else @_zero_value_bfr
-      send [ key_bfr, value_bfr, ]
-    # #.......................................................................................................
-    # .pipe @_$defer()
-    # .pipe @_$ensure_unique db
-    #.......................................................................................................
-    .pipe $ ( data, send, end ) ->
-      send data if data?
-      if end?
-        debug '©CooNp', 'detected end'
-        end()
-    #.......................................................................................................
+    .pipe $index()
+    .pipe $encode()
+    .pipe $as_batch_entry()
+    .pipe D.$batch batch_size
     .pipe $write()
   #.........................................................................................................
   return R
 
-# #-----------------------------------------------------------------------------------------------------------
-# @_$defer = ->
-#   count = 0
-#   #.........................................................................................................
-#   end_later = ( end ) =>
-#     # debug '©KfgQ5', count
-#     if count <= 0
-#       end()
-#     else
-#       setImmediate => end_later end
-#   #.........................................................................................................
-#   R = D.create_throughstream()
-#     .pipe $ ( data, send, end ) =>
-#       if data?
-#         count += +1
-#         # debug '©i6sna', count
-#         setImmediate =>
-#           send data
-#           count += -1
-#           # debug '©wSQVK', count
-#       if end?
-#         end_later end
-
-# #-----------------------------------------------------------------------------------------------------------
-# @_$ensure_unique = ( db ) ->
-#   #.........................................................................................................
-#   # bloom   = Bloom.forCapacity 1e7, 0.1
-#   bloom     = Bloom.forCapacity 1e1, 1
-#   substrate = db[ '%self' ]
-#   rq_count  = 0
-#   queue     = []
-#   _end      = null
-#   _send     = null
-#   #.........................................................................................................
-#   process_queue = =>
-#     if queue.length >= 1
-#       [ key_bfr, value_bfr, ] = queue.pop()
-#       may_be_known_key        = bloom.has key_bfr
-#       bloom.write key_bfr
-#       #.....................................................................................................
-#       if may_be_known_key
-#         rq_count += +1
-#         debug '©QS6kF', 'may_be_known_key', rq_count, @_decode_key db, key_bfr
-#         #...................................................................................................
-#         substrate.get key_bfr, ( error ) =>
-#           #.................................................................................................
-#           if error?
-#             if error[ 'type' ] is 'NotFoundError'
-#               urge '©9d0Uq', 'sending', @_decode_key db, key_bfr
-#               _send [ key_bfr, value_bfr, ]
-#             else
-#               _send.error error
-#           #.................................................................................................
-#           else
-#             _send.error new Error "key already in DB: #{rpr @_decode_key db, key_bfr}"
-#       #.....................................................................................................
-#       else
-#         ### TAINT may send rightaway, as we're already deferred ###
-#         setImmediate => _send [ key_bfr, value_bfr, ]
-#     #.......................................................................................................
-#     if _end? and rq_count <= 0 and queue.length <= 0
-#       debug '©995dk', "calling _end"
-#       _end()
-#       return
-#     #.......................................................................................................
-#     setImmediate process_queue
-#   #.........................................................................................................
-#   R = D.create_throughstream()
-#     #.......................................................................................................
-#     .pipe $ ( facet_bfrs, send, end ) =>
-#       _send = send
-#       if facet_bfrs?
-#         debug '©nuSIj', @_decode_key db, facet_bfrs[ 0 ]
-#         queue.unshift facet_bfrs
-#       if end?
-#         debug '©AzApU', "setting _end"
-#         _end = end
-#   #.........................................................................................................
-#   process_queue()
-#   return R
-
-# #-----------------------------------------------------------------------------------------------------------
-# @_$ensure_unique = ( db ) ->
-#   #.........................................................................................................
-#   # bloom   = Bloom.forCapacity 1e7, 0.1
-#   bloom     = Bloom.forCapacity 1e1, 1
-#   rq_count  = 0
-#   buffer    = []
-#   _end      = null
-#   _send     = null
-#   R         = D.create_throughstream()
-#   #.........................................................................................................
-#   flush = =>
-#     return if buffer.length is 0
-#     #.......................................................................................................
-#     if rq_count > 0
-#       setImmediate flush
-#       return null
-#     #.......................................................................................................
-#     _send buffer.pop()
-#     setImmediate flush
-#     #.......................................................................................................
-#     return null
-#   #.........................................................................................................
-#   R
-#     .pipe $ ( facet_bfrs, send, end ) =>
-#       _send = send
-#       if facet_bfrs?
-#         buffer.splice 0, 0, facet_bfrs
-#       flush()
-#       if end?
-#         flush()
-#     .pipe $ ( facet_bfrs, send, end ) =>
-#       #.....................................................................................................,,
-#       if facet_bfrs?
-#         [ key_bfr, _, ]   = facet_bfrs
-        #   #...................................................................................................
-        #   db[ '%self' ].get key_bfr, ( error ) =>
-        #     rq_count += -1
-        #     debug '©QS6kF', 'may_be_known_key', rq_count, _end?, @_decode_key db, key_bfr
-        #     #.................................................................................................
-        #     if rq_count <= 0 and _end?
-        #       # warn '©JOQLb-1', 'end'
-        #       bloom.end()
-        #       # _end()
-        # #.....................................................................................................
-        # else
-        #   send facet_bfrs
-#       #.....................................................................................................,,
-#       if end?
-#         ### TAINT should write bloom.export to DB ###
-#         debug '©dJcbk', buffer
-#         if rq_count > 0
-#           _end = end
-#         else
-#           warn '©JOQLb-2', 'end'
-#           bloom.end()
-#           end()
-#   #.........................................................................................................
-#   return R
-
 #===========================================================================================================
 # READING
-# #-----------------------------------------------------------------------------------------------------------
-# @create_keystream = ( db, lo_hint = null, hi_hint = null ) ->
-#   ### TAINT code duplication ###
-#   if lo_hint?
-#     if hi_hint?
-#       query = { gte: lo_hint, lte:hi_hint, }
-#     else
-#       query = { gte: lo_hint, }
-#   else if hi_hint?
-#     query = { lte: hi_hint, }
-#   else
-#     query = null
-#   #.........................................................................................................
-#   debug '©835JP', query
-#   R = if query? then ( db[ '%self' ].createKeyStream query ) else db[ '%self' ].createKeyStream()
-#   # R = db[ '%self' ].createKeyStream @new_query db, query
-#   ### TAINT Should we test for well-formed entries here? ###
-#   R = R.pipe $ ( bkey, send ) => send @_decode_key db, bkey
-#   return R
-
-
 #-----------------------------------------------------------------------------------------------------------
 @create_phrasestream = ( db, lo_hint = null, hi_hint = null, settings ) ->
   input = @create_facetstream db, lo_hint, hi_hint, settings
@@ -462,20 +186,24 @@ Bloom                     = require 'bloom-stream'
   #.........................................................................................................
   return R
 
-# #-----------------------------------------------------------------------------------------------------------
-# @read_many = ( db, hint = null ) ->
-#   ### Hints are interpreted as partial secondary (POS) keys. ###
+#-----------------------------------------------------------------------------------------------------------
+@has = ( db, key, handler ) ->
+  key_bfr = @_encode_key db, key
+  db[ '%self' ].get key_bfr, ( error, obj_bfr ) =>
+    if error?
+      return handler null, false if error[ 'type' ] is 'NotFoundError'
+      return handler error
+    handler null, true
 
-# #-----------------------------------------------------------------------------------------------------------
-# @_read_one = ( db, key, fallback = @_misfit, handler ) ->
-#   switch arity = arguments.length
-#     when 3
-#       handler   = fallback
-#       fallback  = @_misfit
-#     when 4 then null
-#     else throw new Error "expected 3 or 4 arguments, got #{arity}"
-#   #.........................................................................................................
-#   db[ '%self' ].get key, handler
+#-----------------------------------------------------------------------------------------------------------
+@ensure_new_key = ( db, key, handler ) ->
+  key_bfr = @_encode_key db, key
+  db[ '%self' ].get key_bfr, ( error, obj_bfr ) =>
+    if error?
+      return handler null if error[ 'type' ] is 'NotFoundError'
+      return handler error
+    obj = @_decode_value obj_bfr
+    handler new Error "key #{rpr key} already in DB with value #{rpr obj}"
 
 #-----------------------------------------------------------------------------------------------------------
 @read_sub = ( db, settings, read ) ->
