@@ -38,6 +38,8 @@ db                        = null
 levelup                   = require 'levelup'
 leveldown                 = require 'leveldown'
 CODEC                     = require './codec'
+#...........................................................................................................
+ƒ                         = CND.format_number
 
 # #-----------------------------------------------------------------------------------------------------------
 # @_sort_list = ( list ) ->
@@ -1183,40 +1185,242 @@ CODEC                     = require './codec'
     debug "------------------------------------ tick"
     log_ticks_id = immediately log_ticks
   #---------------------------------------------------------------------------------------------------------
-  route   = '/tmp/X-test-db'
-  db      = HOLLERITH.new_db route
-  input_A = D.create_throughstream()
-  n       = 10
+  route             = '/tmp/X-test-db'
+  db                = HOLLERITH.new_db route
+  input_A           = D.create_throughstream()
+  n                 = 1e6
+  bloom_error_rate  = 0.1
+  entry_count       = 0
+  db_request_count  = 0
+  t0                = null
+  t1                = null
   #---------------------------------------------------------------------------------------------------------
-  input_B = input_A
-    #.....................................................................................................
-    .pipe D.$map ( phrase, handler ) =>
+  $lookup_plain = => D.$map ( phrase, handler ) =>
+    [ sbj, prd, obj, ]  = phrase
+    key                 = [ 'spo', sbj, prd, ]
+    HOLLERITH.has db, key, ( error, status ) =>
+      return handler error if error?
+      db_request_count += +1
+      if status
+        handler new Error "phrase already in DB: #{rpr phrase}"
+      else
+        # whisper "ok: #{rpr phrase}"
+        handler null, phrase
+  #---------------------------------------------------------------------------------------------------------
+  $lookup_cached = =>
+    cache = {}
+    return D.$map ( phrase, handler ) =>
       [ sbj, prd, obj, ]  = phrase
       key                 = [ 'spo', sbj, prd, ]
-      HOLLERITH.has db, key, ( error, status ) =>
+      ### TAINT not the proper method to turn key into text ###
+      key_txt             = key.join ''
+      return new Error "already in cache: #{rpr key_txt}" if cache[ key_txt ]?
+      cache[ key_txt ]    = 1
+      handler null, phrase
+  #---------------------------------------------------------------------------------------------------------
+  $lookup_bloom = =>
+    Bloom             = require 'bloom-stream'
+    bloom             = Bloom.forCapacity n, bloom_error_rate
+    return D.$map ( phrase, handler ) =>
+      [ sbj, prd, obj, ]  = phrase
+      key                 = [ 'spo', sbj, prd, ]
+      ### TAINT not the proper method to turn key into text ###
+      key_txt             = key.join '|'
+      bloom_has_key       = bloom.has key_txt
+      bloom.write key_txt
+      #.....................................................................................................
+      return handler null, phrase unless bloom_has_key
+      #.....................................................................................................
+      HOLLERITH.has db, key, ( error, db_has_key ) =>
         return handler error if error?
-        if status
+        db_request_count += +1
+        if db_has_key
           handler new Error "phrase already in DB: #{rpr phrase}"
         else
-          whisper "ok: #{rpr phrase}"
+          # whisper "ok: #{rpr phrase}"
           handler null, phrase
-    #.....................................................................................................
-    .pipe HOLLERITH.$write db, batch: 3
+  #---------------------------------------------------------------------------------------------------------
+  $lookup_scaling_bloom = =>
+    BLOEM             = require 'bloem'
+    bloem_settings    =
+      initial_capacity:   n / 10
+      scaling:            2
+      ratio:              0.9
+    bloom             = new BLOEM.ScalingBloem bloom_error_rate, bloem_settings
+    return D.$map ( phrase, handler ) =>
+      [ sbj, prd, obj, ]  = phrase
+      key                 = [ 'spo', sbj, prd, ]
+      ### TAINT not the proper method to turn key into text ###
+      key_txt             = key.join '|'
+      bloom_has_key       = bloom.has key_txt
+      bloom.add key_txt
+      #.....................................................................................................
+      ### informational ###
+      if entry_count % 100000 is 0
+        filters     = bloom[ 'filters' ]
+        filter_size = 0
+        help "filter count: #{filters.length}"
+        for filter in filters
+          filter_size += filter[ 'filter' ][ 'bitfield' ][ 'buffer' ].length
+        help "filter size: #{ƒ filter_size} bytes"
+      #.....................................................................................................
+      return handler null, phrase unless bloom_has_key
+      #.....................................................................................................
+      HOLLERITH.has db, key, ( error, db_has_key ) =>
+        return handler error if error?
+        db_request_count += +1
+        if db_has_key
+          handler new Error "phrase already in DB: #{rpr phrase}"
+        else
+          # whisper "ok: #{rpr phrase}"
+          handler null, phrase
+  #---------------------------------------------------------------------------------------------------------
+  input_B = input_A
+    # .pipe $lookup_plain()
+    # .pipe $lookup_cached()
+    # .pipe $lookup_bloom()
+    .pipe $lookup_scaling_bloom()
+    .pipe $ ( data, send ) =>
+      entry_count += +1
+      whisper entry_count if entry_count % 100000 is 0
+      send data
+    .pipe HOLLERITH.$write db, batch: 1000
   #-------------------------------------------------------------------------------------------------------
   input_B.on 'end', =>
+    t1 = +new Date()
     help "input_B/end"
+    help "n:                  #{ƒ n}"
+    help "DB request count:   #{ƒ db_request_count}"
+    help "request rate:       #{( db_request_count / n ).toFixed 4}"
+    help "dt:                 #{ƒ ( t1 - t0 ) / 1000}s"
     clearImmediate log_ticks_id
     done()
   #-------------------------------------------------------------------------------------------------------
   step ( resume ) =>
     yield HOLLERITH.clear db, resume
     # log_ticks()
+    t0 = +new Date()
     for record_idx in [ 0 ... n ]
       sbj     = "record"
       prd     = "nr-#{record_idx}"
       obj     = record_idx
       phrase  = [ sbj, prd, obj, ]
-      whisper "input_A.write #{rpr phrase}"
+      # whisper "input_A.write #{rpr phrase}"
+      yield input_A.write phrase, resume
+    #.......................................................................................................
+    whisper "calling input_A.end()"
+    yield input_A.end resume
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "ZZZ" ] = ( T, done ) ->
+  log_ticks_id = null
+  log_ticks = ->
+    debug "------------------------------------ tick"
+    log_ticks_id = immediately log_ticks
+  #---------------------------------------------------------------------------------------------------------
+  route             = '/tmp/X-test-db'
+  db                = HOLLERITH.new_db route
+  input_A           = D.create_throughstream()
+  n                 = 1e6
+  n                 = 10
+  bloom_error_rate  = 0.1
+  entry_count       = 0
+  db_request_count  = 0
+  t0                = null
+  t1                = null
+  #.........................................................................................................
+  BSON = ( require 'bson' ).BSONPure.BSON
+  njs_fs = require 'fs'
+  #.........................................................................................................
+  BLOEM             = require 'bloem'
+  bloem_settings    =
+    initial_capacity:   n / 10
+    scaling:            2
+    ratio:              0.9
+  bloom             = new BLOEM.ScalingBloem bloom_error_rate, bloem_settings
+  #---------------------------------------------------------------------------------------------------------
+  $lookup_scaling_bloom = =>
+    return D.$map ( phrase, handler ) =>
+      [ sbj, prd, obj, ]  = phrase
+      key                 = [ 'spo', sbj, prd, ]
+      ### TAINT not the proper method to turn key into text ###
+      key_txt             = key.join '|'
+      bloom_has_key       = bloom.has key_txt
+      bloom.add key_txt
+      #.....................................................................................................
+      return handler null, phrase unless bloom_has_key
+      #.....................................................................................................
+      HOLLERITH.has db, key, ( error, db_has_key ) =>
+        return handler error if error?
+        db_request_count += +1
+        if db_has_key
+          handler new Error "phrase already in DB: #{rpr phrase}"
+        else
+          # whisper "ok: #{rpr phrase}"
+          handler null, phrase
+  #---------------------------------------------------------------------------------------------------------
+  $show_bloom_info = =>
+    return D.$on_end =>
+      filters     = bloom[ 'filters' ]
+      filter_size = 0
+      help "filter count: #{filters.length}"
+      for filter in filters
+        filter_size += filter[ 'filter' ][ 'bitfield' ][ 'buffer' ].length
+      help "filter size: #{ƒ filter_size} bytes"
+  #---------------------------------------------------------------------------------------------------------
+  $load_bloom = =>
+    return D.$on_start ( end ) =>
+      try
+        bloom_bfr = njs_fs.readFileSync '/tmp/bloom.bson'
+      catch error
+        return warn error
+      bloom_data = BSON.deserialize bloom_bfr
+      debug '©FXmKa', bloom_data
+      b = new BLOEM.ScalingBloem bloom_error_rate, bloem_settings
+      b[ name ] = value for name, value of bloom_data
+      debug '©DmJKE', b.has 'record|nr-8'
+      debug '©DmJKE', b.has 'record|nr-100'
+  #---------------------------------------------------------------------------------------------------------
+  $save_bloom = =>
+    return D.$on_end ( end ) =>
+      t_a0 = +new Date()
+      bloom_bfr = BSON.serialize bloom
+      debug '©4uXio', CND.type_of bloom_bfr
+      njs_fs.writeFileSync '/tmp/bloom.bson', bloom_bfr
+      t_a1 = +new Date()
+      debug '©dQ8mT', t_a1 - t_a0
+      end()
+  #---------------------------------------------------------------------------------------------------------
+  input_B = input_A
+    .pipe $load_bloom()
+    .pipe $lookup_scaling_bloom()
+    .pipe $save_bloom()
+    .pipe $ ( data, send ) =>
+      entry_count += +1
+      whisper entry_count if entry_count % 100000 is 0
+      send data
+    .pipe HOLLERITH.$write db, batch: 1000
+  #-------------------------------------------------------------------------------------------------------
+  input_B.on 'end', =>
+    t1 = +new Date()
+    help "input_B/end"
+    help "n:                  #{ƒ n}"
+    help "DB request count:   #{ƒ db_request_count}"
+    help "request rate:       #{( db_request_count / n ).toFixed 4}"
+    help "dt:                 #{ƒ ( t1 - t0 ) / 1000}s"
+    clearImmediate log_ticks_id
+    done()
+  #-------------------------------------------------------------------------------------------------------
+  step ( resume ) =>
+    yield HOLLERITH.clear db, resume
+    # log_ticks()
+    t0 = +new Date()
+    for record_idx in [ 0 ... n ]
+      sbj     = "record"
+      prd     = "nr-#{record_idx}"
+      obj     = record_idx
+      phrase  = [ sbj, prd, obj, ]
+      # whisper "input_A.write #{rpr phrase}"
       yield input_A.write phrase, resume
     #.......................................................................................................
     whisper "calling input_A.end()"
@@ -1281,7 +1485,8 @@ clear_leveldb = ( leveldb, handler ) ->
 unless module.parent?
   # @_main()
   # @[ "XXX" ] null, -> help "(done)"
-  @[ "YYY" ] null, -> help "(done)"
+  # @[ "YYY" ] null, -> help "(done)"
+  @[ "ZZZ" ] null, -> help "(done)"
 
   # debug '©P9AOR', ( HOLLERITH.CODEC[ 'typemarkers'  ][ 'null'       ] ).toString 16
   # debug '©xxmIp', ( HOLLERITH.CODEC[ 'typemarkers'  ][ 'false'      ] ).toString 16

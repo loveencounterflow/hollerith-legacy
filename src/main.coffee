@@ -99,7 +99,10 @@ Bloom                     = require 'bloom-stream'
 @$write = ( db, settings ) ->
   #.........................................................................................................
   settings         ?= {}
-  batch_size        = settings[ 'batch'  ] ? 10000
+  ### Superficial experiments show that a much bigger batch size than 1'000 does not tend to improve
+  throughput; therefore, in order to reduce memory footprint, it seems advisable to leave batch size
+  in the order of around a thousand entries. ###
+  batch_size        = settings[ 'batch'  ] ? 1000
   solid_predicates  = settings[ 'solids' ] ? []
   substrate         = db[ '%self' ]
   R                 = D.create_throughstream()
