@@ -120,11 +120,18 @@ Bloom                     = require 'bloom-stream'
       return handler error
     handler null, value
 
+#-----------------------------------------------------------------------------------------------------------
+@_is_meta = ( db, key_bfr ) -> ( ( key_bfr.slice 0, @_meta_prefix.length ).compare @_meta_prefix ) is 0
+
+### TAINT must derive meta key prefix from result of `_put_meta` ###
+@_meta_prefix = new Buffer [ 0x54, 0x6d, 0x65, 0x74, 0x61, 0x00, ]
+
 
 #===========================================================================================================
 # WRITING
 #-----------------------------------------------------------------------------------------------------------
 @$write = ( db, settings ) ->
+  ### TAINT currently loading and saving bloom filter each time a pipeline with `$write` is run ###
   #.........................................................................................................
   settings         ?= {}
   ### Superficial experiments show that a much bigger batch size than 1'000 does not tend to improve
@@ -132,6 +139,7 @@ Bloom                     = require 'bloom-stream'
   in the order of around a thousand entries. ###
   batch_size        = settings[ 'batch'  ] ? 1000
   solid_predicates  = settings[ 'solids' ] ? []
+  ensure_unique     = settings[ 'unique' ] ? true
   substrate         = db[ '%self' ]
   R                 = D.create_throughstream()
   #.........................................................................................................
@@ -164,14 +172,104 @@ Bloom                     = require 'bloom-stream'
   $write = => $ ( batch, send ) =>
     substrate.batch batch
   #.........................................................................................................
-  R
-    .pipe $index()
-    .pipe $encode()
-    .pipe $as_batch_entry()
-    .pipe D.$batch batch_size
-    .pipe $write()
+  if ensure_unique
+    { $ensure_unique, $load_bloom, $save_bloom, } = @_get_bloom_methods db
   #.........................................................................................................
+  pipeline = []
+  pipeline.push $load_bloom()     if ensure_unique
+  pipeline.push $index()
+  pipeline.push $encode()
+  pipeline.push $ensure_unique()  if ensure_unique
+  pipeline.push $as_batch_entry()
+  pipeline.push D.$batch batch_size
+  pipeline.push $write()
+  pipeline.push $save_bloom()     if ensure_unique
+  #.........................................................................................................
+  R.pipe D.combine pipeline...
   return R
+
+#-----------------------------------------------------------------------------------------------------------
+@_get_bloom_methods = ( db ) ->
+  #---------------------------------------------------------------------------------------------------------
+  db_size           = db[ 'size' ] ? 1e6
+  db_size           = db[ 'size' ] ? 10
+  db_size           = db[ 'size' ] ? 1e4
+  bloom_error_rate  = 0.1
+  #.........................................................................................................
+  BSON = ( require 'bson' ).BSONPure.BSON
+  njs_fs = require 'fs'
+  #.........................................................................................................
+  BLOEM             = require 'bloem'
+  bloem_settings    =
+    initial_capacity:   db_size * 3
+    scaling:            2
+    ratio:              0.1
+  #---------------------------------------------------------------------------------------------------------
+  show_bloom_info = =>
+    bloom       = db[ '%bloom' ]
+    filters     = bloom[ 'filters' ]
+    filter_size = 0
+    ƒ           = CND.format_number
+    for filter in filters
+      filter_size += filter[ 'filter' ][ 'bitfield' ][ 'buffer' ].length
+    whisper "scalable Bloom filter size: #{ƒ filter_size} bytes"
+  #---------------------------------------------------------------------------------------------------------
+  $ensure_unique = =>
+    return D.$map ( phrase, handler ) =>
+      bloom               = db[ '%bloom' ]
+      ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
+      [ sbj, prd, obj, ]  = phrase
+      key                 = [ 'spo', sbj, prd, ]
+      key_bfr             = key.join '|'
+      ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
+      bloom_has_key       = bloom.has key_bfr
+      bloom.add key_bfr
+      return handler null, phrase unless bloom_has_key
+      #.....................................................................................................
+      @has db, key, ( error, db_has_key ) =>
+        return handler error if error?
+        return handler new Error "phrase already in DB: #{rpr phrase}" if db_has_key
+        handler null, phrase
+  #---------------------------------------------------------------------------------------------------------
+  $load_bloom = =>
+    is_first = yes
+    return D.$map ( data, handler ) =>
+      unless is_first
+        return if data? then handler null, data else handler()
+      #.....................................................................................................
+      is_first = no
+      whisper "loading Bloom filter..."
+      #.....................................................................................................
+      @_get_meta db, 'bloom', null, ( error, bloom_bfr ) =>
+        return send.error error if error?
+        if bloom_bfr is null
+          warn 'no bloom filter found'
+          bloom = new BLOEM.ScalingBloem bloom_error_rate, bloem_settings
+        else
+          bloom_data = BSON.deserialize bloom_bfr
+          ### TAINT see https://github.com/wiedi/node-bloem/issues/5 ###
+          for filter in bloom_data[ 'filters' ]
+            bitfield              = filter[ 'filter' ][ 'bitfield' ]
+            bitfield[ 'buffer' ]  = bitfield[ 'buffer' ][ 'buffer' ]
+          bloom = BLOEM.ScalingBloem.destringify bloom_data
+        db[ '%bloom' ] = bloom
+        whisper "...ok"
+        show_bloom_info()
+        return if data? then handler null, data else handler()
+  #---------------------------------------------------------------------------------------------------------
+  $save_bloom = =>
+    return D.$on_end ( send, end ) =>
+      whisper "saving Bloom filter..."
+      bloom     = db[ '%bloom' ]
+      bloom_bfr = BSON.serialize bloom
+      #.....................................................................................................
+      @_put_meta db, 'bloom', bloom_bfr, ( error ) =>
+        return send.error error if error?
+        whisper "...ok"
+        end()
+  #---------------------------------------------------------------------------------------------------------
+  return { $ensure_unique, $load_bloom, $save_bloom, }
+
 
 #===========================================================================================================
 # READING
@@ -211,7 +309,11 @@ Bloom                     = require 'bloom-stream'
   #.........................................................................................................
   ### TAINT Should we test for well-formed entries here? ###
   R = db[ '%self' ].createReadStream query
-  R = R.pipe $ ( { key, value }, send ) => send [ ( @_decode_key db, key ), ( @_decode_value db, value ), ]
+  #.........................................................................................................
+  R = R.pipe $ ( { key, value }, send ) =>
+    unless @_is_meta db, key
+      send [ ( @_decode_key db, key ), ( @_decode_value db, value ), ]
+  #.........................................................................................................
   R[ '%meta' ] = {}
   R[ '%meta' ][ 'query' ] = query
   #.........................................................................................................
