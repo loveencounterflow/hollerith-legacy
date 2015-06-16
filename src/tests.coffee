@@ -1093,14 +1093,14 @@ CODEC                     = require './codec'
 #   tx2 = db.transaction()
 #   tx.put 'k', 167
 #   tx.commit ->
-#     tx2.get 'k', (err, value) ->
+#     tx2.get 'k', (error, value) ->
 #       #tx2 increments value
 #       tx2.put 'k', value + 1
 #       return
-#     db.get 'k', (err, data) ->
+#     db.get 'k', (error, data) ->
 #       #tx commit: data equals to 167
 #       tx2.commit ->
-#         db.get 'k', (err, data) ->
+#         db.get 'k', (error, data) ->
 #           #tx2 commit: data equals to 168
 #           return
 #         return
@@ -1323,6 +1323,7 @@ CODEC                     = require './codec'
   input_A           = D.create_throughstream()
   n                 = 1e6
   n                 = 10
+  n                 = 1e4
   bloom_error_rate  = 0.1
   entry_count       = 0
   db_request_count  = 0
@@ -1334,13 +1335,22 @@ CODEC                     = require './codec'
   #.........................................................................................................
   BLOEM             = require 'bloem'
   bloem_settings    =
-    initial_capacity:   n / 10
+    initial_capacity:   n #/ 10
     scaling:            2
-    ratio:              0.9
-  bloom             = new BLOEM.ScalingBloem bloom_error_rate, bloem_settings
+    ratio:              0.1
   #---------------------------------------------------------------------------------------------------------
-  $lookup_scaling_bloom = =>
+  show_bloom_info = ( db ) =>
+    bloom       = db[ '%bloom' ]
+    filters     = bloom[ 'filters' ]
+    filter_size = 0
+    for filter in filters
+      filter_size += filter[ 'filter' ][ 'bitfield' ][ 'buffer' ].length
+    whisper "scalable bloom: filter count: #{filters.length}, filter size: #{ƒ filter_size} bytes"
+  #---------------------------------------------------------------------------------------------------------
+  $ensure_unique = ( db ) =>
     return D.$map ( phrase, handler ) =>
+      bloom               = db[ '%bloom' ]
+      return handler new Error "unable to find bloom filter in DB" unless bloom?
       [ sbj, prd, obj, ]  = phrase
       key                 = [ 'spo', sbj, prd, ]
       ### TAINT not the proper method to turn key into text ###
@@ -1359,42 +1369,53 @@ CODEC                     = require './codec'
           # whisper "ok: #{rpr phrase}"
           handler null, phrase
   #---------------------------------------------------------------------------------------------------------
-  $show_bloom_info = =>
-    return D.$on_end =>
-      filters     = bloom[ 'filters' ]
-      filter_size = 0
-      help "filter count: #{filters.length}"
-      for filter in filters
-        filter_size += filter[ 'filter' ][ 'bitfield' ][ 'buffer' ].length
-      help "filter size: #{ƒ filter_size} bytes"
+  $load_bloom = ( db ) =>
+    is_first = yes
+    return D.$map ( data, handler ) =>
+      unless is_first
+        return if data? then handler null, data else handler()
+      is_first = no
+      #.....................................................................................................
+      HOLLERITH._get_meta db, 'bloom', null, ( error, bloom_bfr ) =>
+        return send.error error if error?
+        if bloom_bfr is null
+          warn 'no bloom filter found'
+          bloom = new BLOEM.ScalingBloem bloom_error_rate, bloem_settings
+        else
+          bloom_data = BSON.deserialize bloom_bfr
+          ### TAINT see https://github.com/wiedi/node-bloem/issues/5 ###
+          for filter in bloom_data[ 'filters' ]
+            bitfield              = filter[ 'filter' ][ 'bitfield' ]
+            bitfield[ 'buffer' ]  = bitfield[ 'buffer' ][ 'buffer' ]
+          bloom = BLOEM.ScalingBloem.destringify bloom_data
+        db[ '%bloom' ] = bloom
+        show_bloom_info db
+        debug '©o5b1p', bloom.has 'spo|record|nr-8'
+        debug '©o5b1p', bloom.has 'spo|record|nr-9'
+        debug '©o5b1p', bloom.has 'spo|record|nr-19'
+        debug '©o5b1p', bloom.has 'spo|record|nr-190'
+        return if data? then handler null, data else handler()
   #---------------------------------------------------------------------------------------------------------
-  $load_bloom = =>
-    return D.$on_start ( end ) =>
-      try
-        bloom_bfr = njs_fs.readFileSync '/tmp/bloom.bson'
-      catch error
-        return warn error
-      bloom_data = BSON.deserialize bloom_bfr
-      debug '©FXmKa', bloom_data
-      b = new BLOEM.ScalingBloem bloom_error_rate, bloem_settings
-      b[ name ] = value for name, value of bloom_data
-      debug '©DmJKE', b.has 'record|nr-8'
-      debug '©DmJKE', b.has 'record|nr-100'
-  #---------------------------------------------------------------------------------------------------------
-  $save_bloom = =>
-    return D.$on_end ( end ) =>
-      t_a0 = +new Date()
+  $save_bloom = ( db ) =>
+    return D.$on_end ( send, end ) =>
+      bloom     = db[ '%bloom' ]
       bloom_bfr = BSON.serialize bloom
-      debug '©4uXio', CND.type_of bloom_bfr
-      njs_fs.writeFileSync '/tmp/bloom.bson', bloom_bfr
-      t_a1 = +new Date()
-      debug '©dQ8mT', t_a1 - t_a0
-      end()
+      #.....................................................................................................
+      HOLLERITH._put_meta db, 'bloom', bloom_bfr, ( error ) =>
+        ### TAINT `end` doesn't have an `error` method? ###
+        return send.error error if error?
+        #.....................................................................................................
+        ### testing ###
+        debug '©pU4hN', bloom.has 'spo|record|nr-8'
+        debug '©pU4hN', bloom.has 'spo|record|nr-9'
+        debug '©pU4hN', bloom.has 'spo|record|nr-19'
+        debug '©pU4hN', bloom.has 'spo|record|nr-190'
+        end()
   #---------------------------------------------------------------------------------------------------------
   input_B = input_A
-    .pipe $load_bloom()
-    .pipe $lookup_scaling_bloom()
-    .pipe $save_bloom()
+    .pipe $load_bloom     db
+    .pipe $ensure_unique  db
+    .pipe $save_bloom     db
     .pipe $ ( data, send ) =>
       entry_count += +1
       whisper entry_count if entry_count % 100000 is 0

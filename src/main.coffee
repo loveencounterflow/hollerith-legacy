@@ -94,6 +94,34 @@ Bloom                     = require 'bloom-stream'
 
 
 #===========================================================================================================
+# METADATA
+#-----------------------------------------------------------------------------------------------------------
+@_put_meta = ( db, name, value, handler ) ->
+  ### TAINT should use own type for metadata ###
+  key_bfr   = @_encode_key db, [ 'meta', name, ]
+  value_bfr = if CND.isa_jsbuffer then value else @_encode_value db, value
+  db[ '%self' ].put key_bfr, value_bfr, ( error ) => handler error if handler?
+
+#-----------------------------------------------------------------------------------------------------------
+@_get_meta = ( db, name, fallback, handler ) ->
+  switch arity = arguments.length
+    when 3
+      handler   = fallback
+      fallback  = @_misfit
+    when 4
+      null
+    else
+      throw new Error "expected 3 or 4 arguments, got #{arity}"
+  #.........................................................................................................
+  key_bfr = @_encode_key db, [ 'meta', name, ]
+  db[ '%self' ].get key_bfr, ( error, value ) =>
+    if error?
+      return handler null, fallback if ( error[ 'type' ] is 'NotFoundError' ) and ( fallback isnt @_misfit )
+      return handler error
+    handler null, value
+
+
+#===========================================================================================================
 # WRITING
 #-----------------------------------------------------------------------------------------------------------
 @$write = ( db, settings ) ->

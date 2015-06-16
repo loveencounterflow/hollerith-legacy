@@ -73,7 +73,7 @@ release_extraneous_rbuffer_bytes = ->
 
 
 #===========================================================================================================
-# VARAINTS
+# VARIANTS
 #-----------------------------------------------------------------------------------------------------------
 write_singular = ( idx, value ) ->
   throw buffer_too_short_error unless rbuffer.length >= idx + bytecount_singular
