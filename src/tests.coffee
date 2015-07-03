@@ -31,6 +31,7 @@ test                      = require 'guy-test'
 #...........................................................................................................
 D                         = require 'pipedreams2'
 $                         = D.remit.bind D
+$async                    = D.remit_async.bind D
 #...........................................................................................................
 HOLLERITH                 = require './main'
 db                        = null
@@ -66,7 +67,7 @@ CODEC                     = require './codec'
     #.......................................................................................................
     switch probes_idx
       #-----------------------------------------------------------------------------------------------------
-      when 0, 2
+      when 0, 2, 3
         input
           .pipe HOLLERITH.$write db, settings
           # .pipe D.$show()
@@ -164,6 +165,30 @@ CODEC                     = require './codec'
   [ '夫', 'components',      [ '夫', ],                  ]
   [ '國', 'components',      [ '囗', '戈', '口', '一', ], ]
   [ '形', 'components',      [ '开', '彡', ],             ]
+  ]
+
+#-----------------------------------------------------------------------------------------------------------
+@_feed_test_data.probes.push [
+  [ '丁', 'isa',                         [ 'glyph', 'guide', ]       ]
+  [ '三', 'isa',                         [ 'glyph', 'guide', ]       ]
+  [ '夫', 'isa',                         [ 'glyph', 'guide', ]       ]
+  [ '國', 'isa',                         [ 'glyph', ]                ]
+  [ '形', 'isa',                         [ 'glyph', ]                ]
+  [ 'glyph:丁', 'strokeorder/count',     2,                          ]
+  [ 'glyph:三', 'strokeorder/count',     3,                          ]
+  [ 'glyph:夫', 'strokeorder/count',     5,                          ]
+  [ 'glyph:國', 'strokeorder/count',     11,                         ]
+  [ 'glyph:形', 'strokeorder/count',     7,                          ]
+  [ 'glyph:丁', 'guide/count',           1,                          ]
+  [ 'glyph:三', 'guide/count',           1,                          ]
+  [ 'glyph:夫', 'guide/count',           1,                          ]
+  [ 'glyph:國', 'guide/count',           4,                          ]
+  [ 'glyph:形', 'guide/count',           2,                          ]
+  [ 'glyph:丁', 'guide/lineup',          [ '丁', ],                  ]
+  [ 'glyph:三', 'guide/lineup',          [ '三', ],                  ]
+  [ 'glyph:夫', 'guide/lineup',          [ '夫', ],                  ]
+  [ 'glyph:國', 'guide/lineup',          [ '囗', '戈', '口', '一', ], ]
+  [ 'glyph:形', 'guide/lineup',          [ '开', '彡', ],             ]
   ]
 
 # pos|guide/kwic/sortcode
@@ -1037,7 +1062,7 @@ CODEC                     = require './codec'
         .pipe D.$on_end =>
           urge "test data written"
           handler()
-      #.......................................................................................................
+      #.....................................................................................................
       input.write probe for probe in probes
       input.end()
   #.........................................................................................................
@@ -1055,6 +1080,67 @@ CODEC                     = require './codec'
       .pipe D.$on_end =>
         # T.eq count, matchers.length
         done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "XXX" ] = ( T, done ) ->
+  warn "must test for bug with multiple identical entries"
+  probes_idx  = 3
+  #.........................................................................................................
+  glyphs = [ '丁', '三', '夫', '國', '形', ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    yield show_db_entries resume
+    ### TAINT doesn't work: ###
+    # prefix    = [ 'pos', 'isa', '*', ]
+    prefix    = [ 'pos', 'isa', 'glyph', ]
+    input     = HOLLERITH.create_phrasestream db, prefix
+    input
+      .pipe D.$map ( phrase, handler ) =>
+        debug '©gg5Fr', phrase
+        [ _, sbj, _, obj, ] = phrase
+        debug '©NxZo4', sbj
+        sub_prefix  = [ 'spo', obj + ':' + sbj, 'guide', ]
+        sub_input   = HOLLERITH.create_phrasestream db, sub_prefix, '*'
+        sub_input
+          .pipe D.$collect()
+          .pipe D.$show 'A'
+          .pipe $ ( sub_results, send ) =>
+            handler null, sub_results
+      .pipe D.$show 'B'
+      .pipe D.$on_end =>
+        # T.eq count, matchers.length
+        done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "YYY" ] = ( T, T_done ) ->
+  warn "must test for bug with multiple identical entries"
+  probes_idx  = 3
+  #.........................................................................................................
+  glyphs = [ '丁', '三', '夫', '國', '形', ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    yield show_db_entries resume
+    prefix    = [ 'pos', 'isa', 'glyph', ]
+    input     = HOLLERITH.create_phrasestream db, prefix
+    input
+      .pipe $async ( phrase, done ) =>
+        # debug '©PCj9R', phrase
+        [ _, sbj, _, obj, ] = phrase
+        sub_prefix  = [ 'spo', obj + ':' + sbj, 'guide', ]
+        ### TAINT must honor arity ###
+        HOLLERITH.read_phrases db, sub_prefix, '*', null, ( error, sub_phrases ) =>
+          # debug '©VOZ0p', sbj, sub_phrases
+          return done.error error if error?
+          for sub_phrase, sub_phrase_idx in sub_phrases
+            [ _, _, sub_prd, sub_obj, ] = sub_phrase
+            sub_phrases[ sub_phrase_idx ] = [ sub_prd, sub_obj, ]
+          done [ sbj, sub_phrases..., ]
+      .pipe D.$show 'B'
+      .pipe D.$on_end =>
+        # T.eq count, matchers.length
+        T_done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "writing phrases with non-unique keys fails" ] = ( T, done ) ->
@@ -1263,6 +1349,23 @@ show_keys_and_key_bfrs = ( keys, key_bfrs ) ->
     data.push { 'str': key_txt, 'bfr': key_bfrs[ idx ]}
   help '\n' + CND.columnify data, columnify_settings
   return null
+
+#-----------------------------------------------------------------------------------------------------------
+show_db_entries = ( handler ) ->
+  input = db[ '%self' ].createReadStream()
+  input
+    .pipe D.$show()
+    .pipe $ ( { key, value, }, send ) => send [ key, value, ]
+    .pipe $ ( [ key, value, ], send ) => send [ key, value, ] unless HOLLERITH._is_meta db, key
+    .pipe $ ( [ key, value, ], send ) =>
+      # debug '©RluhF', ( HOLLERITH.CODEC.decode key ), ( JSON.parse value )
+      send [ key, value, ]
+    .pipe D.$collect()
+    .pipe $ ( facets, send ) =>
+      help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
+      # buffer = new Buffer JSON.stringify [ '开', '彡' ]
+      # debug '©GJfL6', HOLLERITH.DUMP.rpr_of_buffer null, buffer
+    .pipe D.$on_end => handler()
 
 #-----------------------------------------------------------------------------------------------------------
 get_new_db_name = ->

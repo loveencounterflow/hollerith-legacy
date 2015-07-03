@@ -275,9 +275,23 @@ Bloom                     = require 'bloom-stream'
 # READING
 #-----------------------------------------------------------------------------------------------------------
 @create_phrasestream = ( db, lo_hint = null, hi_hint = null, settings ) ->
+  return @_create_phrasestream db, lo_hint, hi_hint, settings
+
+#-----------------------------------------------------------------------------------------------------------
+@read_phrases = ( db, lo_hint = null, hi_hint = null, settings, handler ) ->
+  ### TAINT arguments don't work this way, must honor arity ###
+  return @_create_phrasestream db, lo_hint, hi_hint, settings, handler
+
+#-----------------------------------------------------------------------------------------------------------
+@_create_phrasestream = ( db, lo_hint = null, hi_hint = null, settings, handler ) ->
   input = @create_facetstream db, lo_hint, hi_hint, settings
-  R = input
-    .pipe @$as_phrase db
+  R = input.pipe @$as_phrase db
+  if handler?
+    R = R
+      .pipe D.$collect()
+      .pipe $ ( data, send ) =>
+        handler null, data
+    R.on 'error', ( error ) => handler error
   R[ '%meta' ] = input[ '%meta' ]
   return R
 
@@ -448,8 +462,8 @@ and the ordering in the resulting key. ###
 
 #-----------------------------------------------------------------------------------------------------------
 @key_from_url = ( db, url ) ->
-  ### TAIN does not unescape as yet ###
-  ### TAIN does not cast values as yet ###
+  ### TAINT does not unescape as yet ###
+  ### TAINT does not cast values as yet ###
   ### TAINT does not support multiple indexes as yet ###
   [ phrasetype, first, second, idx, ] = url.split '|'
   unless phrasetype? and phrasetype.length > 0 and phrasetype in [ 'so', 'os', ]

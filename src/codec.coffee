@@ -232,6 +232,7 @@ write = ( idx, value ) ->
 ### TAINT remove is_top_level if not used ###
 _encode = ( key, idx, is_top_level ) ->
   last_element_idx = key.length - 1
+  # debug '©GP4RE', rpr key
   for element, element_idx in key
     loop
       try
