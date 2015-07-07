@@ -1,6 +1,5 @@
 
 
-
 ############################################################################################################
 # njs_util                  = require 'util'
 # njs_path                  = require 'path'
@@ -241,7 +240,7 @@ Bloom                     = require 'bloom-stream'
       whisper "loading Bloom filter..."
       #.....................................................................................................
       @_get_meta db, 'bloom', null, ( error, bloom_bfr ) =>
-        return send.error error if error?
+        return handler error if error?
         if bloom_bfr is null
           warn 'no bloom filter found'
           bloom = new BLOEM.ScalingBloem bloom_error_rate, bloem_settings
@@ -274,17 +273,47 @@ Bloom                     = require 'bloom-stream'
 #===========================================================================================================
 # READING
 #-----------------------------------------------------------------------------------------------------------
-@create_phrasestream = ( db, lo_hint = null, hi_hint = null, settings ) ->
-  return @_create_phrasestream db, lo_hint, hi_hint, settings
+@create_phrasestream = ( db, settings ) ->
+  return @_create_phrasestream db, settings
 
 #-----------------------------------------------------------------------------------------------------------
-@read_phrases = ( db, lo_hint = null, hi_hint = null, settings, handler ) ->
-  ### TAINT arguments don't work this way, must honor arity ###
-  return @_create_phrasestream db, lo_hint, hi_hint, settings, handler
+@read_phrases = ( db, settings, handler ) ->
+  switch arity = arguments.length
+    when 2
+      handler   = settings
+      settings  = null
+    when 3
+      null
+    else
+      throw new Error "expected 4 or 5 arguments, got #{arity}"
+  return @_create_phrasestream db, settings, handler
 
 #-----------------------------------------------------------------------------------------------------------
-@_create_phrasestream = ( db, lo_hint = null, hi_hint = null, settings, handler ) ->
-  input = @create_facetstream db, lo_hint, hi_hint, settings
+@read_one_phrase = ( db, settings, handler ) ->
+  fallback = @_misfit
+  #.........................................................................................................
+  switch arity = arguments.length
+    when 2
+      handler   = settings
+      settings  = null
+    when 3
+      null
+    else
+      throw new Error "expected 4 or 5 arguments, got #{arity}"
+  #.........................................................................................................
+  if settings? and 'fallback' of settings
+    fallback = settings[ 'fallback' ]
+    delete settings[ 'fallback' ]
+  #.........................................................................................................
+  @read_phrases db, settings, ( error, phrases ) =>
+    return handler error if error?
+    return handler null, fallback if ( phrases.length is 0 ) and ( fallback isnt @_misfit )
+    return handler new Error "expected single phrase, got #{phrases.length}" if phrases.length isnt 1
+    handler null, phrases[ 0 ]
+
+#-----------------------------------------------------------------------------------------------------------
+@_create_phrasestream = ( db, settings, handler ) ->
+  input = @create_facetstream db, settings
   R = input.pipe @$as_phrase db
   if handler?
     R = R
@@ -296,14 +325,56 @@ Bloom                     = require 'bloom-stream'
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@create_facetstream = ( db, lo_hint = null, hi_hint = null, settings ) ->
+@create_facetstream = ( db, settings ) ->
   ###
   * If neiter `lo` nor `hi` is given, the stream will iterate over all entries.
   * If both `lo` and `hi` are given, a query with lower and upper, inclusive boundaries is
     issued.
-  * If only `lo` is given, a prefix query is issued.
+  * If only `prefix` is given, a prefix query is issued. Prefix queries may be 'exclusive' or 'inclusive'.
+    Exclusive prefixes match the list elements that make up the HOLLERITH entry keys in a component-wise
+    fashion, while inclusive queries also match when the last prefix element is the start of the
+    corresponding component of the entry key. For example, `{ prefix: [ 'pos', 'shape', ] }` will match
+
+
+  ; in that case, an additional `star` setting (as in
+    e.g. `{ prefix: [ 'spo', 'foo', ],  star: '*', }`) whose value must always be the string `'*'` causes
+    the prefix to be interpreted as
   * If `hi` is given but `lo` is missing, an error is issued.
   ###
+  lo_hint = null
+  hi_hint = null
+  #.........................................................................................................
+  if settings?
+    keys = Object.keys settings
+    switch arity = keys.length
+      when 1
+        switch key = keys[ 0 ]
+          when 'lo', 'prefix'
+            lo_hint = settings[ key ]
+          when 'hi'
+            hi_hint = settings[ key ]
+          else
+            throw new Error "unknown hint key #{rpr key}" unless key in [ 'prefix', 'lo', 'hi', ]
+      when 2
+        keys.sort()
+        if keys[ 0 ] is 'hi' and keys[ 1 ] is 'lo'
+          lo_hint = settings[ 'lo' ]
+          hi_hint = settings[ 'hi' ]
+        else if keys[ 0 ] is 'prefix' and keys[ 1 ] is 'star'
+          lo_hint = settings[ 'prefix' ]
+          hi_hint = settings[ 'star' ]
+          throw new Error "expected `star` to be '*', got #{rpr hi_hint}" unless hi_hint is '*'
+        else
+          throw new Error "illegal hint keys #{rpr keys}"
+      else
+        throw new Error "illegal hint arity #{rpr arity}"
+  #.........................................................................................................
+  # debug '©KaWp7', lo_hint, hi_hint
+  return @_create_facetstream db, lo_hint, hi_hint
+
+#-----------------------------------------------------------------------------------------------------------
+@_create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
+  ### TAINT `lo_hint` and `hi_hint` should be called `first` and `second` ###
   #.........................................................................................................
   if hi_hint? and not lo_hint?
     throw new Error "must give `lo_hint` when `hi_hint` is given"
@@ -507,19 +578,19 @@ and the ordering in the resulting key. ###
 #===========================================================================================================
 # PREFIXES & QUERIES
 #-----------------------------------------------------------------------------------------------------------
-@_query_from_prefix = ( db, lo_hint, star ) ->
-  #.........................................................................................................
+@_query_from_prefix = ( db, prefix, star ) ->
   if star?
     ### 'Asterisk' encoding: partial key segments match ###
-    gte   = @_encode_key db, lo_hint
-    lte   = @_encode_key db, lo_hint
+    gte   = @_encode_key db, prefix
+    lte   = @_encode_key db, prefix
     lte[ lte.length - 1 ] = CODEC[ 'typemarkers'  ][ 'hi' ]
   #.........................................................................................................
   else
     ### 'Classical' encoding: only full key segments match ###
-    base  = @_encode_key db, lo_hint, CODEC[ 'typemarkers'  ][ 'hi' ]
+    base  = @_encode_key db, prefix, CODEC[ 'typemarkers'  ][ 'hi' ]
     gte   = base.slice 0, base.length - 1
     lte   = base.slice 0, base.length
+  #.........................................................................................................
   return { gte, lte, }
 
 

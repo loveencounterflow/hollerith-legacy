@@ -67,7 +67,7 @@ CODEC                     = require './codec'
     #.......................................................................................................
     switch probes_idx
       #-----------------------------------------------------------------------------------------------------
-      when 0, 2, 3
+      when 0, 2, 3, 4
         input
           .pipe HOLLERITH.$write db, settings
           # .pipe D.$show()
@@ -106,6 +106,7 @@ CODEC                     = require './codec'
 @_feed_test_data.probes = []
 
 #...........................................................................................................
+### probes_idx == 0 ###
 @_feed_test_data.probes.push [
   [ '𧷟1', 'guide/lineup/length',              1,                                   ]
   [ '𧷟2', 'guide/lineup/length',              2,                                   ]
@@ -129,6 +130,7 @@ CODEC                     = require './codec'
   ]
 
 #...........................................................................................................
+### probes_idx == 1 ###
 @_feed_test_data.probes.push [
   'so|glyph:劬|cp/fncr:u-cjk/52ac|0'
   'so|glyph:邭|cp/fncr:u-cjk/90ad|0'
@@ -149,6 +151,7 @@ CODEC                     = require './codec'
   ]
 
 #-----------------------------------------------------------------------------------------------------------
+### probes_idx == 2 ###
 @_feed_test_data.probes.push [
   [ '丁', 'strokecount',     2,                          ]
   [ '三', 'strokecount',     3,                          ]
@@ -168,6 +171,7 @@ CODEC                     = require './codec'
   ]
 
 #-----------------------------------------------------------------------------------------------------------
+### probes_idx == 3 ###
 @_feed_test_data.probes.push [
   [ '丁', 'isa',                         [ 'glyph', 'guide', ]       ]
   [ '三', 'isa',                         [ 'glyph', 'guide', ]       ]
@@ -189,6 +193,35 @@ CODEC                     = require './codec'
   [ 'glyph:夫', 'guide/lineup',          [ '夫', ],                  ]
   [ 'glyph:國', 'guide/lineup',          [ '囗', '戈', '口', '一', ], ]
   [ 'glyph:形', 'guide/lineup',          [ '开', '彡', ],             ]
+  ]
+
+#...........................................................................................................
+### probes_idx == 4 ###
+@_feed_test_data.probes.push [
+  [ '𧷟1', 'guide/lineup/length',              1,                                   ]
+  [ '𧷟2', 'guide/lineup/length',              2,                                   ]
+  [ '𧷟3', 'guide/lineup/length',              3,                                   ]
+  [ '𧷟4', 'guide/lineup/length',              4,                                   ]
+  [ '𧷟', 'guide/lineup/length',               5,                                   ]
+  [ '𧷟6', 'guide/lineup/length',              6,                                   ]
+  [ '𧷟', 'cp/cid',                           163295,                               ]
+  [ '𧷟', 'guide/uchr/has',                   [ '八', '刀', '宀', '', '貝', ],      ]
+  [ '𧷟', 'rank/cjt',                         5432,                                 ]
+  [ '八', 'factor/strokeclass/wbf',          '34',                                  ]
+  [ '刀', 'factor/strokeclass/wbf',          '5(12)3',                              ]
+  [ '宀', 'factor/strokeclass/wbf',          '44',                                  ]
+  [ '', 'factor/strokeclass/wbf',          '12',                                  ]
+  [ '貝', 'factor/strokeclass/wbf',          '25(12)',                              ]
+  [ '八', 'rank/cjt',                         12541,                                ]
+  [ '刀', 'rank/cjt',                         12542,                                ]
+  [ '宀', 'rank/cjt',                         12543,                                ]
+  [ '', 'rank/cjt',                         12544,                                ]
+  [ '貝', 'rank/cjt',                         12545,                                ]
+  [ '𧷟1', 'a', 42 ]
+  [ '𧷟1', 'ab', 42 ]
+  [ '𧷟1', 'guide', 'xxx' ]
+  [ '𧷟1', 'guide/', 'yyy' ]
+  [ '𧷟1', 'z', 42 ]
   ]
 
 # pos|guide/kwic/sortcode
@@ -273,7 +306,7 @@ CODEC                     = require './codec'
     probe_idx = 4
     count     = 0
     prefix    = [ 'x', probe_idx, ]
-    input     = HOLLERITH.create_facetstream db, prefix
+    input     = HOLLERITH.create_facetstream db, { prefix, }
     input
       .pipe $ ( facet, send ) =>
         count += 1
@@ -321,7 +354,7 @@ CODEC                     = require './codec'
     delta     = 2
     lo        = [ 'x', probe_idx, ]
     hi        = [ 'x', probe_idx + delta, ]
-    input     = HOLLERITH.create_facetstream db, lo, hi
+    input     = HOLLERITH.create_facetstream db, { lo, hi, }
     input
       .pipe $ ( [ key, value, ], send ) =>
         count += 1
@@ -334,7 +367,7 @@ CODEC                     = require './codec'
 #-----------------------------------------------------------------------------------------------------------
 @[ "create_facetstream throws with wrong arguments" ] = ( T, done ) ->
   message = "must give `lo_hint` when `hi_hint` is given"
-  T.throws message, ( -> HOLLERITH.create_facetstream db, null, [ 'xxx', ] )
+  T.throws message, ( -> HOLLERITH.create_facetstream db, hi: [ 'xxx', ] )
   done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -359,7 +392,7 @@ CODEC                     = require './codec'
     lo = [ 'pos', 'guide/lineup/length', 2, ]
     hi = [ 'pos', 'guide/lineup/length', 4, ]
     # input   = HOLLERITH.create_keystream db, lo
-    input   = HOLLERITH.create_facetstream db, lo, hi
+    input   = HOLLERITH.create_facetstream db, { lo, hi, }
     input
       # .pipe HOLLERITH.$url_from_key db
       .pipe $ ( [ key, value, ], send ) =>
@@ -384,7 +417,7 @@ CODEC                     = require './codec'
     yield @_feed_test_data db, probes_idx, resume
     lo = [ 'pos', 'guide/lineup/length', 2, ]
     hi = [ 'pos', 'guide/lineup/length', 4, ]
-    input   = HOLLERITH.create_phrasestream db, lo, hi
+    input   = HOLLERITH.create_phrasestream db, { lo, hi, }
     input
       .pipe $ ( phrase, send ) =>
         idx += +1
@@ -408,7 +441,7 @@ CODEC                     = require './codec'
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     prefix    = [ 'pos', 'guide/uchr/has', ]
-    input     = HOLLERITH.create_phrasestream db, prefix
+    input     = HOLLERITH.create_phrasestream db, { prefix, }
     settings  = { indexed: no, }
     input
       .pipe $ ( phrase, send ) =>
@@ -438,7 +471,7 @@ CODEC                     = require './codec'
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     prefix  = [ 'spo', '𧷟', ]
-    input   = HOLLERITH.create_phrasestream db, prefix
+    input   = HOLLERITH.create_phrasestream db, { prefix, }
     input
       .pipe $ ( phrase, send ) =>
         debug '©DsAfY', rpr phrase
@@ -463,11 +496,12 @@ CODEC                     = require './codec'
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     prefix    = [ 'spo', '𧷟', 'guide/uchr/has', ]
-    input     = HOLLERITH.create_phrasestream db, prefix
+    input     = HOLLERITH.create_phrasestream db, { prefix, }
     settings  = { indexed: no, }
     input
       .pipe HOLLERITH.read_sub db, settings, ( [ phrasetype, glyph, prd, guides, ] ) =>
-        sub_input = HOLLERITH.create_phrasestream db, [ 'spo', guides[ 0 ], 'factor/strokeclass/wbf', ]
+        sub_prefix  = [ 'spo', guides[ 0 ], 'factor/strokeclass/wbf', ]
+        sub_input   = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, }
         return [ glyph, sub_input, ]
       .pipe $ ( phrase, send ) =>
         count  += +1
@@ -495,13 +529,13 @@ CODEC                     = require './codec'
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     prefix    = [ 'pos', 'guide/uchr/has', ]
-    input     = HOLLERITH.create_phrasestream db, prefix
+    input     = HOLLERITH.create_phrasestream db, { prefix, }
     settings  = { indexed: no, }
     input
       .pipe HOLLERITH.read_sub db, settings, ( phrase ) =>
         [ _, glyph, prd, guide, ] = phrase
         prefix                    = [ 'spo', guide, 'factor/strokeclass/wbf', ]
-        sub_input                 = HOLLERITH.create_phrasestream db, prefix
+        sub_input                 = HOLLERITH.create_phrasestream db, { prefix, }
         return [ glyph, sub_input, ]
       .pipe $ ( phrase, send ) =>
         debug '©quPbg', JSON.stringify phrase
@@ -539,18 +573,18 @@ CODEC                     = require './codec'
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, write_settings, resume
     prefix        = [ 'pos', 'guide/uchr/has', ]
-    input         = HOLLERITH.create_phrasestream db, prefix
+    input         = HOLLERITH.create_phrasestream db, { prefix, }
     read_settings = { indexed: no, }
     input
       .pipe HOLLERITH.read_sub db, read_settings, ( phrase ) =>
         [ _, glyph, prd, guide, ] = phrase
         prefix                    = [ 'spo', guide, 'factor/strokeclass/wbf', ]
-        sub_input                 = HOLLERITH.create_phrasestream db, prefix
+        sub_input                 = HOLLERITH.create_phrasestream db, { prefix, }
         return [ glyph, sub_input, ]
       .pipe HOLLERITH.read_sub db, read_settings, ( xphrase ) =>
         [ glyph, [ _, guide, prd, shapeclass, ] ] = xphrase
         prefix                                    = [ 'spo', guide, 'rank/cjt', ]
-        sub_input                                 = HOLLERITH.create_phrasestream db, prefix
+        sub_input                                 = HOLLERITH.create_phrasestream db, { prefix, }
         return [ [ glyph, guide, shapeclass, ], sub_input, ]
       .pipe $ ( xphrase, send ) =>
         debug '©quPbg', JSON.stringify xphrase
@@ -980,42 +1014,6 @@ CODEC                     = require './codec'
   done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "read partial POS phrases" ] = ( T, done ) ->
-  probes_idx  = 0
-  idx         = -1
-  count       = 0
-  #.........................................................................................................
-  matchers = [
-    [ '𧷟1', 'guide/lineup/length', 1 ]
-    [ '𧷟2', 'guide/lineup/length', 2 ]
-    [ '𧷟3', 'guide/lineup/length', 3 ]
-    [ '𧷟4', 'guide/lineup/length', 4 ]
-    [ '𧷟', 'guide/lineup/length', 5 ]
-    [ '𧷟6', 'guide/lineup/length', 6 ]
-    [ '𧷟', 'guide/uchr/has', '八', 0 ]
-    [ '𧷟', 'guide/uchr/has', '刀', 1 ]
-    [ '𧷟', 'guide/uchr/has', '宀', 2 ]
-    [ '𧷟', 'guide/uchr/has', '貝', 4 ]
-    [ '𧷟', 'guide/uchr/has', '', 3 ]
-    ]
-  #.........................................................................................................
-  step ( resume ) =>
-    yield @_feed_test_data db, probes_idx, resume
-    prefix    = [ 'pos', 'guide', ]
-    input     = HOLLERITH.create_phrasestream db, prefix, '*'
-    debug '©FphJK', input[ '%meta' ]
-    settings  = { indexed: no, }
-    input
-      .pipe $ ( phrase, send ) =>
-        count  += +1
-        idx    += +1
-        debug '©Sc5FG', phrase
-        # T.eq phrase, matchers[ idx ]
-      .pipe D.$on_end =>
-        T.eq count, matchers.length
-        done()
-
-#-----------------------------------------------------------------------------------------------------------
 @[ "encode keys with list elements" ] = ( T, done ) ->
   probes = [
     [ 'foo', 'bar', ]
@@ -1094,14 +1092,14 @@ CODEC                     = require './codec'
     ### TAINT doesn't work: ###
     # prefix    = [ 'pos', 'isa', '*', ]
     prefix    = [ 'pos', 'isa', 'glyph', ]
-    input     = HOLLERITH.create_phrasestream db, prefix
+    input     = HOLLERITH.create_phrasestream db, { prefix, }
     input
       .pipe D.$map ( phrase, handler ) =>
         debug '©gg5Fr', phrase
         [ _, sbj, _, obj, ] = phrase
         debug '©NxZo4', sbj
         sub_prefix  = [ 'spo', obj + ':' + sbj, 'guide', ]
-        sub_input   = HOLLERITH.create_phrasestream db, sub_prefix, '*'
+        sub_input   = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, star: '*', }
         sub_input
           .pipe D.$collect()
           .pipe D.$show 'A'
@@ -1123,14 +1121,14 @@ CODEC                     = require './codec'
     yield @_feed_test_data db, probes_idx, resume
     yield show_db_entries resume
     prefix    = [ 'pos', 'isa', 'glyph', ]
-    input     = HOLLERITH.create_phrasestream db, prefix
+    input     = HOLLERITH.create_phrasestream db, { prefix, }
     input
       .pipe $async ( phrase, done ) =>
         # debug '©PCj9R', phrase
         [ _, sbj, _, obj, ] = phrase
         sub_prefix  = [ 'spo', obj + ':' + sbj, 'guide', ]
-        ### TAINT must honor arity ###
-        HOLLERITH.read_phrases db, sub_prefix, '*', null, ( error, sub_phrases ) =>
+        query       = prefix: sub_prefix, star: '*'
+        HOLLERITH.read_phrases db, query, ( error, sub_phrases ) =>
           # debug '©VOZ0p', sbj, sub_phrases
           return done.error error if error?
           for sub_phrase, sub_phrase_idx in sub_phrases
@@ -1141,6 +1139,51 @@ CODEC                     = require './codec'
       .pipe D.$on_end =>
         # T.eq count, matchers.length
         T_done()
+
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read partial POS phrases" ] = ( T, done ) ->
+  probes_idx  = 4
+  idx         = -1
+  count       = 0
+  #.........................................................................................................
+  matchers = [
+    [ '𧷟1', 'a', 42 ]
+    [ '𧷟1', 'ab', 42 ]
+    [ '𧷟1', 'guide', 'xxx' ]
+    [ '𧷟1', 'guide/', 'yyy' ]
+    [ '𧷟1', 'guide/foobar', 'zzz' ]
+    [ '𧷟1', 'guide/lineup/length', 1 ]
+    [ '𧷟2', 'guide/lineup/length', 2 ]
+    [ '𧷟3', 'guide/lineup/length', 3 ]
+    [ '𧷟4', 'guide/lineup/length', 4 ]
+    [ '𧷟', 'guide/lineup/length', 5 ]
+    [ '𧷟6', 'guide/lineup/length', 6 ]
+    [ '𧷟', 'guide/uchr/has', '八', 0 ]
+    [ '𧷟', 'guide/uchr/has', '刀', 1 ]
+    [ '𧷟', 'guide/uchr/has', '宀', 2 ]
+    [ '𧷟', 'guide/uchr/has', '貝', 4 ]
+    [ '𧷟', 'guide/uchr/has', '', 3 ]
+    [ '𧷟1', 'z', 42 ]
+    ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    # prefix    = [ 'pos', 'guide', ]
+    prefix    = [ 'pos', 'a', ]
+    input     = HOLLERITH.create_phrasestream db, { prefix, star: '*', }
+    # input     = HOLLERITH.create_phrasestream db, { prefix, }
+    debug '©FphJK', input[ '%meta' ]
+    settings  = { indexed: no, }
+    input
+      .pipe $ ( phrase, send ) =>
+        count  += +1
+        idx    += +1
+        debug '©Sc5FG', phrase
+        # T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end =>
+        T.eq count, matchers.length
+        done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "writing phrases with non-unique keys fails" ] = ( T, done ) ->

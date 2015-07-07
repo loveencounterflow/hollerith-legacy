@@ -38,7 +38,7 @@ gulp.task 'build-coffee', ->
   return gulp.src 'src/*.coffee'
     .pipe sourcemaps.init()
     .pipe coffee().on 'error', ( error ) -> throw error
-    .pipe sourcemaps.write()
+    .pipe sourcemaps.write '../sourcemaps'
     .pipe gulp.dest 'lib'
 
 #-----------------------------------------------------------------------------------------------------------
