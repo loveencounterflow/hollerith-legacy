@@ -366,7 +366,7 @@ CODEC                     = require './codec'
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "create_facetstream throws with wrong arguments" ] = ( T, done ) ->
-  message = "must give `lo_hint` when `hi_hint` is given"
+  message = "illegal to specify `hi` but not `lo`"
   T.throws message, ( -> HOLLERITH.create_facetstream db, hi: [ 'xxx', ] )
   done()
 
@@ -1148,11 +1148,8 @@ CODEC                     = require './codec'
   count       = 0
   #.........................................................................................................
   matchers = [
-    [ '𧷟1', 'a', 42 ]
-    [ '𧷟1', 'ab', 42 ]
     [ '𧷟1', 'guide', 'xxx' ]
     [ '𧷟1', 'guide/', 'yyy' ]
-    [ '𧷟1', 'guide/foobar', 'zzz' ]
     [ '𧷟1', 'guide/lineup/length', 1 ]
     [ '𧷟2', 'guide/lineup/length', 2 ]
     [ '𧷟3', 'guide/lineup/length', 3 ]
@@ -1164,13 +1161,12 @@ CODEC                     = require './codec'
     [ '𧷟', 'guide/uchr/has', '宀', 2 ]
     [ '𧷟', 'guide/uchr/has', '貝', 4 ]
     [ '𧷟', 'guide/uchr/has', '', 3 ]
-    [ '𧷟1', 'z', 42 ]
     ]
   #.........................................................................................................
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     # prefix    = [ 'pos', 'guide', ]
-    prefix    = [ 'pos', 'a', ]
+    prefix    = [ 'pos', 'guide', ]
     input     = HOLLERITH.create_phrasestream db, { prefix, star: '*', }
     # input     = HOLLERITH.create_phrasestream db, { prefix, }
     debug '©FphJK', input[ '%meta' ]

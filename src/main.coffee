@@ -327,19 +327,17 @@ Bloom                     = require 'bloom-stream'
 #-----------------------------------------------------------------------------------------------------------
 @create_facetstream = ( db, settings ) ->
   ###
-  * If neiter `lo` nor `hi` is given, the stream will iterate over all entries.
-  * If both `lo` and `hi` are given, a query with lower and upper, inclusive boundaries is
-    issued.
+  * If none of `lo`, `hi` or 'prefix' are given, the stream will iterate over all entries.
+  * If both `lo` and `hi` are given, a query with lower and upper, inclusive boundaries (in LevelDB these
+    are called `gte` and `lte`, repsectively) is issued.
   * If only `prefix` is given, a prefix query is issued. Prefix queries may be 'exclusive' or 'inclusive'.
     Exclusive prefixes match the list elements that make up the HOLLERITH entry keys in a component-wise
     fashion, while inclusive queries also match when the last prefix element is the start of the
     corresponding component of the entry key. For example, `{ prefix: [ 'pos', 'shape', ] }` will match
-
-
-  ; in that case, an additional `star` setting (as in
-    e.g. `{ prefix: [ 'spo', 'foo', ],  star: '*', }`) whose value must always be the string `'*'` causes
-    the prefix to be interpreted as
-  * If `hi` is given but `lo` is missing, an error is issued.
+    only entries whose first two key elements are `'pos'` and `'shape'`, while a query using
+    `{ prefix: [ 'pos', 'shape', ], star: '*', }` will additionally match entries with such keys as
+    `[ 'pos', 'shapeclass', ]` and `[ 'pos', 'shape/strokeorder', ]`.
+  * If only `lo` or only `hi` is given, an error is issued.
   ###
   lo_hint = null
   hi_hint = null
@@ -349,12 +347,16 @@ Bloom                     = require 'bloom-stream'
     switch arity = keys.length
       when 1
         switch key = keys[ 0 ]
-          when 'lo', 'prefix'
+          when 'prefix'
             lo_hint = settings[ key ]
+          when 'lo', 'prefix'
+            throw new Error "illegal to specify `lo` but not `hi`"
+            # lo_hint = settings[ key ]
           when 'hi'
-            hi_hint = settings[ key ]
+            throw new Error "illegal to specify `hi` but not `lo`"
+            # hi_hint = settings[ key ]
           else
-            throw new Error "unknown hint key #{rpr key}" unless key in [ 'prefix', 'lo', 'hi', ]
+            throw new Error "unknown hint key #{rpr key}"
       when 2
         keys.sort()
         if keys[ 0 ] is 'hi' and keys[ 1 ] is 'lo'
