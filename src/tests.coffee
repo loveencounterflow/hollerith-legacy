@@ -983,9 +983,10 @@ CODEC                     = require './codec'
         send [ key, value, ]
       .pipe D.$collect()
       .pipe $ ( facets, send ) =>
+        # debug '©54IKt', facets
         help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
         buffer = new Buffer JSON.stringify [ '开', '彡' ]
-        debug '©GJfL6', HOLLERITH.DUMP.rpr_of_buffer null, buffer
+        debug '©GJfL6', HOLLERITH.DUMP.rpr_of_buffer db, buffer
       .pipe D.$on_end => done()
   #.........................................................................................................
   return null
@@ -1140,7 +1141,6 @@ CODEC                     = require './codec'
         # T.eq count, matchers.length
         T_done()
 
-
 #-----------------------------------------------------------------------------------------------------------
 @[ "read partial POS phrases" ] = ( T, done ) ->
   probes_idx  = 4
@@ -1148,19 +1148,19 @@ CODEC                     = require './codec'
   count       = 0
   #.........................................................................................................
   matchers = [
-    [ '𧷟1', 'guide', 'xxx' ]
-    [ '𧷟1', 'guide/', 'yyy' ]
-    [ '𧷟1', 'guide/lineup/length', 1 ]
-    [ '𧷟2', 'guide/lineup/length', 2 ]
-    [ '𧷟3', 'guide/lineup/length', 3 ]
-    [ '𧷟4', 'guide/lineup/length', 4 ]
-    [ '𧷟', 'guide/lineup/length', 5 ]
-    [ '𧷟6', 'guide/lineup/length', 6 ]
-    [ '𧷟', 'guide/uchr/has', '八', 0 ]
-    [ '𧷟', 'guide/uchr/has', '刀', 1 ]
-    [ '𧷟', 'guide/uchr/has', '宀', 2 ]
-    [ '𧷟', 'guide/uchr/has', '貝', 4 ]
-    [ '𧷟', 'guide/uchr/has', '', 3 ]
+    [ 'pos', '𧷟1', 'guide', 'xxx' ]
+    [ 'pos', '𧷟1', 'guide/', 'yyy' ]
+    [ 'pos', '𧷟1', 'guide/lineup/length', 1 ]
+    [ 'pos', '𧷟2', 'guide/lineup/length', 2 ]
+    [ 'pos', '𧷟3', 'guide/lineup/length', 3 ]
+    [ 'pos', '𧷟4', 'guide/lineup/length', 4 ]
+    [ 'pos', '𧷟', 'guide/lineup/length', 5 ]
+    [ 'pos', '𧷟6', 'guide/lineup/length', 6 ]
+    [ 'pos', '𧷟', 'guide/uchr/has', '八', 0 ]
+    [ 'pos', '𧷟', 'guide/uchr/has', '刀', 1 ]
+    [ 'pos', '𧷟', 'guide/uchr/has', '宀', 2 ]
+    [ 'pos', '𧷟', 'guide/uchr/has', '貝', 4 ]
+    [ 'pos', '𧷟', 'guide/uchr/has', '', 3 ]
     ]
   #.........................................................................................................
   step ( resume ) =>
@@ -1176,10 +1176,54 @@ CODEC                     = require './codec'
         count  += +1
         idx    += +1
         debug '©Sc5FG', phrase
-        # T.eq phrase, matchers[ idx ]
+        T.eq phrase, matchers[ idx ]
       .pipe D.$on_end =>
         T.eq count, matchers.length
         done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read single phrases (1)" ] = ( T, done ) ->
+  probes_idx  = 4
+  matcher = [ 'spo', '𧷟', 'guide/lineup/length', 5 ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    # prefix    = [ 'pos', 'guide', ]
+    prefix    = [ 'spo', '𧷟', 'guide/lineup/length', ]
+    query     = { prefix, star: '*', }
+    input     = HOLLERITH.read_one_phrase db, query, ( error, phrase ) ->
+      throw error if error?
+      debug '©61ENl', phrase
+      T.eq phrase, matcher
+      done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read single phrases (2)" ] = ( T, done ) ->
+  probes_idx  = 4
+  matcher = "expected single phrase, got 0"
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    prefix    = [ 'spo', '中', 'guide/lineup/length', ]
+    query     = { prefix, star: '*', }
+    input     = HOLLERITH.read_one_phrase db, query, ( error, phrase ) ->
+      throw new Error "expected error" unless error?
+      T.eq error[ 'message' ], matcher
+      done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read single phrases (3)" ] = ( T, done ) ->
+  probes_idx  = 4
+  matcher     = "this entry is missing"
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    prefix    = [ 'spo', '中', 'guide/lineup/length', ]
+    query     = { prefix, star: '*', fallback: matcher, }
+    input     = HOLLERITH.read_one_phrase db, query, ( error, phrase ) ->
+      throw error if error?
+      T.eq phrase, matcher
+      done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "writing phrases with non-unique keys fails" ] = ( T, done ) ->

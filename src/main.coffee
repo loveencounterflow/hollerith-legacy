@@ -319,6 +319,7 @@ Bloom                     = require 'bloom-stream'
     R = R
       .pipe D.$collect()
       .pipe $ ( data, send ) =>
+        debug '©Vu9T5', rpr data
         handler null, data
     R.on 'error', ( error ) => handler error
   R[ '%meta' ] = input[ '%meta' ]
