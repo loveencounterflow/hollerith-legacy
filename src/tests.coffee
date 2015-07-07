@@ -1200,6 +1200,21 @@ CODEC                     = require './codec'
 #-----------------------------------------------------------------------------------------------------------
 @[ "read single phrases (2)" ] = ( T, done ) ->
   probes_idx  = 4
+  matcher = [ 'spo', '𧷟', 'guide/lineup/length', 5 ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    prefix    = [ 'spo', '𧷟', 'guide/lineup/length', ]
+    query     = { prefix, star: '*', fallback: 'not to be used', }
+    input     = HOLLERITH.read_one_phrase db, query, ( error, phrase ) ->
+      throw error if error?
+      debug '©61ENl', phrase
+      T.eq phrase, matcher
+      done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "read single phrases (3)" ] = ( T, done ) ->
+  probes_idx  = 4
   matcher = "expected single phrase, got 0"
   #.........................................................................................................
   step ( resume ) =>
@@ -1212,7 +1227,7 @@ CODEC                     = require './codec'
       done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "read single phrases (3)" ] = ( T, done ) ->
+@[ "read single phrases (4)" ] = ( T, done ) ->
   probes_idx  = 4
   matcher     = "this entry is missing"
   #.........................................................................................................

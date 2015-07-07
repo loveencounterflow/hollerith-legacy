@@ -33,7 +33,7 @@ suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
 repeat_immediately        = suspend.repeat_immediately
 #...........................................................................................................
-LODASH                    = require 'lodash'
+@_LODASH                  = require 'lodash'
 #...........................................................................................................
 ### https://github.com/b3nj4m/bloom-stream ###
 Bloom                     = require 'bloom-stream'
@@ -273,60 +273,59 @@ Bloom                     = require 'bloom-stream'
 #===========================================================================================================
 # READING
 #-----------------------------------------------------------------------------------------------------------
-@create_phrasestream = ( db, settings ) ->
-  return @_create_phrasestream db, settings
+@create_phrasestream = ( db, query ) ->
+  return @_create_phrasestream db, query
 
 #-----------------------------------------------------------------------------------------------------------
-@read_phrases = ( db, settings, handler ) ->
+@read_phrases = ( db, query, handler ) ->
   switch arity = arguments.length
     when 2
-      handler   = settings
-      settings  = null
+      handler   = query
+      query     = null
     when 3
       null
     else
-      throw new Error "expected 4 or 5 arguments, got #{arity}"
-  return @_create_phrasestream db, settings, handler
+      throw new Error "expected 2 or 3 arguments, got #{arity}"
+  return @_create_phrasestream db, query, handler
 
 #-----------------------------------------------------------------------------------------------------------
-@read_one_phrase = ( db, settings, handler ) ->
+@read_one_phrase = ( db, query, handler ) ->
   fallback = @_misfit
   #.........................................................................................................
   switch arity = arguments.length
     when 2
-      handler   = settings
-      settings  = null
+      handler   = query
+      query     = null
     when 3
       null
     else
       throw new Error "expected 4 or 5 arguments, got #{arity}"
   #.........................................................................................................
-  if settings? and 'fallback' of settings
-    fallback = settings[ 'fallback' ]
-    delete settings[ 'fallback' ]
+  if query? and 'fallback' of query
+    fallback = query[ 'fallback' ]
+    delete query[ 'fallback' ]
   #.........................................................................................................
-  @read_phrases db, settings, ( error, phrases ) =>
+  @read_phrases db, query, ( error, phrases ) =>
     return handler error if error?
     return handler null, fallback if ( phrases.length is 0 ) and ( fallback isnt @_misfit )
-    return handler new Error "expected single phrase, got #{phrases.length}" if phrases.length isnt 1
+    return handler new Error "expected 1 phrase, got #{phrases.length}" if phrases.length isnt 1
     handler null, phrases[ 0 ]
 
 #-----------------------------------------------------------------------------------------------------------
-@_create_phrasestream = ( db, settings, handler ) ->
-  input = @create_facetstream db, settings
+@_create_phrasestream = ( db, query, handler ) ->
+  input = @create_facetstream db, query
   R = input.pipe @$as_phrase db
   if handler?
     R = R
       .pipe D.$collect()
       .pipe $ ( data, send ) =>
-        debug '©Vu9T5', rpr data
         handler null, data
     R.on 'error', ( error ) => handler error
   R[ '%meta' ] = input[ '%meta' ]
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@create_facetstream = ( db, settings ) ->
+@create_facetstream = ( db, query ) ->
   ###
   * If none of `lo`, `hi` or 'prefix' are given, the stream will iterate over all entries.
   * If both `lo` and `hi` are given, a query with lower and upper, inclusive boundaries (in LevelDB these
@@ -343,29 +342,29 @@ Bloom                     = require 'bloom-stream'
   lo_hint = null
   hi_hint = null
   #.........................................................................................................
-  if settings?
-    keys = Object.keys settings
+  if query?
+    keys = Object.keys query
     switch arity = keys.length
       when 1
         switch key = keys[ 0 ]
           when 'prefix'
-            lo_hint = settings[ key ]
+            lo_hint = query[ key ]
           when 'lo', 'prefix'
             throw new Error "illegal to specify `lo` but not `hi`"
-            # lo_hint = settings[ key ]
+            # lo_hint = query[ key ]
           when 'hi'
             throw new Error "illegal to specify `hi` but not `lo`"
-            # hi_hint = settings[ key ]
+            # hi_hint = query[ key ]
           else
             throw new Error "unknown hint key #{rpr key}"
       when 2
         keys.sort()
         if keys[ 0 ] is 'hi' and keys[ 1 ] is 'lo'
-          lo_hint = settings[ 'lo' ]
-          hi_hint = settings[ 'hi' ]
+          lo_hint = query[ 'lo' ]
+          hi_hint = query[ 'hi' ]
         else if keys[ 0 ] is 'prefix' and keys[ 1 ] is 'star'
-          lo_hint = settings[ 'prefix' ]
-          hi_hint = settings[ 'star' ]
+          lo_hint = query[ 'prefix' ]
+          hi_hint = query[ 'star' ]
           throw new Error "expected `star` to be '*', got #{rpr hi_hint}" unless hi_hint is '*'
         else
           throw new Error "illegal hint keys #{rpr keys}"

@@ -8,7 +8,7 @@ join                      = njs_path.join
 #...........................................................................................................
 CND                       = require 'cnd'
 rpr                       = CND.rpr
-badge                     = 'HOLLERITH/test'
+badge                     = 'HOLLERITH/demo'
 log                       = CND.get_logger 'plain',     badge
 info                      = CND.get_logger 'info',      badge
 whisper                   = CND.get_logger 'whisper',   badge
@@ -376,7 +376,8 @@ HOLLERITH.$pick_values = ->
     chrs_from_text = ( text ) -> CHR.chrs_from_text text, input: 'xncr'
     #.......................................................................................................
     prefix  = [ 'pos', 'guide/lineup/length', 5, ]
-    input   = HOLLERITH.create_phrasestream db, prefix
+    query   = { prefix, }
+    input   = HOLLERITH.create_phrasestream db, query
     # #.......................................................................................................
     # decode_rank = ( bkey ) =>
     #   [ ..., rank_txt, ] = @_split_bkey bkey
@@ -395,7 +396,7 @@ HOLLERITH.$pick_values = ->
         [ _, glyph, _, lineup_length, ] = phrase
         # debug '©xhHjm', rpr phrase
         sub_prefix                      = [ 'spo', glyph, 'rank/cjt', ]
-        sub_input                       = HOLLERITH.create_phrasestream db, sub_prefix
+        sub_input                       = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, }
         return [ [ glyph, lineup_length, ], sub_input, ]
       #.....................................................................................................
       .pipe $ ( data, send ) =>
@@ -407,7 +408,7 @@ HOLLERITH.$pick_values = ->
       .pipe HOLLERITH.read_sub db, mangle: decode_lineup, ( data ) =>
         [ glyph, lineup_length, rank, ] = data
         sub_prefix                      = [ 'spo', glyph, 'guide/lineup/uchr', ]
-        sub_input                       = HOLLERITH.create_phrasestream db, sub_prefix
+        sub_input                       = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, }
         return [ [ glyph, lineup_length, rank, ], sub_input, ]
       #.....................................................................................................
       .pipe HOLLERITH.read_sub db, ( data ) =>
@@ -420,7 +421,7 @@ HOLLERITH.$pick_values = ->
             guide_xncr        = xncr_from_uchr guide
             stream_count     += +1
             sub_prefix        = [ 'spo', guide_xncr, 'factor/shapeclass/wbf', ]
-            sub_input         = HOLLERITH.create_phrasestream db, sub_prefix
+            sub_input         = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, }
             sub_input.on 'end', ->
               stream_count += -1
               if stream_count < 1
@@ -446,6 +447,7 @@ HOLLERITH.$pick_values = ->
 #-----------------------------------------------------------------------------------------------------------
 ### version for Hollerith2 DBs; using `HOLLERITH.remit_async` instead of `HOLLERITH.read_sub`. ###
 @find_good_kwic_sample_glyphs_3 = ( db ) ->
+  ASYNC = require 'async'
   #.........................................................................................................
   step ( resume ) =>
     db ?= HOLLERITH.new_db '/Volumes/Storage/temp/jizura-hollerith2'
@@ -454,7 +456,8 @@ HOLLERITH.$pick_values = ->
     chrs_from_text = ( text ) -> CHR.chrs_from_text text, input: 'xncr'
     #.......................................................................................................
     prefix  = [ 'pos', 'guide/lineup/length', 5, ]
-    input   = HOLLERITH.create_phrasestream db, prefix
+    query   = { prefix, }
+    input   = HOLLERITH.create_phrasestream db, query
     #.......................................................................................................
     decode_lineup = ( lineup ) =>
       return chrs_from_text lineup.replace /\u3000/g, ''
@@ -465,60 +468,61 @@ HOLLERITH.$pick_values = ->
     input
       #.....................................................................................................
       .pipe $async ( phrase, done ) =>
-        [ _, glyph, _, lineup_length, ] = phrase
-        sub_prefix                      = [ 'spo', glyph, 'rank/cjt', ]
-        HOLLERITH.read_phrases db, sub_prefix, '*', null, ( error, sub_phrases ) =>
+        [ _, glyph, _, lineup_length, ]       = phrase
+        sub_prefix                            = [ 'spo', glyph, 'rank/cjt', ]
+        sub_fallback                          = [ null, null, null, Infinity, ]
+        sub_query                             = { prefix: sub_prefix, fallback: sub_fallback, }
+        HOLLERITH.read_one_phrase db, sub_query, ( error, sub_phrase ) =>
           return done.error error if error?
-          return done() unless sub_phrases?
-          return done.error new Error "illegal phrase count #{count}" unless ( count = sub_phrases.length ) is 1
-          rank = sub_phrases[ 0 ][ 3 ]
+          return done() unless sub_phrase?
+          [ _, _, _, rank, ] = sub_phrase
           done [ glyph, { lineup_length, rank, }, ]
       #.....................................................................................................
-      .pipe D.$filter ( [ glyph, { lineup_length, rank, }, ] ) -> rank < 1500
+      .pipe D.$filter ( [ glyph, { lineup_length, rank, }, ] ) -> rank < 15000
       #.....................................................................................................
       .pipe $async ( entry, done ) =>
         [ glyph, { lineup_length, rank, }, ]  = entry
         sub_prefix                            = [ 'spo', glyph, 'guide/lineup/uchr', ]
-        HOLLERITH.read_phrases db, sub_prefix, '*', null, ( error, sub_phrases ) =>
+        sub_query                             = { prefix: sub_prefix, star: '*', fallback: null, }
+        HOLLERITH.read_one_phrase db, sub_query, ( error, sub_phrase ) =>
+          # debug '©h4GY2', sub_phrase
           return done.error error if error?
-          return done() unless sub_phrases?
-          return done.error new Error "illegal phrase count #{count}" unless ( count = sub_phrases.length ) is 1
-          guides = decode_lineup sub_phrases[ 0 ][ 3 ]
+          return done() unless sub_phrase?
+          [ _, _, _, guides, ]  = sub_phrase
+          guides                = decode_lineup guides
           done [ glyph, { lineup_length, rank, guides, }, ]
       #.....................................................................................................
+      .pipe $async ( entry, done ) =>
+        [ glyph, { lineup_length, rank, guides, }, ]  = entry
+        tasks                                         = []
+        #...................................................................................................
+        for guide in guides
+          do ( guide ) =>
+            guide_xncr        = xncr_from_uchr guide
+            sub_prefix        = [ 'spo', guide_xncr, 'factor/shapeclass/wbf', ]
+            sub_fallback      = [ null, null, null, 'X', ]
+            sub_query         = { prefix: sub_prefix, fallback: sub_fallback, }
+            tasks.push ( handler ) -> HOLLERITH.read_one_phrase db, sub_query, handler
+        #...................................................................................................
+        ASYNC.parallelLimit tasks, 10, ( error, sub_phrases ) =>
+          return done.error error if error?
+          strokeclasses = []
+          for sub_phrase, sub_idx in sub_phrases
+            [ _, _, _, strokeorder, ] = sub_phrase
+            strokeclasses[ sub_idx ]  = strokeorder[ 0 ]
+          done [ glyph, { lineup_length, rank, guides, strokeclasses, }, ]
+      #.....................................................................................................
+      .pipe D.$filter ( entry ) =>
+        [ glyph, { lineup_length, rank, guides, strokeclasses, }, ] = entry
+        return ( strokeclasses[ .. ].sort().join '' ) is '12345'
+      #.....................................................................................................
+      .pipe $ ( [ glyph, { lineup_length, rank, guides, strokeclasses, }, ], send ) ->
+        guides        = guides.join ''
+        strokeclasses = strokeclasses.join ''
+        send [ glyph, { lineup_length, rank, guides, strokeclasses, }, ]
+      #.....................................................................................................
+      # .pipe D.$filter ( entry ) => entry[ 1 ][ 'strokeclasses' ] is '12345'
       .pipe D.$show()
-      # #.....................................................................................................
-      # .pipe HOLLERITH.read_sub db, ( data ) =>
-      #   debug '©0cKxC', data
-      #   [ glyph, { lineup_length, rank, guides, }, ]  = data
-      #   tasks                                         = []
-      #   #...................................................................................................
-      #   for guide in guides
-      #     do ( guide ) =>
-      #       guide_xncr        = xncr_from_uchr guide
-      #       sub_prefix        = [ 'spo', guide_xncr, 'factor/shapeclass/wbf', ]
-      #       sub_input         = HOLLERITH.create_phrasestream db, sub_prefix
-      #       sub_input.on 'end', ->
-      #         stream_count += -1
-      #         if stream_count < 1
-      #           confluence.end()
-      #       sub_input
-      #         .pipe $ ( data, send ) =>
-      #           [ ..., shapeclass_wbf, ] = data
-      #           confluence.write shapeclass_wbf
-      #   #...................................................................................................
-      #   return [ [ glyph, lineup_length, rank, guides, ], confluence, ]
-      # #.....................................................................................................
-      # .pipe D.$filter ( data ) =>
-      #   [ [ glyph, lineup_length, rank, guides, ], shapeclasses_wbf..., ] = data
-      #   counts = [ 0, 0, 0, 0, 0, ]
-      #   for shapeclass_wbf in shapeclasses_wbf
-      #     shapeclass_idx            = ( parseInt shapeclass_wbf[ 0 ], 10 ) - 1
-      #     counts[ shapeclass_idx ] += +1
-      #   return ( counts.join ',' ) is '1,1,1,1,1'
-      # #.....................................................................................................
-      # .pipe $ ( data, send ) -> send JSON.stringify data
-      # .pipe D.$show()
 
 
 #-----------------------------------------------------------------------------------------------------------
