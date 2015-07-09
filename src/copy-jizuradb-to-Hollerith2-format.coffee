@@ -46,7 +46,7 @@ DEMO                      = require './demo'
 #-----------------------------------------------------------------------------------------------------------
 options =
   sample:         null
-  sample:         [ '中', '國', '皇', '帝', ]
+  # sample:         [ '中', '國', '皇', '帝', ]
 
 #-----------------------------------------------------------------------------------------------------------
 @$show_progress = ( size ) ->
@@ -93,7 +93,6 @@ options =
   last_digest = null
   #.........................................................................................................
   return $ ( key, send, end ) =>
-    debug '©aEv6c', key
     #.......................................................................................................
     if key?
       [ sbj, prd, obj, idx, ] = key
@@ -103,8 +102,9 @@ options =
         if idx?
           objs[ idx ] = obj
         else
-          ### A certain subject/predicate combination can only ever be repeated if an addition index is
+          ### A certain subject/predicate combination can only ever be repeated if an index is
           present in the key ###
+          debug '©EyAEd', key
           throw new Error "should never happen"
       else
         send [ sbj_prd..., objs, ] if objs?
@@ -132,29 +132,28 @@ options =
   #.........................................................................................................
   step ( resume ) =>
     yield HOLLERITH.clear target_db, resume
-    # gte         = 'so|'
-    ### !!!!!!!!!!!!!!!!!!!!!!!! ###
-    gte         = 'so|glyph:中' # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ### !!!!!!!!!!!!!!!!!!!!!!!! ###
+    gte         = 'so|'
+    # ### !!!!!!!!!!!!!!!!!!!!!!!! ###
+    # gte         = 'so|glyph:中' # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # ### !!!!!!!!!!!!!!!!!!!!!!!! ###
     lte         = DEMO._lte_from_gte gte
     debug '©Y4DzO', { gte, lte, }
     input       = source_db[ '%self' ].createKeyStream { gte, lte, }
     batch_size  = 10000
-    ### !!!!!!!!!!!!!!!!!!!!!!!! ###
-    batch_size  = 3
-    ### !!!!!!!!!!!!!!!!!!!!!!!! ###
+    ### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ###
+    batch_size  = 1
     output      = HOLLERITH.$write target_db, { batch: batch_size, }
     #.........................................................................................................
     input
       #.......................................................................................................
       .pipe @$show_progress 1e5
+      # .pipe D.$show()
       .pipe D.$count ( count ) -> help "read #{ƒ count} keys"
       .pipe DEMO._$split_so_bkey()
       .pipe @$keep_small_sample()
       .pipe @$throw_out_pods()
       .pipe @$cast_types ds_options
       .pipe @$collect_lists()
-      .pipe D.$show()
       .pipe D.$count ( count ) -> help "kept #{ƒ count} entries"
       .pipe output
 

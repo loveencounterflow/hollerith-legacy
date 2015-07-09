@@ -172,13 +172,13 @@ Bloom                     = require 'bloom-stream'
     substrate.batch batch
   #.........................................................................................................
   if ensure_unique
-    { $ensure_unique, $load_bloom, $save_bloom, } = @_get_bloom_methods db
+    { $ensure_unique_spo, $load_bloom, $save_bloom, } = @_get_bloom_methods db
   #.........................................................................................................
   pipeline = []
   pipeline.push $load_bloom()     if ensure_unique
   pipeline.push $index()
   pipeline.push $encode()
-  pipeline.push $ensure_unique()  if ensure_unique
+  pipeline.push $ensure_unique_spo()  if ensure_unique
   pipeline.push $as_batch_entry()
   pipeline.push D.$batch batch_size
   pipeline.push $write()
@@ -190,9 +190,9 @@ Bloom                     = require 'bloom-stream'
 #-----------------------------------------------------------------------------------------------------------
 @_get_bloom_methods = ( db ) ->
   #---------------------------------------------------------------------------------------------------------
-  db_size           = db[ 'size' ] ? 1e6
   db_size           = db[ 'size' ] ? 10
   db_size           = db[ 'size' ] ? 1e4
+  db_size           = db[ 'size' ] ? 1e6
   bloom_error_rate  = 0.1
   #.........................................................................................................
   BSON = ( require 'bson' ).BSONPure.BSON
@@ -212,23 +212,35 @@ Bloom                     = require 'bloom-stream'
     for filter in filters
       filter_size += filter[ 'filter' ][ 'bitfield' ][ 'buffer' ].length
     whisper "scalable Bloom filter size: #{ƒ filter_size} bytes"
+    whisper bloem_settings
   #---------------------------------------------------------------------------------------------------------
-  $ensure_unique = =>
-    return D.$map ( phrase, handler ) =>
+  $ensure_unique_spo = =>
+    ### We skip all phrases except for SPO entries, the problem being that even IF some erroneous processing
+    should result in bogus `[ 'pos', 'foo', 'bar', 'baz', ]` tuples, fact is that the object value of that
+    bogus phrase gets right into the key—which may or may not be on record. In other words, you could still
+    create millions of wrong entries like `[ 'pos', 'weighs', kgs, 'my-rabbit' ]` for non-existing (but in
+    themselves, were those actually on record, repetitive) assertions like `[ 'spo', 'my-rabbit', 'weighs',
+    kgs, ]` for any possible value of `kgs` without ever being caught by the no-duplicates restriction.
+
+    It seems better to forgo this test as it only incurs a performance and space burden without being really
+    helpful (a worthwhile alternative would be to check that for all SPO entries there are all the POS
+    entries and that there are no extraneous POS entries, which is even more of a computational burden, but
+    at least reaches a meaningful level of safety against malformed data. ###
+    #.......................................................................................................
+    return D.$map ( xphrase, handler ) =>
+      ### Skip if this is not a main entry to the DB: ###
+      return handler null, xphrase unless xphrase[ 0 ] is 'spo'
+      key_bfr             = xphrase[ 1 ]
       bloom               = db[ '%bloom' ]
-      ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
-      [ sbj, prd, obj, ]  = phrase
-      key                 = [ 'spo', sbj, prd, ]
-      key_bfr             = key.join '|'
-      ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
       bloom_has_key       = bloom.has key_bfr
       bloom.add key_bfr
-      return handler null, phrase unless bloom_has_key
+      return handler null, xphrase unless bloom_has_key
+      debug '©nG3mr', ( +new Date() ), "Bloom filter cache miss"
       #.....................................................................................................
-      @has db, key, ( error, db_has_key ) =>
+      @has db, key_bfr, ( error, db_has_key ) =>
         return handler error if error?
         return handler new Error "phrase already in DB: #{rpr phrase}" if db_has_key
-        handler null, phrase
+        handler null, xphrase
   #---------------------------------------------------------------------------------------------------------
   $load_bloom = =>
     is_first = yes
@@ -267,7 +279,7 @@ Bloom                     = require 'bloom-stream'
         whisper "...ok"
         end()
   #---------------------------------------------------------------------------------------------------------
-  return { $ensure_unique, $load_bloom, $save_bloom, }
+  return { $ensure_unique_spo, $load_bloom, $save_bloom, }
 
 
 #===========================================================================================================
@@ -408,22 +420,22 @@ Bloom                     = require 'bloom-stream'
 
 #-----------------------------------------------------------------------------------------------------------
 @has = ( db, key, handler ) ->
-  key_bfr = @_encode_key db, key
+  key_bfr = if CND.isa_jsbuffer then key else @_encode_key db, key
   db[ '%self' ].get key_bfr, ( error, obj_bfr ) =>
     if error?
       return handler null, false if error[ 'type' ] is 'NotFoundError'
       return handler error
     handler null, true
 
-#-----------------------------------------------------------------------------------------------------------
-@ensure_new_key = ( db, key, handler ) ->
-  key_bfr = @_encode_key db, key
-  db[ '%self' ].get key_bfr, ( error, obj_bfr ) =>
-    if error?
-      return handler null if error[ 'type' ] is 'NotFoundError'
-      return handler error
-    obj = @_decode_value obj_bfr
-    handler new Error "key #{rpr key} already in DB with value #{rpr obj}"
+# #-----------------------------------------------------------------------------------------------------------
+# @ensure_new_key = ( db, key, handler ) ->
+#   key_bfr = if CND.isa_jsbuffer then key else @_encode_key db, key
+#   db[ '%self' ].get key_bfr, ( error, obj_bfr ) =>
+#     if error?
+#       return handler null if error[ 'type' ] is 'NotFoundError'
+#       return handler error
+#     obj = @_decode_value obj_bfr
+#     handler new Error "key #{rpr key} already in DB with value #{rpr obj}"
 
 #-----------------------------------------------------------------------------------------------------------
 @read_sub = ( db, settings, read ) ->

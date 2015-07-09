@@ -209,10 +209,11 @@ HOLLERITH                 = require './main'
 
 #-----------------------------------------------------------------------------------------------------------
 @rpr_of_buffer = ( db, buffer, encoding ) ->
-  return ( rpr buffer ) + ' ' +  @encode_buffer db, buffer, encoding
+  return ( rpr buffer ) + ' ' +  @_encode_buffer db, buffer, encoding
 
 #-----------------------------------------------------------------------------------------------------------
-@encode_buffer = ( db, buffer, encoding = 'rdctn' ) ->
+@_encode_buffer = ( db, buffer, encoding = 'rdctn' ) ->
+  ### TAINT use switch, emit error if `encoding` not list or known key ###
   encoding = @encodings[ encoding ] unless CND.isa_list encoding
   return ( encoding[ buffer[ idx ] ] for idx in [ 0 ... buffer.length ] ).join ''
 
@@ -231,8 +232,8 @@ HOLLERITH                 = require './main'
     a.push [ key_rpr, value_rpr, ]
   a = CND.columnify a, columnify_settings
   for [ key, value, ] in facets
-    key_rpr   = @encode_buffer db, key,   encoding
-    value_rpr = @encode_buffer db, value, encoding
+    key_rpr   = @_encode_buffer db, key,   encoding
+    value_rpr = @_encode_buffer db, value, encoding
     b.push [ key_rpr, value_rpr, ]
   b = CND.columnify b, columnify_settings
   return a + '\n' + b

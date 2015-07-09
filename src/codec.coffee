@@ -7,6 +7,8 @@ rpr                       = CND.rpr
 badge                     = 'HOLLERITH/CODEC'
 debug                     = CND.get_logger 'debug',     badge
 warn                      = CND.get_logger 'warn',      badge
+#...........................................................................................................
+HOLLERITH                 = require './main'
 
 
 #-----------------------------------------------------------------------------------------------------------
@@ -250,7 +252,13 @@ _encode = ( key, idx, is_top_level ) ->
         break
       catch error
         unless error is buffer_too_short_error
-          warn "detected problem with key #{rpr key}"
+          key_rpr = []
+          for element in key
+            if CND.isa_jsbuffer element
+              key_rpr.push "#{HOLLERITH.DUMP.rpr_of_buffer null, key[ 2 ]}"
+            else
+              key_rpr.push rpr element
+          warn "detected problem with key [ #{rpr key_rpr.join ', '} ]"
           throw error
         grow_rbuffer()
   #.........................................................................................................
