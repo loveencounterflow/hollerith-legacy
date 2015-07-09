@@ -1215,7 +1215,7 @@ CODEC                     = require './codec'
 #-----------------------------------------------------------------------------------------------------------
 @[ "read single phrases (3)" ] = ( T, done ) ->
   probes_idx  = 4
-  matcher = "expected single phrase, got 0"
+  matcher = "expected 1 phrase, got 0"
   #.........................................................................................................
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume

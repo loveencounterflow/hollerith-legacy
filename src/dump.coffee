@@ -80,22 +80,25 @@ HOLLERITH                 = require './main'
     #.......................................................................................................
     if facet?
       count += +1
-      { key, value, } = facet
+      { key: key_bfr, value: value_bfr, } = facet
       if count < limit
-        key_rpr     = HOLLERITH.url_from_key db, HOLLERITH._decode_key db, key
-        phrasetype  = key_rpr[ 0 .. 2 ]
-        if colors
-          key_rpr   = ( CND.plum part for part in key_rpr.split '|' ).join CND.grey '|'
-        if phrasetype is 'spo' and value?
-          value     = value.toString 'utf-8'
-          value_rpr = ( rpr value ).replace /^'(.*)'$/, '$1'
-          value_rpr = CND.orange value_rpr if colors
+        if HOLLERITH._is_meta db, key_bfr
+          warn "skipped meta: #{rpr key_bfr.toString()}"
         else
-          value_rpr = ''
-        write ( CND.grey ƒ count ), key_rpr + value_rpr
-        # else
-        #   echo ( ƒ count ), key
-        send key
+          key_rpr     = HOLLERITH.url_from_key db, HOLLERITH._decode_key db, key_bfr
+          phrasetype  = key_rpr[ 0 .. 2 ]
+          if colors
+            key_rpr   = ( CND.plum part for part in key_rpr.split '|' ).join CND.grey '|'
+          if phrasetype is 'spo' and value_bfr?
+            value     = value_bfr.toString 'utf-8'
+            value_rpr = ( rpr value ).replace /^'(.*)'$/, '$1'
+            value_rpr = CND.orange value_rpr if colors
+          else
+            value_rpr = ''
+          write ( CND.grey ƒ count ), key_rpr + value_rpr
+          # else
+          #   echo ( ƒ count ), key_bfr
+          send key_bfr
       #.....................................................................................................
       input.emit 'end' if count >= limit
     #.......................................................................................................
@@ -142,7 +145,7 @@ HOLLERITH                 = require './main'
 #-----------------------------------------------------------------------------------------------------------
 @dump = ( db, settings ) ->
   { mode, prefix, } = settings
-  switch settings[ 'mode' ]
+  switch mode
     when 'keys'
       if prefix?
         debug '©7fHvz', rpr prefix
