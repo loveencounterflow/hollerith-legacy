@@ -49,7 +49,9 @@ repeat_immediately        = suspend.repeat_immediately
 
 #-----------------------------------------------------------------------------------------------------------
 @new_db = ( route, settings ) ->
+  ### TAINT we should force this operation to be asynchronous; otherwise, DB may not be writeable ###
   create_if_missing = settings?[ 'create' ] ? yes
+  size              = settings?[ 'size'   ] ? 1e5
   #.........................................................................................................
   level_settings =
     'keyEncoding':          'binary'
@@ -59,11 +61,16 @@ repeat_immediately        = suspend.repeat_immediately
     'compression':          yes
     'sync':                 no
   #.........................................................................................................
-  substrate           = _new_level_db route, level_settings
+  substrate = _new_level_db route, level_settings, ( error ) ->
+    if error?
+      if error[ 'name' ] is 'OpenError'
+        throw new Error "No database found at #{route} and no `create` setting given"
+      throw error
   #.........................................................................................................
   R =
     '~isa':           'HOLLERITH/db'
     '%self':          substrate
+    'size':           size
   #.........................................................................................................
   return R
 
@@ -173,14 +180,14 @@ repeat_immediately        = suspend.repeat_immediately
     { $ensure_unique_spo, $load_bloom, $save_bloom, } = @_get_bloom_methods db
   #.........................................................................................................
   pipeline = []
-  pipeline.push $load_bloom()     if ensure_unique
+  pipeline.push $load_bloom()         if ensure_unique
   pipeline.push $index()
   pipeline.push $encode()
   pipeline.push $ensure_unique_spo()  if ensure_unique
   pipeline.push $as_batch_entry()
   pipeline.push D.$batch batch_size
   pipeline.push $write()
-  pipeline.push $save_bloom()     if ensure_unique
+  pipeline.push $save_bloom()         if ensure_unique
   #.........................................................................................................
   R.pipe D.combine pipeline...
   return R
@@ -188,9 +195,7 @@ repeat_immediately        = suspend.repeat_immediately
 #-----------------------------------------------------------------------------------------------------------
 @_get_bloom_methods = ( db ) ->
   #---------------------------------------------------------------------------------------------------------
-  db_size           = db[ 'size' ] ? 10
-  db_size           = db[ 'size' ] ? 1e4
-  db_size           = db[ 'size' ] ? 1e6
+  db_size           = db[ 'size' ] ? 1e5
   bloom_error_rate  = 0.1
   entry_count       = 0
   miss_count        = 0
@@ -200,7 +205,8 @@ repeat_immediately        = suspend.repeat_immediately
   #.........................................................................................................
   BLOEM             = require 'bloem'
   bloem_settings    =
-    initial_capacity:   db_size * 3
+    # initial_capacity:   db_size * 3
+    initial_capacity:   db_size
     scaling:            2
     ratio:              0.1
   #---------------------------------------------------------------------------------------------------------
@@ -511,30 +517,30 @@ repeat_immediately        = suspend.repeat_immediately
 @_encode_value = ( db, value      ) -> new Buffer ( JSON.stringify value ), 'utf-8'
 @_decode_value = ( db, value_bfr  ) -> JSON.parse value_bfr.toString 'utf-8'
 
-#-----------------------------------------------------------------------------------------------------------
-### NB Argument ordering for these function is always subject before object, regardless of the phrasetype
-and the ordering in the resulting key. ###
-@new_key = ( db, phrasetype, sk, sv, ok, ov, idx ) ->
-  throw new Error "illegal phrasetype: #{rpr phrasetype}" unless phrasetype in [ 'so', 'os', ]
-  [ sk, sv, ok, ov, ] = [ ok, ov, sk, sv, ] if phrasetype is 'os'
-  return [ phrasetype, sk, sv, ok, ov, ( idx ? 0 ), ]
+# #-----------------------------------------------------------------------------------------------------------
+# ### NB Argument ordering for these function is always subject before object, regardless of the phrasetype
+# and the ordering in the resulting key. ###
+# @new_key = ( db, phrasetype, sk, sv, ok, ov, idx ) ->
+#   throw new Error "illegal phrasetype: #{rpr phrasetype}" unless phrasetype in [ 'so', 'os', ]
+#   [ sk, sv, ok, ov, ] = [ ok, ov, sk, sv, ] if phrasetype is 'os'
+#   return [ phrasetype, sk, sv, ok, ov, ( idx ? 0 ), ]
 
-#-----------------------------------------------------------------------------------------------------------
-@new_so_key = ( db, P... ) -> @new_key db, 'so', P...
-@new_os_key = ( db, P... ) -> @new_key db, 'os', P...
+# #-----------------------------------------------------------------------------------------------------------
+# @new_so_key = ( db, P... ) -> @new_key db, 'so', P...
+# @new_os_key = ( db, P... ) -> @new_key db, 'os', P...
 
-#-----------------------------------------------------------------------------------------------------------
-@_new_os_key_from_so_key = ( db, so_key ) ->
-  [ phrasetype, sk, sv, ok, ov, idx, ] = @as_phrase db, so_key
-  throw new Error "expected phrasetype 'so', got #{rpr phrasetype}" unless phrasetype is 'so'
-  return [ 'os', ok, ov, sk, sv, idx, ]
+# #-----------------------------------------------------------------------------------------------------------
+# @_new_os_key_from_so_key = ( db, so_key ) ->
+#   [ phrasetype, sk, sv, ok, ov, idx, ] = @as_phrase db, so_key
+#   throw new Error "expected phrasetype 'so', got #{rpr phrasetype}" unless phrasetype is 'so'
+#   return [ 'os', ok, ov, sk, sv, idx, ]
 
-#-----------------------------------------------------------------------------------------------------------
-@new_keys = ( db, phrasetype, sk, sv, ok, ov, idx ) ->
-  other_phrasetype  = if phrasetype is 'so' then 'os' else 'so'
-  return [
-    ( @new_key db,       phrasetype, sk, sv, ok, ov, idx ),
-    ( @new_key db, other_phrasetype, sk, sv, ok, ov, idx ), ]
+# #-----------------------------------------------------------------------------------------------------------
+# @new_keys = ( db, phrasetype, sk, sv, ok, ov, idx ) ->
+#   other_phrasetype  = if phrasetype is 'so' then 'os' else 'so'
+#   return [
+#     ( @new_key db,       phrasetype, sk, sv, ok, ov, idx ),
+#     ( @new_key db, other_phrasetype, sk, sv, ok, ov, idx ), ]
 
 #-----------------------------------------------------------------------------------------------------------
 @as_phrase = ( db, key, value, normalize = yes ) ->
@@ -574,26 +580,28 @@ and the ordering in the resulting key. ###
 
 #-----------------------------------------------------------------------------------------------------------
 @url_from_key = ( db, key, settings ) ->
-  key     = @_decode_key db, key if CND.isa_jsbuffer key
-  colors  = settings?[ 'colors' ] ? no
-  I       = CND.grey '|' if colors
-  E       = CND.grey ':' if colors
-  if ( @_type_from_key db, key ) is 'list'
-    [ phrasetype, tail..., ] = key
-    if phrasetype is 'spo'
-      [ sbj, prd, ] = tail
-      if colors
-        return ( CND.grey 'spo' ) + I + ( CND.yellow sbj ) + I + ( CND.green prd )
-      else
-        return "spo|#{sbj}|#{prd}|"
+  key                       = @_decode_key db, key if CND.isa_jsbuffer key
+  colors                    = settings?[ 'colors' ] ? no
+  [ phrasetype, tail..., ]  = key
+  if phrasetype is 'spo'
+    [ sbj, prd, ] = tail
+    if colors
+      return ( CND.grey 'spo' ) + I + ( CND.RED sbj ) + I + ( CND.YELLOW prd )
     else
-      [ prd, obj, sbj, idx, ] = tail
-      idx_rpr = if idx? then rpr idx else ''
-      if colors
-        return ( CND.grey 'pos' ) + I + ( CND.green prd ) + E + ( CND.lime obj ) + I + ( CND.yellow sbj )
-      else
-        return "pos|#{prd}:#{obj}|#{sbj}|#{idx_rpr}"
-  return "#{rpr key}"
+      return "spo|#{sbj}|#{prd}|"
+  else
+    [ prd, obj, sbj, idx, ] = tail
+    idx_rpr = if idx? then rpr idx else ''
+    if colors
+      I           = CND.darkgrey  '|'
+      E           = CND.darkgrey  ':'
+      phrasetype  = CND.grey      phrasetype
+      sbj         = CND.RED       sbj
+      prd         = CND.YELLOW    prd
+      obj         = CND.GREEN     obj
+      return phrasetype + I + prd + E + obj + I + sbj
+    else
+      return "pos|#{prd}:#{obj}|#{sbj}|#{idx_rpr}"
 
 #-----------------------------------------------------------------------------------------------------------
 @$url_from_key = ( db ) -> $ ( key, send ) => send @url_from_key db, key

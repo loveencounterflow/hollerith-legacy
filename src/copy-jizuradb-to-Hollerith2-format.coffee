@@ -2,9 +2,9 @@
 
 
 ############################################################################################################
-# njs_path                  = require 'path'
+njs_path                  = require 'path'
 # # njs_fs                    = require 'fs'
-# join                      = njs_path.join
+join                      = njs_path.join
 #...........................................................................................................
 CND                       = require 'cnd'
 rpr                       = CND.rpr
@@ -27,18 +27,10 @@ immediately               = suspend.immediately
 repeat_immediately        = suspend.repeat_immediately
 every                     = suspend.every
 #...........................................................................................................
-# BYTEWISE                  = require 'bytewise'
-# through                   = require 'through2'
-# LevelBatch                = require 'level-batch-stream'
-# BatchStream               = require 'batch-stream'
-# parallel                  = require 'concurrent-writable'
 D                         = require 'pipedreams2'
 $                         = D.remit.bind D
 $async                    = D.remit_async.bind D
 #...........................................................................................................
-# new_db                    = require 'level'
-# new_levelgraph            = require 'levelgraph'
-# db                        = new_levelgraph '/tmp/levelgraph'
 HOLLERITH                 = require './main'
 DEMO                      = require './demo'
 ƒ                         = CND.format_number.bind CND
@@ -142,28 +134,30 @@ options =
 
 #-----------------------------------------------------------------------------------------------------------
 @copy_jizura_db = ->
-  ds_options  = require '/Volumes/Storage/io/jizura-datasources/options'
-  source_db   = HOLLERITH.new_db '/Volumes/Storage/io/jizura-datasources/data/leveldb' # options[ 'route' ]
-  target_db   = HOLLERITH.new_db '/tmp/jizura-hollerith2'
-  # target_db   = HOLLERITH.new_db '/Volumes/Storage/temp/jizura-hollerith2'
+  home            = join __dirname, '../../jizura-datasources'
+  source_route    = join home, 'data/leveldb'
+  target_route    = join home, 'data/leveldb-v2'
+  target_db_size  = 1e6
+  ds_options      = require join home, 'options'
+  source_db       = HOLLERITH.new_db source_route
+  target_db       = HOLLERITH.new_db target_route, size: target_db_size
   #.........................................................................................................
   step ( resume ) =>
     yield HOLLERITH.clear target_db, resume
     gte         = 'so|'
-    # ### !!!!!!!!!!!!!!!!!!!!!!!! ###
-    # gte         = 'so|glyph:中' # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    # ### !!!!!!!!!!!!!!!!!!!!!!!! ###
     lte         = DEMO._lte_from_gte gte
-    debug '©Y4DzO', { gte, lte, }
     input       = source_db[ '%self' ].createKeyStream { gte, lte, }
-    batch_size  = 10000
-    ### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ###
-    batch_size  = 1
+    batch_size  = 1e4
     output      = HOLLERITH.$write target_db, { batch: batch_size, }
+    #.........................................................................................................
+    help "copying from  #{source_route}"
+    help "to            #{target_route}"
+    help "reading records with prefix #{rpr gte}"
+    help "writing with batch size #{ƒ batch_size}"
     #.........................................................................................................
     input
       #.......................................................................................................
-      .pipe @$show_progress 1e5
+      .pipe @$show_progress 1e4
       .pipe D.$count ( count ) -> help "read #{ƒ count} keys"
       .pipe DEMO._$split_so_bkey()
       .pipe @$keep_small_sample()
@@ -174,24 +168,6 @@ options =
       # .pipe D.$show()
       .pipe D.$count ( count ) -> help "kept #{ƒ count} entries"
       .pipe output
-
-
-    # #.......................................................................................................
-    # .pipe $ ( [ sbj, prd, obj, ], send ) =>
-    #   ### Type Casting ###
-    #   type_description = ds_options[ 'schema' ][ prd ]
-    #   unless type_description?
-    #     warn "no type description for predicate #{rpr prd}"
-    #   else
-    #     switch type = type_description[ 'type' ]
-    #       when 'int'
-    #         obj = parseInt obj, 10
-    #       when 'text'
-    #         ### TAINT we have no booleans configured ###
-    #         if      obj is 'true'   then obj = true
-    #         else if obj is 'false'  then obj = false
-    #   send [ sbj, prd, obj, ]
-    # #.......................................................................................................
 
 
 ############################################################################################################
