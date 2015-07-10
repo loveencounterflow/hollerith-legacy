@@ -517,43 +517,29 @@ repeat_immediately        = suspend.repeat_immediately
 @_encode_value = ( db, value      ) -> new Buffer ( JSON.stringify value ), 'utf-8'
 @_decode_value = ( db, value_bfr  ) -> JSON.parse value_bfr.toString 'utf-8'
 
-# #-----------------------------------------------------------------------------------------------------------
-# ### NB Argument ordering for these function is always subject before object, regardless of the phrasetype
-# and the ordering in the resulting key. ###
-# @new_key = ( db, phrasetype, sk, sv, ok, ov, idx ) ->
-#   throw new Error "illegal phrasetype: #{rpr phrasetype}" unless phrasetype in [ 'so', 'os', ]
-#   [ sk, sv, ok, ov, ] = [ ok, ov, sk, sv, ] if phrasetype is 'os'
-#   return [ phrasetype, sk, sv, ok, ov, ( idx ? 0 ), ]
-
-# #-----------------------------------------------------------------------------------------------------------
-# @new_so_key = ( db, P... ) -> @new_key db, 'so', P...
-# @new_os_key = ( db, P... ) -> @new_key db, 'os', P...
-
-# #-----------------------------------------------------------------------------------------------------------
-# @_new_os_key_from_so_key = ( db, so_key ) ->
-#   [ phrasetype, sk, sv, ok, ov, idx, ] = @as_phrase db, so_key
-#   throw new Error "expected phrasetype 'so', got #{rpr phrasetype}" unless phrasetype is 'so'
-#   return [ 'os', ok, ov, sk, sv, idx, ]
-
-# #-----------------------------------------------------------------------------------------------------------
-# @new_keys = ( db, phrasetype, sk, sv, ok, ov, idx ) ->
-#   other_phrasetype  = if phrasetype is 'so' then 'os' else 'so'
-#   return [
-#     ( @new_key db,       phrasetype, sk, sv, ok, ov, idx ),
-#     ( @new_key db, other_phrasetype, sk, sv, ok, ov, idx ), ]
-
 #-----------------------------------------------------------------------------------------------------------
-@as_phrase = ( db, key, value, normalize = yes ) ->
+@as_phrase = ( db, key, value ) ->
   switch phrasetype = key[ 0 ]
     when 'spo'
-      throw new Error "illegal SPO key (length #{length})" unless ( length = key.length ) is 3
-      throw new Error "illegal value (1) #{rpr value}" if value in [ undefined, ]
+      throw new Error "illegal SPO key (length #{length})"  unless ( length = key.length ) is 3
+      throw new Error "illegal value #{rpr value}"          if value is undefined
       return [ phrasetype, key[ 1 ], key[ 2 ], value, ]
     when 'pos'
-      throw new Error "illegal POS key (length #{length})" unless 4 <= ( length = key.length ) <= 5
-      throw new Error "illegal value (2) #{rpr value}" if not ( value in [ null, ] )
-      return [ phrasetype, key[ 3 ], key[ 1 ], key[ 2 ], key[ 4 ], ] if key[ 4 ]?
-      return [ phrasetype, key[ 3 ], key[ 1 ], key[ 2 ], ]
+      throw new Error "illegal POS key (length #{length})"  unless 4 <= ( length = key.length ) <= 5
+      throw new Error "illegal value #{rpr value}"          unless ( value in [ undefined, null, ] )
+      return [ phrasetype, key[ 1 ], key[ 2 ], key[ 3 ], key[ 4 ], ] if key[ 4 ]?
+      return [ phrasetype, key[ 1 ], key[ 2 ], key[ 3 ],           ]
+  throw new Error "unknown phrasetype #{rpr phrasetype}"
+
+#-----------------------------------------------------------------------------------------------------------
+@normalize_phrase = ( db, phrase ) ->
+  switch phrasetype = phrase[ 0 ]
+    when 'spo'
+      return phrase
+    when 'pos'
+      return [ 'spo', phrase[ 3 ], phrase[ 1 ], phrase[ 2 ], phrase[ 4 ], ] if phrase[ 4 ]?
+      return [ 'spo', phrase[ 3 ], phrase[ 1 ], phrase[ 2 ],           ]
+  throw new Error "unknown phrasetype #{rpr phrasetype}"
 
 #-----------------------------------------------------------------------------------------------------------
 @$as_phrase = ( db ) ->
@@ -579,9 +565,11 @@ repeat_immediately        = suspend.repeat_immediately
   return [ phrasetype, sk, sv, ok, ov, idx, ]
 
 #-----------------------------------------------------------------------------------------------------------
-@url_from_key = ( db, key, settings ) ->
+@as_url = ( db, key, value, settings ) ->
   key                       = @_decode_key db, key if CND.isa_jsbuffer key
   colors                    = settings?[ 'colors' ] ? no
+  debug '©iU0gA', @as_phrase db, key
+  debug '©iU0gA', @normalize_phrase db, @as_phrase db, key
   [ phrasetype, tail..., ]  = key
   if phrasetype is 'spo'
     [ sbj, prd, ] = tail

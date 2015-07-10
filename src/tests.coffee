@@ -376,15 +376,9 @@ CODEC                     = require './codec'
   idx         = -1
   #.........................................................................................................
   key_matchers = [
-    [ 'pos', 'guide/lineup/length', 2, '𧷟2' ]
-    [ 'pos', 'guide/lineup/length', 3, '𧷟3' ]
-    [ 'pos', 'guide/lineup/length', 4, '𧷟4' ]
-    ]
-  #.........................................................................................................
-  phrase_matchers = [
-    [ 'pos', '𧷟2', 'guide/lineup/length', 2 ]
-    [ 'pos', '𧷟3', 'guide/lineup/length', 3 ]
-    [ 'pos', '𧷟4', 'guide/lineup/length', 4 ]
+    [ 'pos', 'guide/lineup/length', 2, '𧷟2', ]
+    [ 'pos', 'guide/lineup/length', 3, '𧷟3', ]
+    [ 'pos', 'guide/lineup/length', 4, '𧷟4', ]
     ]
   #.........................................................................................................
   step ( resume ) =>
@@ -399,7 +393,6 @@ CODEC                     = require './codec'
         idx += +1
         phrase = HOLLERITH.as_phrase db, key, value
         T.eq key, key_matchers[ idx ]
-        T.eq phrase, phrase_matchers[ idx ]
       .pipe D.$on_end ( end ) => end(); done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -408,9 +401,9 @@ CODEC                     = require './codec'
   idx         = -1
   #.........................................................................................................
   matchers = [
-    [ 'pos', '𧷟2', 'guide/lineup/length', 2 ]
-    [ 'pos', '𧷟3', 'guide/lineup/length', 3 ]
-    [ 'pos', '𧷟4', 'guide/lineup/length', 4 ]
+    [ 'pos', 'guide/lineup/length', 2, '𧷟2', ]
+    [ 'pos', 'guide/lineup/length', 3, '𧷟3', ]
+    [ 'pos', 'guide/lineup/length', 4, '𧷟4', ]
     ]
   #.........................................................................................................
   step ( resume ) =>
@@ -431,11 +424,11 @@ CODEC                     = require './codec'
   count       = 0
   #.........................................................................................................
   matchers = [
-    [ 'pos', '𧷟', 'guide/uchr/has', '八', 0 ]
-    [ 'pos', '𧷟', 'guide/uchr/has', '刀', 1 ]
-    [ 'pos', '𧷟', 'guide/uchr/has', '宀', 2 ]
-    [ 'pos', '𧷟', 'guide/uchr/has', '貝', 4 ]
-    [ 'pos', '𧷟', 'guide/uchr/has', '', 3 ]
+    [ 'pos', 'guide/uchr/has', '八', '𧷟', 0, ]
+    [ 'pos', 'guide/uchr/has', '刀', '𧷟', 1, ]
+    [ 'pos', 'guide/uchr/has', '宀', '𧷟', 2, ]
+    [ 'pos', 'guide/uchr/has', '貝', '𧷟', 4, ]
+    [ 'pos', 'guide/uchr/has', '', '𧷟', 3, ]
     ]
   #.........................................................................................................
   step ( resume ) =>
@@ -483,118 +476,118 @@ CODEC                     = require './codec'
         end()
         done()
 
-#-----------------------------------------------------------------------------------------------------------
-@[ "read with sub-read (1)" ] = ( T, done ) ->
-  probes_idx  = 0
-  idx         = -1
-  count       = 0
-  #.........................................................................................................
-  matchers = [
-    [ '𧷟', [ 'spo', '八', 'factor/strokeclass/wbf', '34' ] ]
-    ]
-  #.........................................................................................................
-  step ( resume ) =>
-    yield @_feed_test_data db, probes_idx, resume
-    prefix    = [ 'spo', '𧷟', 'guide/uchr/has', ]
-    input     = HOLLERITH.create_phrasestream db, { prefix, }
-    settings  = { indexed: no, }
-    input
-      .pipe HOLLERITH.read_sub db, settings, ( [ phrasetype, glyph, prd, guides, ] ) =>
-        sub_prefix  = [ 'spo', guides[ 0 ], 'factor/strokeclass/wbf', ]
-        sub_input   = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, }
-        return [ glyph, sub_input, ]
-      .pipe $ ( phrase, send ) =>
-        count  += +1
-        idx    += +1
-        T.eq phrase, matchers[ idx ]
-      .pipe D.$on_end ( end ) =>
-        T.eq count, matchers.length
-        end()
-        done()
+# #-----------------------------------------------------------------------------------------------------------
+# @[ "read with sub-read (1)" ] = ( T, done ) ->
+#   probes_idx  = 0
+#   idx         = -1
+#   count       = 0
+#   #.........................................................................................................
+#   matchers = [
+#     [ '𧷟', [ 'spo', '八', 'factor/strokeclass/wbf', '34' ] ]
+#     ]
+#   #.........................................................................................................
+#   step ( resume ) =>
+#     yield @_feed_test_data db, probes_idx, resume
+#     prefix    = [ 'spo', '𧷟', 'guide/uchr/has', ]
+#     input     = HOLLERITH.create_phrasestream db, { prefix, }
+#     settings  = { indexed: no, }
+#     input
+#       .pipe HOLLERITH.read_sub db, settings, ( [ phrasetype, glyph, prd, guides, ] ) =>
+#         sub_prefix  = [ 'spo', guides[ 0 ], 'factor/strokeclass/wbf', ]
+#         sub_input   = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, }
+#         return [ glyph, sub_input, ]
+#       .pipe $ ( phrase, send ) =>
+#         count  += +1
+#         idx    += +1
+#         T.eq phrase, matchers[ idx ]
+#       .pipe D.$on_end ( end ) =>
+#         T.eq count, matchers.length
+#         end()
+#         done()
 
-#-----------------------------------------------------------------------------------------------------------
-@[ "read with sub-read (2)" ] = ( T, done ) ->
-  probes_idx  = 0
-  idx         = -1
-  count       = 0
-  #.........................................................................................................
-  matchers = [
-    [ '𧷟', [ 'spo', '八', 'factor/strokeclass/wbf', '34' ] ]
-    [ '𧷟', [ 'spo', '刀', 'factor/strokeclass/wbf', '5(12)3' ] ]
-    [ '𧷟', [ 'spo', '宀', 'factor/strokeclass/wbf', '44' ] ]
-    [ '𧷟', [ 'spo', '貝', 'factor/strokeclass/wbf', '25(12)' ] ]
-    [ '𧷟', [ 'spo', '', 'factor/strokeclass/wbf', '12' ] ]
-    ]
-  #.........................................................................................................
-  step ( resume ) =>
-    yield @_feed_test_data db, probes_idx, resume
-    prefix    = [ 'pos', 'guide/uchr/has', ]
-    input     = HOLLERITH.create_phrasestream db, { prefix, }
-    settings  = { indexed: no, }
-    input
-      .pipe HOLLERITH.read_sub db, settings, ( phrase ) =>
-        [ _, glyph, prd, guide, ] = phrase
-        prefix                    = [ 'spo', guide, 'factor/strokeclass/wbf', ]
-        sub_input                 = HOLLERITH.create_phrasestream db, { prefix, }
-        return [ glyph, sub_input, ]
-      .pipe $ ( phrase, send ) =>
-        debug '©quPbg', JSON.stringify phrase
-        count  += +1
-        idx    += +1
-        T.eq phrase, matchers[ idx ]
-      .pipe D.$on_end ( end ) =>
-        T.eq count, matchers.length
-        end()
-        done()
+# #-----------------------------------------------------------------------------------------------------------
+# @[ "read with sub-read (2)" ] = ( T, done ) ->
+#   probes_idx  = 0
+#   idx         = -1
+#   count       = 0
+#   #.........................................................................................................
+#   matchers = [
+#     [ '𧷟', [ 'spo', '八', 'factor/strokeclass/wbf', '34' ] ]
+#     [ '𧷟', [ 'spo', '刀', 'factor/strokeclass/wbf', '5(12)3' ] ]
+#     [ '𧷟', [ 'spo', '宀', 'factor/strokeclass/wbf', '44' ] ]
+#     [ '𧷟', [ 'spo', '貝', 'factor/strokeclass/wbf', '25(12)' ] ]
+#     [ '𧷟', [ 'spo', '', 'factor/strokeclass/wbf', '12' ] ]
+#     ]
+#   #.........................................................................................................
+#   step ( resume ) =>
+#     yield @_feed_test_data db, probes_idx, resume
+#     prefix    = [ 'pos', 'guide/uchr/has', ]
+#     input     = HOLLERITH.create_phrasestream db, { prefix, }
+#     settings  = { indexed: no, }
+#     input
+#       .pipe HOLLERITH.read_sub db, settings, ( phrase ) =>
+#         [ _, glyph, prd, guide, ] = phrase
+#         prefix                    = [ 'spo', guide, 'factor/strokeclass/wbf', ]
+#         sub_input                 = HOLLERITH.create_phrasestream db, { prefix, }
+#         return [ glyph, sub_input, ]
+#       .pipe $ ( phrase, send ) =>
+#         debug '©quPbg', JSON.stringify phrase
+#         count  += +1
+#         idx    += +1
+#         T.eq phrase, matchers[ idx ]
+#       .pipe D.$on_end ( end ) =>
+#         T.eq count, matchers.length
+#         end()
+#         done()
 
-#-----------------------------------------------------------------------------------------------------------
-@[ "read with sub-read (3)" ] = ( T, done ) ->
-  step ( resume ) =>
-    yield @_read_with_sub_read_3 T, batch: 0,    resume
-    yield @_read_with_sub_read_3 T, batch: 3,    resume
-    yield @_read_with_sub_read_3 T, batch: 5,    resume
-    yield @_read_with_sub_read_3 T, batch: 1000, resume
-    done()
+# #-----------------------------------------------------------------------------------------------------------
+# @[ "read with sub-read (3)" ] = ( T, done ) ->
+#   step ( resume ) =>
+#     yield @_read_with_sub_read_3 T, batch: 0,    resume
+#     yield @_read_with_sub_read_3 T, batch: 3,    resume
+#     yield @_read_with_sub_read_3 T, batch: 5,    resume
+#     yield @_read_with_sub_read_3 T, batch: 1000, resume
+#     done()
 
-#-----------------------------------------------------------------------------------------------------------
-@_read_with_sub_read_3 = ( T, write_settings, done ) ->
-  probes_idx  = 0
-  idx         = -1
-  count       = 0
-  #.........................................................................................................
-  matchers = [
-    [["𧷟","八","34"],      ["spo","八","rank/cjt",12541]]
-    [["𧷟","刀","5(12)3"],  ["spo","刀","rank/cjt",12542]]
-    [["𧷟","宀","44"],      ["spo","宀","rank/cjt",12543]]
-    [["𧷟","貝","25(12)"],  ["spo","貝","rank/cjt",12545]]
-    [["𧷟","","12"],      ["spo","","rank/cjt",12544]]
-    ]
-  #.........................................................................................................
-  step ( resume ) =>
-    yield @_feed_test_data db, probes_idx, write_settings, resume
-    prefix        = [ 'pos', 'guide/uchr/has', ]
-    input         = HOLLERITH.create_phrasestream db, { prefix, }
-    read_settings = { indexed: no, }
-    input
-      .pipe HOLLERITH.read_sub db, read_settings, ( phrase ) =>
-        [ _, glyph, prd, guide, ] = phrase
-        prefix                    = [ 'spo', guide, 'factor/strokeclass/wbf', ]
-        sub_input                 = HOLLERITH.create_phrasestream db, { prefix, }
-        return [ glyph, sub_input, ]
-      .pipe HOLLERITH.read_sub db, read_settings, ( xphrase ) =>
-        [ glyph, [ _, guide, prd, shapeclass, ] ] = xphrase
-        prefix                                    = [ 'spo', guide, 'rank/cjt', ]
-        sub_input                                 = HOLLERITH.create_phrasestream db, { prefix, }
-        return [ [ glyph, guide, shapeclass, ], sub_input, ]
-      .pipe $ ( xphrase, send ) =>
-        debug '©quPbg', JSON.stringify xphrase
-        count  += +1
-        idx    += +1
-        T.eq xphrase, matchers[ idx ]
-      .pipe D.$on_end ( end ) =>
-        T.eq count, matchers.length
-        end()
-        done()
+# #-----------------------------------------------------------------------------------------------------------
+# @_read_with_sub_read_3 = ( T, write_settings, done ) ->
+#   probes_idx  = 0
+#   idx         = -1
+#   count       = 0
+#   #.........................................................................................................
+#   matchers = [
+#     [["𧷟","八","34"],      ["spo","八","rank/cjt",12541]]
+#     [["𧷟","刀","5(12)3"],  ["spo","刀","rank/cjt",12542]]
+#     [["𧷟","宀","44"],      ["spo","宀","rank/cjt",12543]]
+#     [["𧷟","貝","25(12)"],  ["spo","貝","rank/cjt",12545]]
+#     [["𧷟","","12"],      ["spo","","rank/cjt",12544]]
+#     ]
+#   #.........................................................................................................
+#   step ( resume ) =>
+#     yield @_feed_test_data db, probes_idx, write_settings, resume
+#     prefix        = [ 'pos', 'guide/uchr/has', ]
+#     input         = HOLLERITH.create_phrasestream db, { prefix, }
+#     read_settings = { indexed: no, }
+#     input
+#       .pipe HOLLERITH.read_sub db, read_settings, ( phrase ) =>
+#         [ _, glyph, prd, guide, ] = phrase
+#         prefix                    = [ 'spo', guide, 'factor/strokeclass/wbf', ]
+#         sub_input                 = HOLLERITH.create_phrasestream db, { prefix, }
+#         return [ glyph, sub_input, ]
+#       .pipe HOLLERITH.read_sub db, read_settings, ( xphrase ) =>
+#         [ glyph, [ _, guide, prd, shapeclass, ] ] = xphrase
+#         prefix                                    = [ 'spo', guide, 'rank/cjt', ]
+#         sub_input                                 = HOLLERITH.create_phrasestream db, { prefix, }
+#         return [ [ glyph, guide, shapeclass, ], sub_input, ]
+#       .pipe $ ( xphrase, send ) =>
+#         debug '©quPbg', JSON.stringify xphrase
+#         count  += +1
+#         idx    += +1
+#         T.eq xphrase, matchers[ idx ]
+#       .pipe D.$on_end ( end ) =>
+#         T.eq count, matchers.length
+#         end()
+#         done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "sorting (1)" ] = ( T, done ) ->
@@ -1148,19 +1141,19 @@ CODEC                     = require './codec'
   count       = 0
   #.........................................................................................................
   matchers = [
-    [ 'pos', '𧷟1', 'guide', 'xxx' ]
-    [ 'pos', '𧷟1', 'guide/', 'yyy' ]
-    [ 'pos', '𧷟1', 'guide/lineup/length', 1 ]
-    [ 'pos', '𧷟2', 'guide/lineup/length', 2 ]
-    [ 'pos', '𧷟3', 'guide/lineup/length', 3 ]
-    [ 'pos', '𧷟4', 'guide/lineup/length', 4 ]
-    [ 'pos', '𧷟', 'guide/lineup/length', 5 ]
-    [ 'pos', '𧷟6', 'guide/lineup/length', 6 ]
-    [ 'pos', '𧷟', 'guide/uchr/has', '八', 0 ]
-    [ 'pos', '𧷟', 'guide/uchr/has', '刀', 1 ]
-    [ 'pos', '𧷟', 'guide/uchr/has', '宀', 2 ]
-    [ 'pos', '𧷟', 'guide/uchr/has', '貝', 4 ]
-    [ 'pos', '𧷟', 'guide/uchr/has', '', 3 ]
+    [ 'pos', 'guide', 'xxx', '𧷟1' ]
+    [ 'pos', 'guide/', 'yyy', '𧷟1' ]
+    [ 'pos', 'guide/lineup/length', 1, '𧷟1', ]
+    [ 'pos', 'guide/lineup/length', 2, '𧷟2', ]
+    [ 'pos', 'guide/lineup/length', 3, '𧷟3', ]
+    [ 'pos', 'guide/lineup/length', 4, '𧷟4', ]
+    [ 'pos', 'guide/lineup/length', 5, '𧷟', ]
+    [ 'pos', 'guide/lineup/length', 6, '𧷟6', ]
+    [ 'pos', 'guide/uchr/has', '八', '𧷟', 0 ]
+    [ 'pos', 'guide/uchr/has', '刀', '𧷟', 1 ]
+    [ 'pos', 'guide/uchr/has', '宀', '𧷟', 2 ]
+    [ 'pos', 'guide/uchr/has', '貝', '𧷟', 4 ]
+    [ 'pos', 'guide/uchr/has', '', '𧷟', 3 ]
     ]
   #.........................................................................................................
   step ( resume ) =>
