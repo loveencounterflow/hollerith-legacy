@@ -85,14 +85,15 @@ HOLLERITH                 = require './main'
         if HOLLERITH._is_meta db, key_bfr
           warn "skipped meta: #{rpr key_bfr.toString()}"
         else
-          key_rpr     = HOLLERITH.url_from_key db, HOLLERITH._decode_key db, key_bfr
-          phrasetype  = key_rpr[ 0 .. 2 ]
-          if colors
-            key_rpr   = ( CND.plum part for part in key_rpr.split '|' ).join CND.grey '|'
+          key_rpr     = HOLLERITH.url_from_key db, key_bfr, colors: colors
+          phrasetype  = ( key_bfr.slice 1, 4 ).toString()
           if phrasetype is 'spo' and value_bfr?
             value     = value_bfr.toString 'utf-8'
             value_rpr = ( rpr value ).replace /^'(.*)'$/, '$1'
-            value_rpr = CND.orange value_rpr if colors
+            if colors
+              value_rpr = ( CND.grey '|' ) + ( CND.orange value_rpr )
+            else
+              value_rpr = '|' + value_rpr
           else
             value_rpr = ''
           write ( CND.grey ƒ count ), key_rpr + value_rpr
@@ -106,41 +107,41 @@ HOLLERITH                 = require './main'
       help "dumped #{ƒ count} entries"
       process.exit()
 
-#-----------------------------------------------------------------------------------------------------------
-### TAINT code duplication ###
-@_$dump_prefixes = ( db, input, settings ) ->
-  { limit, colors, chrs, } = settings
-  key_count     = 0
-  prefix_count  = 0
-  prefixes      = {}
-  t0            = +new Date()
-  #.........................................................................................................
-  return $ ( key, send, end ) =>
-    #.......................................................................................................
-    if key?
-      key_count += +1
-      if key_count < limit
-        key_rpr = HOLLERITH.url_from_key db, HOLLERITH._decode_key db, key
-        [ prefix, suffix_idx, ] = @_first_chrs_of key_rpr, chrs
-        unless prefixes[ prefix ]?
-          prefix_count       += +1
-          prefixes[ prefix ]  = 1
-          if colors
-            log ( CND.grey ƒ key_count ), ( CND.plum prefix ) + ( CND.grey key_rpr[ suffix_idx .. ] )
-          else
-            echo ( ƒ key_count ), prefix, key_rpr[ suffix_idx .. ]
-          send key
-      #.....................................................................................................
-      input.emit 'end' if key_count >= limit
-    #.......................................................................................................
-    if end?
-      t1      = +new Date()
-      dt      = t1 - t0
-      dt_s    = ( dt /  1000 ).toFixed 3
-      dt_min  = ( dt / 60000 ).toFixed 1
-      help "dumped #{ƒ key_count} entries in #{dt_s}s (#{dt_min}min)"
-      help "found #{ƒ prefix_count} distinct prefixes with up to #{ƒ chrs} characters"
-      process.exit()
+# #-----------------------------------------------------------------------------------------------------------
+# ### TAINT code duplication ###
+# @_$dump_prefixes = ( db, input, settings ) ->
+#   { limit, colors, chrs, } = settings
+#   key_count     = 0
+#   prefix_count  = 0
+#   prefixes      = {}
+#   t0            = +new Date()
+#   #.........................................................................................................
+#   return $ ( key, send, end ) =>
+#     #.......................................................................................................
+#     if key?
+#       key_count += +1
+#       if key_count < limit
+#         key_rpr = HOLLERITH.url_from_key db, HOLLERITH._decode_key db, key
+#         [ prefix, suffix_idx, ] = @_first_chrs_of key_rpr, chrs
+#         unless prefixes[ prefix ]?
+#           prefix_count       += +1
+#           prefixes[ prefix ]  = 1
+#           if colors
+#             log ( CND.grey ƒ key_count ), ( CND.plum prefix ) + ( CND.grey key_rpr[ suffix_idx .. ] )
+#           else
+#             echo ( ƒ key_count ), prefix, key_rpr[ suffix_idx .. ]
+#           send key
+#       #.....................................................................................................
+#       input.emit 'end' if key_count >= limit
+#     #.......................................................................................................
+#     if end?
+#       t1      = +new Date()
+#       dt      = t1 - t0
+#       dt_s    = ( dt /  1000 ).toFixed 3
+#       dt_min  = ( dt / 60000 ).toFixed 1
+#       help "dumped #{ƒ key_count} entries in #{dt_s}s (#{dt_min}min)"
+#       help "found #{ƒ prefix_count} distinct prefixes with up to #{ƒ chrs} characters"
+#       process.exit()
 
 #-----------------------------------------------------------------------------------------------------------
 @dump = ( db, settings ) ->
@@ -148,20 +149,27 @@ HOLLERITH                 = require './main'
   switch mode
     when 'keys'
       if prefix?
-        debug '©7fHvz', rpr prefix
         ### TAINT use library method ###
-        key = prefix.split '|'
-        query = HOLLERITH._query_from_prefix db, key, '*'
-        urge '©g1y6J', key
-        urge '©g1y6J', query[ 'gte' ]
-        urge '©g1y6J', query[ 'lte' ]
+        if prefix[ prefix.length - 1 ] is '*'
+          star      = '*'
+          star_rpr  = '*'
+          prefix = prefix[ ... prefix.length - 1 ]
+        else
+          star      = null
+          star_rpr  = ''
+        key = prefix.split /\||:/
+        query = HOLLERITH._query_from_prefix db, key, star
+        urge "prefix: #{rpr prefix} #{star_rpr}"
+        urge "key:    #{rpr key} #{star_rpr}"
+        # urge " #{query[ 'gte' ]}"
+        # urge " #{query[ 'lte' ]}"
         input = db[ '%self' ].createReadStream query
       else
         input = db[ '%self' ].createReadStream()
       worker  = @_$dump_facets db, input, settings
-    when 'prefixes'
-      input   = db[ '%self' ].createKeyStream()
-      worker  = @_$dump_prefixes db, input, settings
+    # when 'prefixes'
+    #   input   = db[ '%self' ].createKeyStream()
+    #   worker  = @_$dump_prefixes db, input, settings
     else throw new Error "unknown mode #{rpr mode}"
   input
     .pipe worker
@@ -301,7 +309,7 @@ unless module.parent?
   dump_settings[ 'chrs'     ] = ( parseInt  chrs, 10 ) if (  chrs = cli_options[  '<chrs>' ] )
   dump_settings[ 'prefix'   ] = prefix if ( prefix = cli_options[ '<prefix>' ] )?
   #---------------------------------------------------------------------------------------------------------
-  db = HOLLERITH.new_db dump_settings[ 'route' ]
+  db = HOLLERITH.new_db dump_settings[ 'route' ], create: no
   # debug '©bEIeE', cli_options
   # help '©bEIeE', dump_settings
   help "using LevelDB at #{dump_settings[ 'route' ]}"

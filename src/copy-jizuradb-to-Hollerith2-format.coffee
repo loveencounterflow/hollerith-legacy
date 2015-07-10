@@ -54,7 +54,7 @@ options =
   count   = 0
   return $ ( data, send ) =>
     count += 1
-    whisper ƒ count if count % size is 0
+    echo ƒ count if count % size is 0
     send data
 
 #-----------------------------------------------------------------------------------------------------------
@@ -88,15 +88,18 @@ options =
 
 #-----------------------------------------------------------------------------------------------------------
 @$collect_lists = ->
-  objs        = null
-  sbj_prd     = null
-  last_digest = null
+  objs          = null
+  sbj_prd       = null
+  last_digest   = null
+  context_keys  = []
+  has_errors    = false
   #.........................................................................................................
   return $ ( key, send, end ) =>
     #.......................................................................................................
     if key?
+      context_keys.push key; context_keys.shift() if context_keys.length > 10
       [ sbj, prd, obj, idx, ] = key
-      digest                  = JSON.stringify [ sbj, prd, ] # "#{sbj}|#{prd}"
+      digest                  = JSON.stringify [ sbj, prd, ]
       #.....................................................................................................
       if digest is last_digest
         if idx?
@@ -104,8 +107,10 @@ options =
         else
           ### A certain subject/predicate combination can only ever be repeated if an index is
           present in the key ###
-          debug '©EyAEd', key
-          throw new Error "should never happen"
+          alert()
+          alert "erroneous repeated entry; context:"
+          alert context_keys
+          has_errors = true
       else
         send [ sbj_prd..., objs, ] if objs?
         objs            = null
@@ -119,9 +124,21 @@ options =
     #.......................................................................................................
     if end?
       send [ sbj_prd..., objs, ] if objs?
+      return send.error new Error "there were errors; see alerts above" if has_errors
       end()
     #.......................................................................................................
     return null
+
+#-----------------------------------------------------------------------------------------------------------
+@$compact_lists = ->
+  return $ ( [ sbj, prd, obj, ], send ) =>
+    ### Compactify sparse lists so all `undefined` elements are removed; warn about this ###
+    if ( CND.type_of obj ) is 'list'
+      new_obj = ( element for element in obj when element isnt undefined )
+      if obj.length isnt new_obj.length
+        warn "phrase #{rpr [ sbj, prd, obj, ]} contained undefined elements; compactified"
+      obj = new_obj
+    send [ sbj, prd, obj, ]
 
 #-----------------------------------------------------------------------------------------------------------
 @copy_jizura_db = ->
@@ -147,27 +164,18 @@ options =
     input
       #.......................................................................................................
       .pipe @$show_progress 1e5
-      # .pipe D.$show()
       .pipe D.$count ( count ) -> help "read #{ƒ count} keys"
       .pipe DEMO._$split_so_bkey()
       .pipe @$keep_small_sample()
       .pipe @$throw_out_pods()
       .pipe @$cast_types ds_options
       .pipe @$collect_lists()
+      .pipe @$compact_lists()
+      # .pipe D.$show()
       .pipe D.$count ( count ) -> help "kept #{ƒ count} entries"
       .pipe output
 
 
-    # #.......................................................................................................
-    # .pipe $ ( [ sbj, prd, obj, ], send ) =>
-    #   ### Compactify sparse lists so all `undefined` elements are removed; warn about this ###
-    #   if ( CND.type_of obj ) is 'list'
-    #     debug '©xACAv', obj
-    #     new_obj = ( element for element in obj when element isnt undefined )
-    #     if obj.length isnt new_obj.length
-    #       warn "phrase #{rpr [ sbj, prd, obj, ]} contained undefined elements; compactified"
-    #     obj = new_obj
-    #   send [ sbj, prd, obj, ]
     # #.......................................................................................................
     # .pipe $ ( [ sbj, prd, obj, ], send ) =>
     #   ### Type Casting ###

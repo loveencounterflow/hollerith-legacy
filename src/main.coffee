@@ -34,9 +34,6 @@ step                      = suspend.step
 repeat_immediately        = suspend.repeat_immediately
 #...........................................................................................................
 @_LODASH                  = require 'lodash'
-#...........................................................................................................
-### https://github.com/b3nj4m/bloom-stream ###
-Bloom                     = require 'bloom-stream'
 
 
 #-----------------------------------------------------------------------------------------------------------
@@ -51,12 +48,13 @@ Bloom                     = require 'bloom-stream'
 # @_last_octet      = new Buffer [ 0xff, ]
 
 #-----------------------------------------------------------------------------------------------------------
-@new_db = ( route ) ->
+@new_db = ( route, settings ) ->
+  create_if_missing = settings?[ 'create' ] ? yes
   #.........................................................................................................
   level_settings =
     'keyEncoding':          'binary'
     'valueEncoding':        'binary'
-    'createIfMissing':      yes
+    'createIfMissing':      create_if_missing
     'errorIfExists':        no
     'compression':          yes
     'sync':                 no
@@ -194,6 +192,8 @@ Bloom                     = require 'bloom-stream'
   db_size           = db[ 'size' ] ? 1e4
   db_size           = db[ 'size' ] ? 1e6
   bloom_error_rate  = 0.1
+  entry_count       = 0
+  miss_count        = 0
   #.........................................................................................................
   BSON = ( require 'bson' ).BSONPure.BSON
   njs_fs = require 'fs'
@@ -211,8 +211,15 @@ Bloom                     = require 'bloom-stream'
     ƒ           = CND.format_number
     for filter in filters
       filter_size += filter[ 'filter' ][ 'bitfield' ][ 'buffer' ].length
-    whisper "scalable Bloom filter size: #{ƒ filter_size} bytes"
-    whisper bloem_settings
+    whisper "scalable Bloom filter:"
+    whisper "filter size:               #{ƒ filter_size} bytes"
+    whisper "initial_capacity:          #{ƒ bloem_settings[ 'initial_capacity' ]} entries"
+    whisper "scaling:                   #{bloem_settings[ 'scaling' ]}"
+    whisper "nominal confidence ratio:  #{bloem_settings[ 'ratio' ]}"
+    whisper "entries:                   #{ƒ entry_count}"
+    whisper "misses:                    #{ƒ miss_count}"
+    if entry_count > 0
+      whisper "actual confidence ratio:   #{( miss_count / entry_count ).toFixed 4}"
   #---------------------------------------------------------------------------------------------------------
   $ensure_unique_spo = =>
     ### We skip all phrases except for SPO entries, the problem being that even IF some erroneous processing
@@ -234,8 +241,9 @@ Bloom                     = require 'bloom-stream'
       bloom               = db[ '%bloom' ]
       bloom_has_key       = bloom.has key_bfr
       bloom.add key_bfr
+      entry_count        += +1
       return handler null, xphrase unless bloom_has_key
-      debug '©nG3mr', ( +new Date() ), "Bloom filter cache miss"
+      miss_count         += +1
       #.....................................................................................................
       @has db, key_bfr, ( error, db_has_key ) =>
         return handler error if error?
@@ -273,6 +281,7 @@ Bloom                     = require 'bloom-stream'
       whisper "saving Bloom filter..."
       bloom     = db[ '%bloom' ]
       bloom_bfr = BSON.serialize bloom
+      show_bloom_info()
       #.....................................................................................................
       @_put_meta db, 'bloom', bloom_bfr, ( error ) =>
         return send.error error if error?
@@ -564,16 +573,26 @@ and the ordering in the resulting key. ###
   return [ phrasetype, sk, sv, ok, ov, idx, ]
 
 #-----------------------------------------------------------------------------------------------------------
-@url_from_key = ( db, key ) ->
+@url_from_key = ( db, key, settings ) ->
+  key     = @_decode_key db, key if CND.isa_jsbuffer key
+  colors  = settings?[ 'colors' ] ? no
+  I       = CND.grey '|' if colors
+  E       = CND.grey ':' if colors
   if ( @_type_from_key db, key ) is 'list'
     [ phrasetype, tail..., ] = key
     if phrasetype is 'spo'
       [ sbj, prd, ] = tail
-      return "spo|#{sbj}|#{prd}|"
+      if colors
+        return ( CND.grey 'spo' ) + I + ( CND.yellow sbj ) + I + ( CND.green prd )
+      else
+        return "spo|#{sbj}|#{prd}|"
     else
       [ prd, obj, sbj, idx, ] = tail
       idx_rpr = if idx? then rpr idx else ''
-      return "pos|#{prd}:#{obj}|#{sbj}|#{idx_rpr}"
+      if colors
+        return ( CND.grey 'pos' ) + I + ( CND.green prd ) + E + ( CND.lime obj ) + I + ( CND.yellow sbj )
+      else
+        return "pos|#{prd}:#{obj}|#{sbj}|#{idx_rpr}"
   return "#{rpr key}"
 
 #-----------------------------------------------------------------------------------------------------------
