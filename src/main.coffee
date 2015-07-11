@@ -15,6 +15,7 @@ help                      = CND.get_logger 'help',      badge
 urge                      = CND.get_logger 'urge',      badge
 whisper                   = CND.get_logger 'whisper',   badge
 echo                      = CND.echo.bind CND
+ƒ                         = CND.format_number.bind CND
 #...........................................................................................................
 suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
@@ -195,37 +196,12 @@ repeat_immediately        = suspend.repeat_immediately
 #-----------------------------------------------------------------------------------------------------------
 @_get_bloom_methods = ( db ) ->
   #---------------------------------------------------------------------------------------------------------
-  db_size           = db[ 'size' ] ? 1e5
-  bloom_error_rate  = 0.1
-  entry_count       = 0
-  miss_count        = 0
-  #.........................................................................................................
-  BSON = ( require 'bson' ).BSONPure.BSON
-  njs_fs = require 'fs'
-  #.........................................................................................................
-  BLOEM             = require 'bloem'
-  bloem_settings    =
-    # initial_capacity:   db_size * 3
-    initial_capacity:   db_size
-    scaling:            2
-    ratio:              0.1
+  entry_count           = 0
+  false_positive_count  = 0
+  bloom_settings        = size: db[ 'size' ] ? 1e5
   #---------------------------------------------------------------------------------------------------------
   show_bloom_info = =>
-    bloom       = db[ '%bloom' ]
-    filters     = bloom[ 'filters' ]
-    filter_size = 0
-    ƒ           = CND.format_number
-    for filter in filters
-      filter_size += filter[ 'filter' ][ 'bitfield' ][ 'buffer' ].length
-    whisper "scalable Bloom filter:"
-    whisper "filter size:               #{ƒ filter_size} bytes"
-    whisper "initial_capacity:          #{ƒ bloem_settings[ 'initial_capacity' ]} entries"
-    whisper "scaling:                   #{bloem_settings[ 'scaling' ]}"
-    whisper "nominal confidence ratio:  #{bloem_settings[ 'ratio' ]}"
-    whisper "entries:                   #{ƒ entry_count}"
-    whisper "misses:                    #{ƒ miss_count}"
-    if entry_count > 0
-      whisper "actual confidence ratio:   #{( miss_count / entry_count ).toFixed 4}"
+    CND.BLOOM.report db[ '%bloom' ]
   #---------------------------------------------------------------------------------------------------------
   $ensure_unique_spo = =>
     ### We skip all phrases except for SPO entries, the problem being that even IF some erroneous processing
@@ -243,13 +219,13 @@ repeat_immediately        = suspend.repeat_immediately
     return D.$map ( xphrase, handler ) =>
       ### Skip if this is not a main entry to the DB: ###
       return handler null, xphrase unless xphrase[ 0 ] is 'spo'
-      key_bfr             = xphrase[ 1 ]
-      bloom               = db[ '%bloom' ]
-      bloom_has_key       = bloom.has key_bfr
-      bloom.add key_bfr
-      entry_count        += +1
+      key_bfr               = xphrase[ 1 ]
+      bloom                 = db[ '%bloom' ]
+      bloom_has_key         = CND.BLOOM.has bloom, key_bfr
+      CND.BLOOM.add bloom, key_bfr
+      entry_count          += +1
       return handler null, xphrase unless bloom_has_key
-      miss_count         += +1
+      false_positive_count += +1
       #.....................................................................................................
       @has db, key_bfr, ( error, db_has_key ) =>
         return handler error if error?
@@ -269,14 +245,9 @@ repeat_immediately        = suspend.repeat_immediately
         return handler error if error?
         if bloom_bfr is null
           warn 'no bloom filter found'
-          bloom = new BLOEM.ScalingBloem bloom_error_rate, bloem_settings
+          bloom = CND.BLOOM.new_filter bloom_settings
         else
-          bloom_data = BSON.deserialize bloom_bfr
-          ### TAINT see https://github.com/wiedi/node-bloem/issues/5 ###
-          for filter in bloom_data[ 'filters' ]
-            bitfield              = filter[ 'filter' ][ 'bitfield' ]
-            bitfield[ 'buffer' ]  = bitfield[ 'buffer' ][ 'buffer' ]
-          bloom = BLOEM.ScalingBloem.destringify bloom_data
+          bloom = CND.BLOOM.from_buffer bloom_bfr
         db[ '%bloom' ] = bloom
         whisper "...ok"
         show_bloom_info()
@@ -285,8 +256,8 @@ repeat_immediately        = suspend.repeat_immediately
   $save_bloom = =>
     return D.$on_end ( send, end ) =>
       whisper "saving Bloom filter..."
-      bloom     = db[ '%bloom' ]
-      bloom_bfr = BSON.serialize bloom
+      bloom_bfr = CND.BLOOM.as_buffer db[ '%bloom' ]
+      whisper "serialized bloom filter to #{ƒ bloom_bfr.length} bytes"
       show_bloom_info()
       #.....................................................................................................
       @_put_meta db, 'bloom', bloom_bfr, ( error ) =>

@@ -144,7 +144,7 @@ options =
   #.........................................................................................................
   step ( resume ) =>
     yield HOLLERITH.clear target_db, resume
-    gte         = 'so|'
+    gte         = 'so|glyph:中'
     lte         = DEMO._lte_from_gte gte
     input       = source_db[ '%self' ].createKeyStream { gte, lte, }
     batch_size  = 1e4
