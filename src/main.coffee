@@ -84,47 +84,47 @@ repeat_immediately        = suspend.repeat_immediately
 #     whisper "re-opened LevelDB at #{route}"
 #     handler null
 
-# #-----------------------------------------------------------------------------------------------------------
-# @clear = ( db, handler ) ->
-#   step ( resume ) =>
-#     route = db[ '%self' ][ 'location' ]
-#     whisper "closing DB"
-#     yield db[ '%self' ].close resume
-#     whisper "erasing DB"
-#     yield leveldown.destroy route, resume
-#     whisper "re-opening DB"
-#     yield db[ '%self' ].open resume
-#     whisper "erased and re-opened LevelDB at #{route}"
-#     handler null
-
 #-----------------------------------------------------------------------------------------------------------
 @clear = ( db, handler ) ->
-  ASYNC = require 'async'
-  route = db[ '%self' ][ 'location' ]
-  tasks = []
-  #.........................................................................................................
-  tasks.push ( handler ) =>
-    whisper "closing DB..."
-    db[ '%self' ].close =>
-      whisper "ok"
-      handler()
-  #.........................................................................................................
-  tasks.push ( handler ) =>
-    whisper "erasing DB..."
-    leveldown.destroy route, =>
-      whisper "ok"
-      handler()
-  #.........................................................................................................
-  tasks.push ( handler ) =>
-    whisper "re-opening DB..."
-    db[ '%self' ].open =>
-      whisper "ok"
-      handler()
-  #.........................................................................................................
-  ASYNC.series tasks, ( error ) =>
-    return handler error if error?
+  step ( resume ) =>
+    route = db[ '%self' ][ 'location' ]
+    whisper "closing DB"
+    yield db[ '%self' ].close resume
+    # whisper "erasing DB"
+    yield leveldown.destroy route, resume
+    # whisper "re-opening DB"
+    yield db[ '%self' ].open resume
     whisper "erased and re-opened LevelDB at #{route}"
-    handler()
+    handler null
+
+# #-----------------------------------------------------------------------------------------------------------
+# @clear = ( db, handler ) ->
+#   ASYNC = require 'async'
+#   route = db[ '%self' ][ 'location' ]
+#   tasks = []
+#   #.........................................................................................................
+#   tasks.push ( handler ) =>
+#     whisper "closing DB..."
+#     db[ '%self' ].close =>
+#       whisper "ok"
+#       handler()
+#   #.........................................................................................................
+#   tasks.push ( handler ) =>
+#     whisper "erasing DB..."
+#     leveldown.destroy route, =>
+#       whisper "ok"
+#       handler()
+#   #.........................................................................................................
+#   tasks.push ( handler ) =>
+#     whisper "re-opening DB..."
+#     db[ '%self' ].open =>
+#       whisper "ok"
+#       handler()
+#   #.........................................................................................................
+#   ASYNC.series tasks, ( error ) =>
+#     return handler error if error?
+#     whisper "erased and re-opened LevelDB at #{route}"
+#     handler()
 
 
 #===========================================================================================================
