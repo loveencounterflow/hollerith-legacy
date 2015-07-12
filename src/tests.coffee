@@ -36,8 +36,8 @@ $async                    = D.remit_async.bind D
 HOLLERITH                 = require './main'
 db                        = null
 #...........................................................................................................
-levelup                   = require 'levelup'
-leveldown                 = require 'leveldown'
+levelup                   = require 'level'
+leveldown                 = require 'level/node_modules/leveldown'
 CODEC                     = require './codec'
 #...........................................................................................................
 ƒ                         = CND.format_number
@@ -1024,6 +1024,10 @@ CODEC                     = require './codec'
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "read and write phrases with unanalyzed lists" ] = ( T, done ) ->
+  # ### !!!!!!!!!!!!!!!!!!!!!! ###
+  # warn "skipped"
+  # return done()
+  # ### !!!!!!!!!!!!!!!!!!!!!! ###
   idx         = -1
   count       = 0
   #.........................................................................................................
@@ -1073,69 +1077,73 @@ CODEC                     = require './codec'
         # T.eq count, matchers.length
         done()
 
-#-----------------------------------------------------------------------------------------------------------
-@[ "XXX" ] = ( T, done ) ->
-  warn "must test for bug with multiple identical entries"
-  probes_idx  = 3
-  #.........................................................................................................
-  glyphs = [ '丁', '三', '夫', '國', '形', ]
-  #.........................................................................................................
-  step ( resume ) =>
-    yield @_feed_test_data db, probes_idx, resume
-    yield show_db_entries resume
-    ### TAINT doesn't work: ###
-    # prefix    = [ 'pos', 'isa', '*', ]
-    prefix    = [ 'pos', 'isa', 'glyph', ]
-    input     = HOLLERITH.create_phrasestream db, { prefix, }
-    input
-      .pipe D.$map ( phrase, handler ) =>
-        debug '©gg5Fr', phrase
-        [ _, sbj, _, obj, ] = phrase
-        debug '©NxZo4', sbj
-        sub_prefix  = [ 'spo', obj + ':' + sbj, 'guide', ]
-        sub_input   = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, star: '*', }
-        sub_input
-          .pipe D.$collect()
-          .pipe D.$show 'A'
-          .pipe $ ( sub_results, send ) =>
-            handler null, sub_results
-      .pipe D.$show 'B'
-      .pipe D.$on_end =>
-        # T.eq count, matchers.length
-        done()
+# #-----------------------------------------------------------------------------------------------------------
+# @[ "XXX" ] = ( T, done ) ->
+#   warn "must test for bug with multiple identical entries"
+#   probes_idx  = 3
+#   #.........................................................................................................
+#   glyphs = [ '丁', '三', '夫', '國', '形', ]
+#   #.........................................................................................................
+#   step ( resume ) =>
+#     yield @_feed_test_data db, probes_idx, resume
+#     yield show_db_entries resume
+#     ### TAINT doesn't work: ###
+#     # prefix    = [ 'pos', 'isa', '*', ]
+#     prefix    = [ 'pos', 'isa', 'glyph', ]
+#     input     = HOLLERITH.create_phrasestream db, { prefix, }
+#     input
+#       .pipe D.$map ( phrase, handler ) =>
+#         debug '©gg5Fr', phrase
+#         [ _, sbj, _, obj, ] = phrase
+#         debug '©NxZo4', sbj
+#         sub_prefix  = [ 'spo', obj + ':' + sbj, 'guide', ]
+#         sub_input   = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, star: '*', }
+#         sub_input
+#           .pipe D.$collect()
+#           .pipe D.$show 'A'
+#           .pipe $ ( sub_results, send ) =>
+#             handler null, sub_results
+#       .pipe D.$show 'B'
+#       .pipe D.$on_end =>
+#         # T.eq count, matchers.length
+#         done()
 
-#-----------------------------------------------------------------------------------------------------------
-@[ "YYY" ] = ( T, T_done ) ->
-  warn "must test for bug with multiple identical entries"
-  probes_idx  = 3
-  #.........................................................................................................
-  glyphs = [ '丁', '三', '夫', '國', '形', ]
-  #.........................................................................................................
-  step ( resume ) =>
-    yield @_feed_test_data db, probes_idx, resume
-    yield show_db_entries resume
-    prefix    = [ 'pos', 'isa', 'glyph', ]
-    input     = HOLLERITH.create_phrasestream db, { prefix, }
-    input
-      .pipe $async ( phrase, done ) =>
-        # debug '©PCj9R', phrase
-        [ _, sbj, _, obj, ] = phrase
-        sub_prefix  = [ 'spo', obj + ':' + sbj, 'guide', ]
-        query       = prefix: sub_prefix, star: '*'
-        HOLLERITH.read_phrases db, query, ( error, sub_phrases ) =>
-          # debug '©VOZ0p', sbj, sub_phrases
-          return done.error error if error?
-          for sub_phrase, sub_phrase_idx in sub_phrases
-            [ _, _, sub_prd, sub_obj, ] = sub_phrase
-            sub_phrases[ sub_phrase_idx ] = [ sub_prd, sub_obj, ]
-          done [ sbj, sub_phrases..., ]
-      .pipe D.$show 'B'
-      .pipe D.$on_end =>
-        # T.eq count, matchers.length
-        T_done()
+# #-----------------------------------------------------------------------------------------------------------
+# @[ "YYY" ] = ( T, T_done ) ->
+#   warn "must test for bug with multiple identical entries"
+#   probes_idx  = 3
+#   #.........................................................................................................
+#   glyphs = [ '丁', '三', '夫', '國', '形', ]
+#   #.........................................................................................................
+#   step ( resume ) =>
+#     yield @_feed_test_data db, probes_idx, resume
+#     yield show_db_entries resume
+#     prefix    = [ 'pos', 'isa', 'glyph', ]
+#     input     = HOLLERITH.create_phrasestream db, { prefix, }
+#     input
+#       .pipe $async ( phrase, done ) =>
+#         # debug '©PCj9R', phrase
+#         [ _, sbj, _, obj, ] = phrase
+#         sub_prefix  = [ 'spo', obj + ':' + sbj, 'guide', ]
+#         query       = prefix: sub_prefix, star: '*'
+#         HOLLERITH.read_phrases db, query, ( error, sub_phrases ) =>
+#           # debug '©VOZ0p', sbj, sub_phrases
+#           return done.error error if error?
+#           for sub_phrase, sub_phrase_idx in sub_phrases
+#             [ _, _, sub_prd, sub_obj, ] = sub_phrase
+#             sub_phrases[ sub_phrase_idx ] = [ sub_prd, sub_obj, ]
+#           done [ sbj, sub_phrases..., ]
+#       .pipe D.$show 'B'
+#       .pipe D.$on_end =>
+#         # T.eq count, matchers.length
+#         T_done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "read partial POS phrases" ] = ( T, done ) ->
+  # ### !!!!!!!!!!!!!!!!!!!!!! ###
+  # warn "skipped"
+  # return done()
+  # ### !!!!!!!!!!!!!!!!!!!!!! ###
   probes_idx  = 4
   idx         = -1
   count       = 0
@@ -1423,6 +1431,10 @@ CODEC                     = require './codec'
 # @[ "reminders" ] = ( T, done ) ->
 #   alert "H.$write() must test for repeated keys or implement rewriting of POS entries"
 #   done()
+
+
+@ERROR = ( T ) ->
+  T.throws "x", ( -> throw new Error "x" )
 
 #===========================================================================================================
 # HELPERS
