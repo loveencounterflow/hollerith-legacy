@@ -370,9 +370,11 @@ HOLLERITH.$pick_values = ->
   ASYNC = require 'async'
   #.........................................................................................................
   step ( resume ) =>
-    db ?= HOLLERITH.new_db '/Volumes/Storage/temp/jizura-hollerith2'
+    db_route  = join __dirname, '../../jizura-datasources/data/leveldb-v2'
+    db       ?= HOLLERITH.new_db db_route, create: no
+    help "using DB at #{db[ '%self' ][ 'location' ]}"
     #.......................................................................................................
-    CHR = require '/Volumes/Storage/io/coffeenode-chr'
+    CHR = require join __dirname, '../../coffeenode-chr'
     chrs_from_text = ( text ) -> CHR.chrs_from_text text, input: 'xncr'
     #.......................................................................................................
     prefix  = [ 'pos', 'guide/lineup/length', 5, ]
@@ -388,16 +390,18 @@ HOLLERITH.$pick_values = ->
     input
       #.....................................................................................................
       .pipe $async ( phrase, done ) =>
-        [ _, glyph, _, lineup_length, ]       = phrase
+        [ _, _, lineup_length, glyph, ]       = phrase
         sub_prefix                            = [ 'spo', glyph, 'rank/cjt', ]
         sub_fallback                          = [ null, null, null, Infinity, ]
         sub_query                             = { prefix: sub_prefix, fallback: sub_fallback, }
+        debug '©zfQhm', phrase, sub_prefix if glyph is '公'
         HOLLERITH.read_one_phrase db, sub_query, ( error, sub_phrase ) =>
           return done.error error if error?
-          return done() unless sub_phrase?
+          # debug '©FST09', sub_phrase unless sub_phrase[ sub_phrase.length - 1 ] is Infinity
           [ _, _, _, rank, ] = sub_phrase
           done [ glyph, { lineup_length, rank, }, ]
       #.....................................................................................................
+      # .pipe D.$show()
       .pipe D.$filter ( [ glyph, { lineup_length, rank, }, ] ) -> rank < 15000
       #.....................................................................................................
       .pipe $async ( entry, done ) =>

@@ -85,18 +85,18 @@ HOLLERITH                 = require './main'
         if HOLLERITH._is_meta db, key_bfr
           warn "skipped meta: #{rpr key_bfr.toString()}"
         else
-          key_rpr     = HOLLERITH.as_url db, key_bfr, colors: colors
-          phrasetype  = ( key_bfr.slice 1, 4 ).toString()
-          if phrasetype is 'spo' and value_bfr?
-            value     = value_bfr.toString 'utf-8'
-            value_rpr = ( rpr value ).replace /^'(.*)'$/, '$1'
-            if colors
-              value_rpr = ( CND.grey '|' ) + ( CND.orange value_rpr )
-            else
-              value_rpr = '|' + value_rpr
-          else
-            value_rpr = ''
-          write ( CND.grey ƒ count ), key_rpr + value_rpr
+          key_rpr     = HOLLERITH.as_url db, key_bfr, value_bfr, colors: colors
+          # phrasetype  = ( key_bfr.slice 1, 4 ).toString()
+          # if phrasetype is 'spo' and value_bfr?
+          #   value     = value_bfr.toString 'utf-8'
+          #   value_rpr = ( rpr value ).replace /^'(.*)'$/, '$1'
+          #   if colors
+          #     value_rpr = ( CND.grey '|' ) + ( CND.orange value_rpr )
+          #   else
+          #     value_rpr = '|' + value_rpr
+          # else
+          #   value_rpr = ''
+          write ( CND.grey ƒ count ), key_rpr
           # else
           #   echo ( ƒ count ), key_bfr
           send key_bfr

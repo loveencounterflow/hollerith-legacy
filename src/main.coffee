@@ -27,6 +27,7 @@ _codec_decode             = CODEC.decode.bind CODEC
 #...........................................................................................................
 D                         = require 'pipedreams2'
 $                         = D.remit.bind D
+$async                    = D.remit_async.bind D
 _new_level_db             = require 'level'
 leveldown                 = require 'level/node_modules/leveldown'
 #...........................................................................................................
@@ -179,6 +180,8 @@ repeat_immediately        = suspend.repeat_immediately
   #.........................................................................................................
   $index = => $ ( spo, send ) =>
     ### Analyze SPO key and send all necessary POS facets: ###
+    return send.error new Error "invalid SPO key, must be list: #{rpr spo}" unless CND.isa_list spo
+    return send.error new Error "invalid SPO key, must be of length 3: #{rpr spo}" unless spo.length is 3
     [ sbj, prd, obj, ] = spo
     send [ [ 'spo', sbj, prd, ], obj, ]
     obj_type = CND.type_of obj
@@ -245,33 +248,33 @@ repeat_immediately        = suspend.repeat_immediately
     entries and that there are no extraneous POS entries, which is even more of a computational burden, but
     at least reaches a meaningful level of safety against malformed data. ###
     #.......................................................................................................
-    return D.$map ( xphrase, handler ) =>
+    return $async ( xphrase, done ) =>
       ### Skip if this is not a main entry to the DB: ###
-      return handler null, xphrase unless xphrase[ 0 ] is 'spo'
+      return done xphrase unless xphrase[ 0 ] is 'spo'
       key_bfr               = xphrase[ 1 ]
       bloom                 = db[ '%bloom' ]
       bloom_has_key         = CND.BLOOM.has bloom, key_bfr
       CND.BLOOM.add bloom, key_bfr
       entry_count          += +1
-      return handler null, xphrase unless bloom_has_key
+      return done xphrase unless bloom_has_key
       false_positive_count += +1
       #.....................................................................................................
       @has db, key_bfr, ( error, db_has_key ) =>
-        return handler error if error?
-        return handler new Error "phrase already in DB: #{rpr phrase}" if db_has_key
-        handler null, xphrase
+        return done.error error if error?
+        return done.error new Error "phrase already in DB: #{rpr phrase}" if db_has_key
+        done xphrase
   #---------------------------------------------------------------------------------------------------------
   $load_bloom = =>
     is_first = yes
-    return D.$map ( data, handler ) =>
+    return $async ( data, done ) =>
       unless is_first
-        return if data? then handler null, data else handler()
+        return if data? then done data else done()
       #.....................................................................................................
       is_first = no
       whisper "loading Bloom filter..."
       #.....................................................................................................
       @_get_meta db, 'bloom', null, ( error, bloom_bfr ) =>
-        return handler error if error?
+        return done.error error if error?
         if bloom_bfr is null
           warn 'no bloom filter found'
           bloom = CND.BLOOM.new_filter bloom_settings
@@ -280,7 +283,7 @@ repeat_immediately        = suspend.repeat_immediately
         db[ '%bloom' ] = bloom
         whisper "...ok"
         show_bloom_info()
-        return if data? then handler null, data else handler()
+        return if data? then done data else done()
   #---------------------------------------------------------------------------------------------------------
   $save_bloom = =>
     return D.$on_end ( send, end ) =>
@@ -442,64 +445,6 @@ repeat_immediately        = suspend.repeat_immediately
       return handler error
     handler null, true
 
-# #-----------------------------------------------------------------------------------------------------------
-# @ensure_new_key = ( db, key, handler ) ->
-#   key_bfr = if CND.isa_jsbuffer then key else @_encode_key db, key
-#   db[ '%self' ].get key_bfr, ( error, obj_bfr ) =>
-#     if error?
-#       return handler null if error[ 'type' ] is 'NotFoundError'
-#       return handler error
-#     obj = @_decode_value obj_bfr
-#     handler new Error "key #{rpr key} already in DB with value #{rpr obj}"
-
-#-----------------------------------------------------------------------------------------------------------
-@read_sub = ( db, settings, read ) ->
-  switch arity = arguments.length
-    when 2
-      read      = settings
-      settings  = null
-    when 3
-      null
-    else
-      throw new Error "expected 2 or 3 arguments, got #{arity}"
-  #.........................................................................................................
-  indexed           = settings?[ 'indexed'    ] ? no
-  # transform         = settings?[ 'transform'  ] ? D.$pass_through()
-  mangle            = settings?[ 'mangle'     ] ? ( data ) -> data
-  send_empty        = settings?[ 'empty'      ] ? no
-  insert_index      = if indexed then D.new_indexer() else ( x ) -> x
-  open_stream_count = 0
-  #.........................................................................................................
-  return $ ( outer_data, outer_send, outer_end ) =>
-    count = 0
-    #.......................................................................................................
-    if outer_data?
-      open_stream_count    += +1
-      sub_input             = read outer_data
-      [ memo, sub_input, ]  = if CND.isa_list sub_input then sub_input else [ @_misfit, sub_input, ]
-      sub_input
-        # .pipe transform
-        .pipe do =>
-          ### TAINT no need to build buffer if not `send_empty` and there are no results ###
-          buffer = if memo is @_misfit then [] else [ memo, ]
-          return $ ( inner_data, _, inner_end ) =>
-            if inner_data?
-              inner_data = mangle inner_data
-              if inner_data?
-                count += +1
-                buffer.push inner_data
-            if inner_end?
-              if send_empty or count > 0
-                outer_send insert_index buffer
-              open_stream_count += -1
-              inner_end()
-    #.......................................................................................................
-    if outer_end?
-      repeat_immediately ->
-        return true unless open_stream_count is 0
-        outer_end()
-        return false
-
 
 #===========================================================================================================
 # KEYS & VALUES
@@ -519,18 +464,22 @@ repeat_immediately        = suspend.repeat_immediately
 
 #-----------------------------------------------------------------------------------------------------------
 @as_phrase = ( db, key, value ) ->
-  switch phrasetype = key[ 0 ]
-    when 'spo'
-      throw new Error "illegal SPO key (length #{length})"  unless ( length = key.length ) is 3
-      throw new Error "illegal value #{rpr value}"          if value is undefined
-      return [ phrasetype, key[ 1 ], key[ 2 ], value, ]
-    when 'pos'
-      throw new Error "illegal POS key (length #{length})"  unless 4 <= ( length = key.length ) <= 5
-      throw new Error "illegal value #{rpr value}"          unless ( value in [ undefined, null, ] )
-      return [ phrasetype, key[ 1 ], key[ 2 ], key[ 3 ], key[ 4 ], ] if key[ 4 ]?
-      return [ phrasetype, key[ 1 ], key[ 2 ], key[ 3 ],           ]
-  throw new Error "unknown phrasetype #{rpr phrasetype}"
-
+  try
+    switch phrasetype = key[ 0 ]
+      when 'spo'
+        throw new Error "illegal SPO key (length #{length})"  unless ( length = key.length ) is 3
+        throw new Error "illegal value (A) #{rpr value}"      if value is undefined
+        return [ phrasetype, key[ 1 ], key[ 2 ], value, ]
+      when 'pos'
+        throw new Error "illegal POS key (length #{length})"  unless 4 <= ( length = key.length ) <= 5
+        throw new Error "illegal value (B) #{rpr value}"      unless ( value in [ undefined, null, ] )
+        return [ phrasetype, key[ 1 ], key[ 2 ], key[ 3 ], key[ 4 ], ] if key[ 4 ]?
+        return [ phrasetype, key[ 1 ], key[ 2 ], key[ 3 ],           ]
+    throw new Error "unknown phrasetype #{rpr phrasetype}"
+  catch error
+    warn "detected problem with key #{rpr key}"
+    warn "and/or value              #{rpr value}"
+    throw error
 #-----------------------------------------------------------------------------------------------------------
 @normalize_phrase = ( db, phrase ) ->
   switch phrasetype = phrase[ 0 ]
@@ -566,23 +515,31 @@ repeat_immediately        = suspend.repeat_immediately
 
 #-----------------------------------------------------------------------------------------------------------
 @as_url = ( db, key, value, settings ) ->
-  key                       = @_decode_key db, key if CND.isa_jsbuffer key
-  colors                    = settings?[ 'colors' ] ? no
-  debug '©iU0gA', @as_phrase db, key
-  debug '©iU0gA', @normalize_phrase db, @as_phrase db, key
+  key         = @_decode_key    db, key   if CND.isa_jsbuffer key
+  value       = @_decode_value  db, value if CND.isa_jsbuffer value
+  colors      = settings?[ 'colors' ] ? no
+  I           = if colors then CND.darkgrey '|' else '|'
+  E           = if colors then CND.darkgrey ':' else ':'
+  # debug '©HDXXd', key
+  # debug '©HDXXd', value
+  # debug '©iU0gA', @as_phrase db, key, value
+  # debug '©iU0gA', @normalize_phrase db, @as_phrase db, key, value
   [ phrasetype, tail..., ]  = key
   if phrasetype is 'spo'
     [ sbj, prd, ] = tail
+    obj           = rpr value
     if colors
-      return ( CND.grey 'spo' ) + I + ( CND.RED sbj ) + I + ( CND.YELLOW prd )
+      phrasetype  = CND.grey      phrasetype
+      sbj         = CND.RED       sbj
+      prd         = CND.YELLOW    prd
+      obj         = CND.GREEN     obj
+      return phrasetype + I + sbj + I + prd + E + obj
     else
       return "spo|#{sbj}|#{prd}|"
   else
     [ prd, obj, sbj, idx, ] = tail
     idx_rpr = if idx? then rpr idx else ''
     if colors
-      I           = CND.darkgrey  '|'
-      E           = CND.darkgrey  ':'
       phrasetype  = CND.grey      phrasetype
       sbj         = CND.RED       sbj
       prd         = CND.YELLOW    prd

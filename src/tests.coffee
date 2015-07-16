@@ -1,5 +1,11 @@
 
 
+############################################################################################################
+### https://github.com/ddopson/node-segfault-handler ###
+SegfaultHandler = require 'segfault-handler'
+SegfaultHandler.registerHandler()
+# SegfaultHandler.causeSegfault()
+
 
 ############################################################################################################
 njs_path                  = require 'path'
@@ -66,6 +72,22 @@ CODEC                     = require './codec'
     input = D.create_throughstream()
     #.......................................................................................................
     switch probes_idx
+      #-----------------------------------------------------------------------------------------------------
+      when -1
+        # settings =
+        input
+          .pipe HOLLERITH.$write db, settings
+          # .pipe D.$show()
+          .pipe D.$on_end ( end ) =>
+            whisper "test data written"
+            handler null
+            end()
+        #...................................................................................................
+        for n in [ 0 .. 1000 ]
+          key = [ "number:#{n}", "square", n ** 2, ]
+          input.write key
+          yield setImmediate resume
+        input.end()
       #-----------------------------------------------------------------------------------------------------
       when 0, 2, 3, 4
         input
@@ -246,8 +268,18 @@ CODEC                     = require './codec'
 # 0087~~~~,00,0373~~~~,01,0284~~~~,02,--------,03,--------,04,--------,05,--------,06,--------,07,--------,08,--------,09,--------,10,--------,11,--------,12,|𦕧|0
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "write without error" ] = ( T, done ) ->
+@[ "write without error (1)" ] = ( T, done ) ->
   probes_idx  = 0
+  idx = -1
+  write_settings =
+    batch: 10
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, write_settings, resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "write without error (2)" ] = ( T, done ) ->
+  probes_idx  = -1
   idx = -1
   write_settings =
     batch: 10
@@ -1245,186 +1277,6 @@ CODEC                     = require './codec'
 @[ "writing phrases with non-unique keys fails" ] = ( T, done ) ->
   alert """test case "writing phrases with non-unique keys fails" to be written"""
   done()
-  # idx         = -1
-  # count       = 0
-  # delay = ( handler ) ->
-  #   setImmediate handler
-  # #.........................................................................................................
-  # write_probes = ( handler ) =>
-  #   step ( resume ) =>
-  #     yield HOLLERITH.clear db, resume
-  #     input = D.create_throughstream()
-  #     input
-  #       .pipe HOLLERITH.$write db, solids: [ 'some-predicate', ]
-  #       .pipe D.$on_end =>
-  #         urge "test data written"
-  #         handler()
-  #     #.......................................................................................................
-  #     for idx in [ 0 .. 100 ]
-  #       probe = [ 'entry', "foo-#{idx}", idx, ]
-  #       yield input.write probe, resume
-  #       # yield delay resume
-  #     input.end()
-  # #.........................................................................................................
-  # step ( resume ) =>
-  #   #.......................................................................................................
-  #   yield write_probes resume
-  #   input = HOLLERITH.create_phrasestream db
-  #   debug '©qCbu6', input[ '%meta' ]
-  #   input
-  #     .pipe $ ( phrase, send ) =>
-  #       count  += +1
-  #       idx    += +1
-  #       debug '©Sc5FG', phrase
-  #       # T.eq phrase, matchers[ idx ]
-  #     .pipe D.$on_end =>
-  #       # T.eq count, matchers.length
-  #       done()
-
-# # #-----------------------------------------------------------------------------------------------------------
-# # @[ "_transactions" ] = ( T, done ) ->
-# #   levelup = require('levelup')
-# #   db = levelup('./db', valueEncoding: 'json')
-# #   require('level-async-transaction') db
-# #   tx = db.transaction()
-# #   tx2 = db.transaction()
-# #   tx.put 'k', 167
-# #   tx.commit ->
-# #     tx2.get 'k', (error, value) ->
-# #       #tx2 increments value
-# #       tx2.put 'k', value + 1
-# #       return
-# #     db.get 'k', (error, data) ->
-# #       #tx commit: data equals to 167
-# #       tx2.commit ->
-# #         db.get 'k', (error, data) ->
-# #           #tx2 commit: data equals to 168
-# #           return
-# #         return
-# #       return
-# #     return
-
-
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "ZZZ" ] = ( T, done ) ->
-#   log_ticks_id = null
-#   log_ticks = ->
-#     debug "------------------------------------ tick"
-#     log_ticks_id = immediately log_ticks
-#   #---------------------------------------------------------------------------------------------------------
-#   route             = '/tmp/X-test-db'
-#   db                = HOLLERITH.new_db route
-#   input_A           = D.create_throughstream()
-#   n                 = 1e6
-#   n                 = 10
-#   n                 = 1e4
-#   bloom_error_rate  = 0.1
-#   entry_count       = 0
-#   db_request_count  = 0
-#   t0                = null
-#   t1                = null
-#   #.........................................................................................................
-#   BSON = ( require 'bson' ).BSONPure.BSON
-#   njs_fs = require 'fs'
-#   #.........................................................................................................
-#   BLOEM             = require 'bloem'
-#   bloem_settings    =
-#     initial_capacity:   n #/ 10
-#     scaling:            2
-#     ratio:              0.1
-#   #---------------------------------------------------------------------------------------------------------
-#   show_bloom_info = ( db ) =>
-#     bloom       = db[ '%bloom' ]
-#     filters     = bloom[ 'filters' ]
-#     filter_size = 0
-#     for filter in filters
-#       filter_size += filter[ 'filter' ][ 'bitfield' ][ 'buffer' ].length
-#     whisper "scalable bloom: filter count: #{filters.length}, filter size: #{ƒ filter_size} bytes"
-#   #---------------------------------------------------------------------------------------------------------
-#   $ensure_unique = ( db ) =>
-#     return D.$map ( phrase, handler ) =>
-#       bloom               = db[ '%bloom' ]
-#       ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
-#       [ sbj, prd, obj, ]  = phrase
-#       key                 = [ 'spo', sbj, prd, ]
-#       key_bfr             = key.join '|'
-#       ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
-#       bloom_has_key       = bloom.has key_bfr
-#       bloom.add key_bfr
-#       return handler null, phrase unless bloom_has_key
-#       #.....................................................................................................
-#       HOLLERITH.has db, key, ( error, db_has_key ) =>
-#         return handler error if error?
-#         db_request_count += +1
-#         return handler new Error "phrase already in DB: #{rpr phrase}" if db_has_key
-#         handler null, phrase
-#   #---------------------------------------------------------------------------------------------------------
-#   $load_bloom = ( db ) =>
-#     is_first = yes
-#     return D.$map ( data, handler ) =>
-#       unless is_first
-#         return if data? then handler null, data else handler()
-#       is_first = no
-#       #.....................................................................................................
-#       HOLLERITH._get_meta db, 'bloom', null, ( error, bloom_bfr ) =>
-#         return send.error error if error?
-#         if bloom_bfr is null
-#           warn 'no bloom filter found'
-#           bloom = new BLOEM.ScalingBloem bloom_error_rate, bloem_settings
-#         else
-#           bloom_data = BSON.deserialize bloom_bfr
-#           ### TAINT see https://github.com/wiedi/node-bloem/issues/5 ###
-#           for filter in bloom_data[ 'filters' ]
-#             bitfield              = filter[ 'filter' ][ 'bitfield' ]
-#             bitfield[ 'buffer' ]  = bitfield[ 'buffer' ][ 'buffer' ]
-#           bloom = BLOEM.ScalingBloem.destringify bloom_data
-#         db[ '%bloom' ] = bloom
-#         return if data? then handler null, data else handler()
-#   #---------------------------------------------------------------------------------------------------------
-#   $save_bloom = ( db ) =>
-#     return D.$on_end ( send, end ) =>
-#       bloom     = db[ '%bloom' ]
-#       bloom_bfr = BSON.serialize bloom
-#       #.....................................................................................................
-#       HOLLERITH._put_meta db, 'bloom', bloom_bfr, ( error ) =>
-#         return send.error error if error?
-#         end()
-#   #---------------------------------------------------------------------------------------------------------
-#   input_B = input_A
-#     .pipe $load_bloom     db
-#     .pipe $ensure_unique  db
-#     .pipe $save_bloom     db
-#     .pipe $ ( data, send ) =>
-#       entry_count += +1
-#       whisper entry_count if entry_count % 100000 is 0
-#       send data
-#     .pipe HOLLERITH.$write db, batch: 1000
-#   #-------------------------------------------------------------------------------------------------------
-#   input_B.on 'end', =>
-#     t1 = +new Date()
-#     help "input_B/end"
-#     help "n:                  #{ƒ n}"
-#     help "DB request count:   #{ƒ db_request_count}"
-#     help "request rate:       #{( db_request_count / n ).toFixed 4}"
-#     help "dt:                 #{ƒ ( t1 - t0 ) / 1000}s"
-#     clearImmediate log_ticks_id
-#     done()
-#   #-------------------------------------------------------------------------------------------------------
-#   step ( resume ) =>
-#     yield HOLLERITH.clear db, resume
-#     # log_ticks()
-#     t0 = +new Date()
-#     for record_idx in [ 0 ... n ]
-#       sbj     = "record"
-#       prd     = "nr-#{record_idx}"
-#       obj     = record_idx
-#       phrase  = [ sbj, prd, obj, ]
-#       # whisper "input_A.write #{rpr phrase}"
-#       yield input_A.write phrase, resume
-#     #.......................................................................................................
-#     whisper "calling input_A.end()"
-#     yield input_A.end resume
 
 
 #-----------------------------------------------------------------------------------------------------------
@@ -1432,6 +1284,95 @@ CODEC                     = require './codec'
   alert "H.$write() must test for repeated keys"
   done()
 
+#-----------------------------------------------------------------------------------------------------------
+@[ "invalid key not accepted (1)" ] = ( T, done ) ->
+  domain  = ( require 'domain' ).create()
+  domain.on 'error', ( error ) ->
+    # debug '©AOSmn', JSON.stringify error[ 'message' ]
+    T.eq error[ 'message' ], "invalid SPO key, must be list: 'xxx'"
+    done()
+  domain.run ->
+    input   = D.create_throughstream()
+    input.pipe HOLLERITH.$write db
+    input.write 'xxx'
+    input.end()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "invalid key not accepted (2)" ] = ( T, done ) ->
+  domain  = ( require 'domain' ).create()
+  domain.on 'error', ( error ) ->
+    # debug '©AOSmn', JSON.stringify error[ 'message' ]
+    T.eq error[ 'message' ], "invalid SPO key, must be of length 3: [ 'foo' ]"
+    done()
+  domain.run ->
+    input   = D.create_throughstream()
+    input.pipe HOLLERITH.$write db
+    input.write [ 'foo', ]
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "catching errors (1)" ] = ( T, done ) ->
+  run = ( method, handler ) ->
+    domain  = ( require 'domain' ).create()
+    domain.on 'error', ( error ) ->
+      handler error
+    domain.run ->
+      method()
+  #.........................................................................................................
+  f = ->
+    input   = D.create_throughstream()
+    input
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end ->
+        T.eq true, false
+        setImmediate done
+        # done()
+    input.write [ 'foo', 'bar', 'baz', 'gnu', ]
+    input.end()
+  run f, ( error ) ->
+    debug '©abRvt', JSON.stringify error[ 'message' ]
+    T.eq error[ 'message' ], "invalid SPO key, must be of length 3: [ 'foo', 'bar', 'baz', 'gnu' ]"
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "catching errors (2)" ] = ( T, done ) ->
+  run = ( method, handler ) ->
+    domain  = ( require 'domain' ).create()
+    domain.on 'error', ( error ) ->
+      handler error
+    domain.run ->
+      method()
+  #.........................................................................................................
+  f = ->
+    input   = D.create_throughstream()
+    input
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end -> setImmediate done
+    input.write [ 'foo', 'bar', 'baz', ]
+    input.end()
+  run f, ( error ) ->
+    debug '©WaXJV', JSON.stringify error[ 'message' ]
+    T.eq true, false
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "catching errors (3)" ] = ( T, done ) ->
+  #.........................................................................................................
+  d = D.run ->
+    input   = D.create_throughstream()
+    input1  = input
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end ->
+        debug '©Yl1RN', d
+        setImmediate done
+    input.on 'end',  -> debug '©ueOU1-1', 'end'
+    input1.on 'end', -> debug '©ueOU1-2', 'end'
+    input.write [ 'foo', 'bar', 'baz', 'gnu', ]
+    input.end()
+  , ( error ) ->
+    debug '©9u3XY', error
+    # T.eq error[ 'message' ], "invalid SPO key, must be of length 3: [ 'foo', 'bar', 'baz', 'gnu' ]"
+    done()
+  # d.run()
 
 #===========================================================================================================
 # HELPERS
@@ -1496,7 +1437,9 @@ clear_leveldb = ( leveldb, handler ) ->
 
 #-----------------------------------------------------------------------------------------------------------
 @_main = ( handler ) ->
-  db = HOLLERITH.new_db join __dirname, '..', 'dbs/tests'
+  db_route    = join __dirname, '..', 'dbs/tests'
+  db_settings = size: 500
+  db = HOLLERITH.new_db db_route, db_settings
   test @, 'timeout': 2500
 
 ############################################################################################################

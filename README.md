@@ -20,6 +20,7 @@
 	- [Indexing Data](#indexing-data)
 	- [Deleting Data](#deleting-data)
 	- [Reading Data](#reading-data)
+	- [Error Handling](#error-handling)
 		- [@create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->](#@create_phrasestream-=--db-lo_hint-=-null-hi_hint-=-null--->)
 		- [@create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->](#@create_facetstream-=--db-lo_hint-=-null-hi_hint-=-null--->)
 		- [@read_sub = ( db, settings, read ) ->](#@read_sub-=--db-settings-read--->)
@@ -816,6 +817,33 @@ Tspo∇Tå½¢∇Tstrokecount∇              ┊ 7
 ## Indexing Data
 ## Deleting Data
 ## Reading Data
+
+## Error Handling
+
+Handling errors that occur in NodeJS streams can be tough. The best solution known
+to me is to use domains. Here's an example from the Hollerith tests:
+
+```coffee
+@[ "invalid key not accepted (2)" ] = ( T, done ) ->
+  domain  = ( require 'domain' ).create();
+  domain.on 'error', ( error ) ->
+    T.eq error[ 'message' ], "invalid SPO key, must be of length 3: [ 'foo' ]"
+    done()
+  domain.run ->
+    input   = D.create_throughstream()
+    input
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end -> setImmediate done
+    input.write [ 'foo', ]
+```
+
+> thx to http://stackoverflow.com/a/22389498/256361, http://grokbase.com/t/gg/nodejs/12bwd4zm4x/should-stream-pipe-forward-errors#20121129e2ve6sah3cwqgbsc2noefyrsba
+> for this suggestion.
+
+See [the part on error handling in the PipeDreams readme](https://github.com/loveencounterflow/pipedreams2#error-handling)
+for how to use `PIPEDREAMS.run` and what to watch out for, especially on why we call
+`setImmediate done` here, not simply `done()`.
+
 ### @create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->
 ### @create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
 ### @read_sub = ( db, settings, read ) ->
