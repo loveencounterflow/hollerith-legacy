@@ -33,7 +33,7 @@ leveldown                 = require 'level/node_modules/leveldown'
 #...........................................................................................................
 suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
-repeat_immediately        = suspend.repeat_immediately
+later                     = suspend.immediately
 #...........................................................................................................
 @_LODASH                  = require 'lodash'
 
@@ -179,14 +179,10 @@ repeat_immediately        = suspend.repeat_immediately
   R                 = D.create_throughstream()
   #.........................................................................................................
   $index = => $ ( spo, send ) =>
-    ### Analyze SPO key and send all necessary POS facets: ###
-    return send.error new Error "invalid SPO key, must be list: #{rpr spo}" unless CND.isa_list spo
-    return send.error new Error "invalid SPO key, must be of length 3: #{rpr spo}" unless spo.length is 3
     [ sbj, prd, obj, ] = spo
     send [ [ 'spo', sbj, prd, ], obj, ]
-    obj_type = CND.type_of obj
     #.......................................................................................................
-    unless obj_type is 'pod'
+    unless ( obj_type = CND.type_of obj ) is 'pod'
       #.....................................................................................................
       if ( obj_type is 'list' ) and not ( prd in solid_predicates )
         for obj_element, obj_idx in obj
@@ -206,14 +202,19 @@ repeat_immediately        = suspend.repeat_immediately
     [ phrasetype, key_bfr, value_bfr, ] = facet_bfr_plus
     send type: 'put', key: key_bfr, value: value_bfr
   #.........................................................................................................
-  $write = => $ ( batch, send ) =>
-    substrate.batch batch
+  $write = => $ ( batch, send, end ) =>
+    if batch?
+      substrate.batch batch
+    if end?
+      debug '©BQqOp', '###'
+      end()
   #.........................................................................................................
   if ensure_unique
     { $ensure_unique_spo, $load_bloom, $save_bloom, } = @_get_bloom_methods db
   #.........................................................................................................
   pipeline = []
   pipeline.push $load_bloom()         if ensure_unique
+  pipeline.push @$validate_spo()
   pipeline.push $index()
   pipeline.push $encode()
   pipeline.push $ensure_unique_spo()  if ensure_unique
@@ -222,8 +223,28 @@ repeat_immediately        = suspend.repeat_immediately
   pipeline.push $write()
   pipeline.push $save_bloom()         if ensure_unique
   #.........................................................................................................
-  R.pipe D.combine pipeline...
+  S = R.pipe D.combine pipeline...
+  S.pipe D.$on_end -> debug '©xtQq0', '+++'
   return R
+
+#-----------------------------------------------------------------------------------------------------------
+@validate_spo = ( spo ) ->
+  ### Do a shallow sanity check to see whether `spo` is a triplet. ###
+  throw new Error "invalid SPO key, must be list: #{rpr spo}" unless CND.isa_list spo
+  throw new Error "invalid SPO key, must be of length 3: #{rpr spo}" unless spo.length is 3
+  return null
+
+#-----------------------------------------------------------------------------------------------------------
+@$validate_spo = ->
+  ### Do a shallow sanity check to see whether all incoming data are triplets. ###
+  return $ ( spo, send ) =>
+    ### Analyze SPO key and send all necessary POS facets: ###
+    try
+      @validate_spo spo
+    catch error
+      return send.error error
+      # throw error
+    send spo
 
 #-----------------------------------------------------------------------------------------------------------
 @_get_bloom_methods = ( db ) ->
@@ -261,7 +282,8 @@ repeat_immediately        = suspend.repeat_immediately
       #.....................................................................................................
       @has db, key_bfr, ( error, db_has_key ) =>
         return done.error error if error?
-        return done.error new Error "phrase already in DB: #{rpr phrase}" if db_has_key
+        ### At this point `rpr xphrase` show raw buffers; should decode ###
+        return done.error new Error "phrase already in DB: #{rpr xphrase}" if db_has_key
         done xphrase
   #---------------------------------------------------------------------------------------------------------
   $load_bloom = =>
@@ -286,6 +308,18 @@ repeat_immediately        = suspend.repeat_immediately
         return if data? then done data else done()
   #---------------------------------------------------------------------------------------------------------
   $save_bloom = =>
+    # return $async ( send, end ) =>
+    #   whisper "saving Bloom filter..."
+    #   bloom_bfr = CND.BLOOM.as_buffer db[ '%bloom' ]
+    #   whisper "serialized bloom filter to #{ƒ bloom_bfr.length} bytes"
+    #   show_bloom_info()
+    #   #.....................................................................................................
+    #   @_put_meta db, 'bloom', bloom_bfr, ( error ) =>
+    #     return send.error error if error?
+    #     whisper "...ok"
+    #     end()
+    # ###
+    # # It *might* be that `$on_end` shouldn't be asynchronous, so we swap it fron `$async`.
     return D.$on_end ( send, end ) =>
       whisper "saving Bloom filter..."
       bloom_bfr = CND.BLOOM.as_buffer db[ '%bloom' ]
@@ -296,6 +330,7 @@ repeat_immediately        = suspend.repeat_immediately
         return send.error error if error?
         whisper "...ok"
         end()
+    # ###
   #---------------------------------------------------------------------------------------------------------
   return { $ensure_unique_spo, $load_bloom, $save_bloom, }
 

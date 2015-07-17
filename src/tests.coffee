@@ -29,9 +29,8 @@ suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
 after                     = suspend.after
 # eventually                = suspend.eventually
-immediately               = suspend.immediately
-# repeat_immediately        = suspend.repeat_immediately
-# every                     = suspend.every
+### TAINT experimentally using `later` in place of `setImmediate` ###
+later                     = suspend.immediately
 #...........................................................................................................
 test                      = require 'guy-test'
 #...........................................................................................................
@@ -86,7 +85,7 @@ CODEC                     = require './codec'
         for n in [ 0 .. 1000 ]
           key = [ "number:#{n}", "square", n ** 2, ]
           input.write key
-          yield setImmediate resume
+          yield later resume
         input.end()
       #-----------------------------------------------------------------------------------------------------
       when 0, 2, 3, 4
@@ -102,7 +101,7 @@ CODEC                     = require './codec'
           # key = HOLLERITH.new_so_key db, probe...
           # debug '©WV0j2', probe
           input.write probe
-          yield setImmediate resume
+          yield later resume
         input.end()
       #-----------------------------------------------------------------------------------------------------
       when 1
@@ -117,7 +116,7 @@ CODEC                     = require './codec'
         for url_key in @_feed_test_data.probes[ probes_idx ]
           key = HOLLERITH.key_from_url db, url_key
           input.write key
-          yield setImmediate resume
+          yield later resume
         input.end()
       #-------------------------------------------------------------------------------------------------------
       else return handler new Error "illegal probes index #{rpr probes_idx}"
@@ -1290,10 +1289,14 @@ CODEC                     = require './codec'
   domain.on 'error', ( error ) ->
     # debug '©AOSmn', JSON.stringify error[ 'message' ]
     T.eq error[ 'message' ], "invalid SPO key, must be list: 'xxx'"
-    done()
+    later done
   domain.run ->
     input   = D.create_throughstream()
-    input.pipe HOLLERITH.$write db
+    input
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end ->
+        # T.fail "should throw error"
+        later done
     input.write 'xxx'
     input.end()
 
@@ -1310,30 +1313,6 @@ CODEC                     = require './codec'
     input.write [ 'foo', ]
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "catching errors (1)" ] = ( T, done ) ->
-  run = ( method, handler ) ->
-    domain  = ( require 'domain' ).create()
-    domain.on 'error', ( error ) ->
-      handler error
-    domain.run ->
-      method()
-  #.........................................................................................................
-  f = ->
-    input   = D.create_throughstream()
-    input
-      .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
-        T.eq true, false
-        setImmediate done
-        # done()
-    input.write [ 'foo', 'bar', 'baz', 'gnu', ]
-    input.end()
-  run f, ( error ) ->
-    debug '©abRvt', JSON.stringify error[ 'message' ]
-    T.eq error[ 'message' ], "invalid SPO key, must be of length 3: [ 'foo', 'bar', 'baz', 'gnu' ]"
-    done()
-
-#-----------------------------------------------------------------------------------------------------------
 @[ "catching errors (2)" ] = ( T, done ) ->
   run = ( method, handler ) ->
     domain  = ( require 'domain' ).create()
@@ -1346,7 +1325,8 @@ CODEC                     = require './codec'
     input   = D.create_throughstream()
     input
       .pipe HOLLERITH.$write db
-      .pipe D.$on_end -> setImmediate done
+      .pipe D.$on_end ->
+        later done
     input.write [ 'foo', 'bar', 'baz', ]
     input.end()
   run f, ( error ) ->
@@ -1355,24 +1335,100 @@ CODEC                     = require './codec'
     done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "catching errors (3)" ] = ( T, done ) ->
+@[ "catching errors (1)" ] = ( T, done ) ->
   #.........................................................................................................
   d = D.run ->
     input   = D.create_throughstream()
-    input1  = input
+    input
       .pipe HOLLERITH.$write db
       .pipe D.$on_end ->
-        debug '©Yl1RN', d
-        setImmediate done
-    input.on 'end',  -> debug '©ueOU1-1', 'end'
-    input1.on 'end', -> debug '©ueOU1-2', 'end'
+        later done
     input.write [ 'foo', 'bar', 'baz', 'gnu', ]
     input.end()
   , ( error ) ->
-    debug '©9u3XY', error
-    # T.eq error[ 'message' ], "invalid SPO key, must be of length 3: [ 'foo', 'bar', 'baz', 'gnu' ]"
-    done()
-  # d.run()
+    T.eq error[ 'message' ], "invalid SPO key, must be of length 3: [ 'foo', 'bar', 'baz', 'gnu' ]"
+    later done
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "catching errors (2)" ] = ( T, done ) ->
+  message = "should not produce error"
+  #.........................................................................................................
+  d = D.run ->
+    input   = D.create_throughstream()
+    input
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end ->
+        T.succeed message
+        later done
+    input.write [ 'foo', 'bar', 'baz', ]
+    input.end()
+  , ( error ) ->
+    T.fail message
+    later done
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "building PODs from SPO phrases" ] = ( T, done ) ->
+  probes_idx  = 4
+  idx         = -1
+  count       = 0
+  # #.........................................................................................................
+  # matchers = [
+  #   [ 'spo', '𧷟', 'cp/cid', 163295 ]
+  #   [ 'spo', '𧷟', 'guide/lineup/length', 5 ]
+  #   [ 'spo', '𧷟', 'guide/uchr/has', [ '八', '刀', '宀', '', '貝' ] ]
+  #   [ 'spo', '𧷟', 'rank/cjt', 5432 ]
+  #   ]
+  #.........................................................................................................
+  $shorten_spo = ->
+    return $ ( phrase, send ) =>
+      unless ( CND.isa_list phrase ) and phrase[ 0 ] is 'spo'
+        return send.error new Error "not an SPO phrase: #{rpr phrase}"
+      spo = phrase[ 1 .. ]
+      ### TAINT repeated validation? ###
+      HOLLERITH.validate_spo spo
+      send spo
+  #.........................................................................................................
+  $consolidate = ->
+    last_sbj  = null
+    pod       = null
+    return $ ( spo, send, end ) =>
+      if spo?
+        ### TAINT repeated validation? ###
+        HOLLERITH.validate_spo spo
+        [ sbj, prd, obj, ] = spo
+        #...................................................................................................
+        if sbj is last_sbj
+          pod[ prd ] = obj
+        #...................................................................................................
+        else
+          if pod?
+            ### TAINT implicit key `pod` ###
+            send [ last_sbj, 'pod', pod, ]
+          pod         = '%sbj': sbj
+          pod[ prd ]  = obj
+          last_sbj    = sbj
+        #...................................................................................................
+        # send spo
+      #.....................................................................................................
+      if end?
+        send [ last_sbj, 'pod', pod, ] if last_sbj?
+        end()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    prefix  = [ 'spo', ]
+    input   = HOLLERITH.create_phrasestream db, { prefix, }
+    input
+      .pipe $shorten_spo()
+      .pipe $consolidate()
+      # .pipe D.$filter ( phrase ) -> phrase[ 1 ] is 'pod'
+      .pipe D.$show()
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end =>
+        # T.eq count, matchers.length
+        debug '©Lqzy1', '...'
+        # later -> debug '©xX5tU', '---'; done()
+
 
 #===========================================================================================================
 # HELPERS
