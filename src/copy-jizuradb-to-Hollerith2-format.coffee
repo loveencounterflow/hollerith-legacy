@@ -133,6 +133,26 @@ options =
     send [ sbj, prd, obj, ]
 
 #-----------------------------------------------------------------------------------------------------------
+@$add_kwic_v2 = ->
+  ### see `demo/show_kwic_v2_sample` ###
+  return $ ( [ sbj, prd, obj, ], send ) =>
+    if prd is 'guide/kwic/sortcode'
+      [ glyph, _, sortcodes_v1, ] = [ sbj, prd, obj, ]
+      sortcodes_v2                = []
+      for sortcode_v1 in sortcodes_v1
+        sortrow_v1 = ( x for x in sortcode_v1.split /(........,..),/ when x.length > 0 )
+        sortrow_v1 = ( x.split ',' for x in sortrow_v1 )
+        sortrow_v2 = []
+        sortrow_v2.push sortcode for [ sortcode, _, ] in sortrow_v1
+        sortrow_v2.push position for [ _, position, ] in sortrow_v1
+        sortcodes_v2.push sortrow_v2.join ','
+      send [ glyph, 'guide/kwic/sortcode/v1', sortcodes_v1, ]
+      send [ glyph, 'guide/kwic/sortcode/v2', sortcodes_v2, ]
+      # debug '©yfv5d', glyph, sortcodes_v2
+    else
+      send [ sbj, prd, obj, ]
+
+#-----------------------------------------------------------------------------------------------------------
 @copy_jizura_db = ->
   home            = join __dirname, '../../jizura-datasources'
   source_route    = join home, 'data/leveldb'
@@ -166,6 +186,7 @@ options =
       .pipe @$cast_types ds_options
       .pipe @$collect_lists()
       .pipe @$compact_lists()
+      .pipe @$add_kwic_v2()
       # .pipe D.$show()
       .pipe D.$count ( count ) -> help "kept #{ƒ count} entries"
       .pipe output

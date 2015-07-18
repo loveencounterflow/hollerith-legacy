@@ -35,6 +35,8 @@ every                     = suspend.every
 D                         = require 'pipedreams2'
 $                         = D.remit.bind D
 $async                    = D.remit_async.bind D
+ASYNC                     = require 'async'
+CHR                       = require 'coffeenode-chr'
 #...........................................................................................................
 new_db                    = require 'level'
 # new_levelgraph            = require 'levelgraph'
@@ -67,7 +69,6 @@ D.new_indexer = ( idx = 0 ) -> ( data ) => [ idx++, data, ]
   step ( resume ) =>
     yield @initialize resume
     db = options[ 'db' ]
-    CHR = require '/Volumes/Storage/io/coffeenode-chr'
     count_chrs = ( text ) -> ( CHR.chrs_from_text text, input: 'xncr' ).length
     #.......................................................................................................
     input = db[ '%self' ].createKeyStream first_query
@@ -194,82 +195,8 @@ HOLLERITH.$pick_values = ->
     .pipe D.$show()
 
 #-----------------------------------------------------------------------------------------------------------
-### version for Hollerith1 DBs ###
-@find_good_kwic_sample_glyphs_1 = ( db ) ->
-  #.........................................................................................................
-  step ( resume ) =>
-    unless db?
-      yield @initialize resume
-      db = options[ 'db' ]
-    #.......................................................................................................
-    CHR = require '/Volumes/Storage/io/coffeenode-chr'
-    chrs_from_text = ( text ) -> CHR.chrs_from_text text, input: 'xncr'
-    #.......................................................................................................
-    gte     = 'os|guide/lineup/length:05'
-    lte     = @_lte_from_gte gte
-    input   = db[ '%self' ].createKeyStream { gte: gte, lte: lte, }
-    #.......................................................................................................
-    decode_rank = ( bkey ) =>
-      [ ..., rank_txt, ] = @_split_bkey bkey
-      return parseInt rank_txt, 10
-    #.......................................................................................................
-    decode_lineup = ( bkey ) =>
-      [ ..., lineup, ] = @_split_bkey bkey
-      lineup = lineup.replace /\u3000/g, ''
-      return chrs_from_text lineup
-    #.......................................................................................................
-    xncr_from_uchr = ( uchr ) =>
-      return if ( CHR.as_rsg uchr ) is 'u-pua' then ( CHR.as_xncr uchr, csg: 'jzr' ) else uchr
-    #.......................................................................................................
-    input
-      .pipe @_$split_bkey()
-      #.....................................................................................................
-      .pipe HOLLERITH.read_sub db, mangle: decode_rank, ( phrase ) =>
-        [ ..., glyph, ]           = phrase
-        sub_gte     = "so|glyph:#{glyph}|rank/cjt:"
-        sub_lte     = @_lte_from_gte sub_gte
-        sub_input   = db[ '%self' ].createKeyStream { gte: sub_gte, lte: sub_lte, }
-        return [ glyph, sub_input, ]
-      #.....................................................................................................
-      .pipe D.$filter ( [ glyph, rank, ] ) -> rank < 1500
-      #.....................................................................................................
-      .pipe HOLLERITH.read_sub db, mangle: decode_lineup, ( record ) =>
-        [ glyph, rank, ]  = record
-        sub_gte           = "so|glyph:#{glyph}|guide/lineup/uchr:"
-        sub_lte           = @_lte_from_gte sub_gte
-        sub_input         = db[ '%self' ].createKeyStream { gte: sub_gte, lte: sub_lte, }
-        return [ [ glyph, rank, ], sub_input, ]
-      #.....................................................................................................
-      .pipe HOLLERITH.read_sub db, ( record ) =>
-        [ [ glyph, rank, ], guides, ] = record
-        confluence                    = D.create_throughstream()
-        stream_count                  = 0
-        #...................................................................................................
-        for guide in guides
-          do ( guide ) =>
-            guide_xncr        = xncr_from_uchr guide
-            stream_count     += +1
-            sub_gte           = "so|glyph:#{guide_xncr}|factor/shapeclass/wbf:"
-            sub_lte           = @_lte_from_gte sub_gte
-            sub_input         = db[ '%self' ].createKeyStream { gte: sub_gte, lte: sub_lte, }
-            sub_input.on 'end', ->
-              stream_count += -1
-              if stream_count < 1
-                confluence.end()
-            sub_input
-              .pipe @_$split_bkey()
-              .pipe $ ( data, send ) =>
-                [ ..., shapeclass_wbf, ] = data
-                confluence.write [ guide, shapeclass_wbf, ]
-        #...................................................................................................
-        return [ [ glyph, rank, guides, ], confluence, ]
-      #.....................................................................................................
-      .pipe $ ( data, send ) -> send JSON.stringify data
-      .pipe D.$show()
-
-#-----------------------------------------------------------------------------------------------------------
-### version for Hollerith2 DBs ###
-@find_good_kwic_sample_glyphs_2 = ( db ) ->
+@find_good_kwic_sample_glyphs_3 = ( db ) ->
+  ### version for Hollerith2 DBs; using `HOLLERITH.remit_async` instead of `HOLLERITH.read_sub`. ###
   ###
   *  ▶  '[["勷",5,9907,["亠","吅","𠀎","𧘇","力"]],"41","25","11","35","53"]'
   *  ▶  '[["噿",5,13090,["口","羽","亠","从","十"]],"25","54","41","34","12"]'
@@ -288,86 +215,6 @@ HOLLERITH.$pick_values = ->
   *  ▶  '[["驐",5,12644,["馬","亠","口","子","夊"]],"12","41","25","51","35"]'
   *  ▶  '[["骧",5,6010,["马","亠","吅","𠀎","𧘇"]],"55","41","25","11","35"]'
   ###
-  #.........................................................................................................
-  step ( resume ) =>
-    db ?= HOLLERITH.new_db '/Volumes/Storage/temp/jizura-hollerith2'
-    #.......................................................................................................
-    CHR = require '/Volumes/Storage/io/coffeenode-chr'
-    chrs_from_text = ( text ) -> CHR.chrs_from_text text, input: 'xncr'
-    #.......................................................................................................
-    prefix  = [ 'pos', 'guide/lineup/length', 5, ]
-    query   = { prefix, }
-    input   = HOLLERITH.create_phrasestream db, query
-    # #.......................................................................................................
-    # decode_rank = ( bkey ) =>
-    #   [ ..., rank_txt, ] = @_split_bkey bkey
-    #   return parseInt rank_txt, 10
-    #.......................................................................................................
-    decode_lineup = ( data ) =>
-      [ ..., lineup, ] = data
-      return chrs_from_text lineup.replace /\u3000/g, ''
-    #.......................................................................................................
-    xncr_from_uchr = ( uchr ) =>
-      return if ( CHR.as_rsg uchr ) is 'u-pua' then ( CHR.as_xncr uchr, csg: 'jzr' ) else uchr
-    #.......................................................................................................
-    input
-      #.....................................................................................................
-      .pipe HOLLERITH.read_sub db, ( phrase ) =>
-        [ _, glyph, _, lineup_length, ] = phrase
-        # debug '©xhHjm', rpr phrase
-        sub_prefix                      = [ 'spo', glyph, 'rank/cjt', ]
-        sub_input                       = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, }
-        return [ [ glyph, lineup_length, ], sub_input, ]
-      #.....................................................................................................
-      .pipe $ ( data, send ) =>
-        [ [ glyph, lineup_length, ], [ ..., rank, ], ] = data
-        send [ glyph, lineup_length, rank, ]
-      #.....................................................................................................
-      .pipe D.$filter ( [ glyph, lineup_length, rank, ] ) -> rank < 15000
-      #.....................................................................................................
-      .pipe HOLLERITH.read_sub db, mangle: decode_lineup, ( data ) =>
-        [ glyph, lineup_length, rank, ] = data
-        sub_prefix                      = [ 'spo', glyph, 'guide/lineup/uchr', ]
-        sub_input                       = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, }
-        return [ [ glyph, lineup_length, rank, ], sub_input, ]
-      #.....................................................................................................
-      .pipe HOLLERITH.read_sub db, ( data ) =>
-        [ [ glyph, lineup_length, rank, ], guides, ]  = data
-        confluence                                    = D.create_throughstream()
-        stream_count                                  = 0
-        #...................................................................................................
-        for guide in guides
-          do ( guide ) =>
-            guide_xncr        = xncr_from_uchr guide
-            stream_count     += +1
-            sub_prefix        = [ 'spo', guide_xncr, 'factor/shapeclass/wbf', ]
-            sub_input         = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, }
-            sub_input.on 'end', ->
-              stream_count += -1
-              if stream_count < 1
-                confluence.end()
-            sub_input
-              .pipe $ ( data, send ) =>
-                [ ..., shapeclass_wbf, ] = data
-                confluence.write shapeclass_wbf
-        #...................................................................................................
-        return [ [ glyph, lineup_length, rank, guides, ], confluence, ]
-      #.....................................................................................................
-      .pipe D.$filter ( data ) =>
-        [ [ glyph, lineup_length, rank, guides, ], shapeclasses_wbf..., ] = data
-        counts = [ 0, 0, 0, 0, 0, ]
-        for shapeclass_wbf in shapeclasses_wbf
-          shapeclass_idx            = ( parseInt shapeclass_wbf[ 0 ], 10 ) - 1
-          counts[ shapeclass_idx ] += +1
-        return ( counts.join ',' ) is '1,1,1,1,1'
-      #.....................................................................................................
-      .pipe $ ( data, send ) -> send JSON.stringify data
-      .pipe D.$show()
-
-#-----------------------------------------------------------------------------------------------------------
-### version for Hollerith2 DBs; using `HOLLERITH.remit_async` instead of `HOLLERITH.read_sub`. ###
-@find_good_kwic_sample_glyphs_3 = ( db ) ->
-  ASYNC = require 'async'
   #.........................................................................................................
   step ( resume ) =>
     db_route  = join __dirname, '../../jizura-datasources/data/leveldb-v2'
@@ -448,6 +295,168 @@ HOLLERITH.$pick_values = ->
       # .pipe D.$filter ( entry ) => entry[ 1 ][ 'strokeclasses' ] is '12345'
       .pipe D.$show()
 
+#-----------------------------------------------------------------------------------------------------------
+@read_factors = ( db, handler ) ->
+  #.........................................................................................................
+  step ( resume ) =>
+    Z         = {}
+    db_route  = join __dirname, '../../jizura-datasources/data/leveldb-v2'
+    db       ?= HOLLERITH.new_db db_route, create: no
+    #.......................................................................................................
+    prefix  = [ 'pos', 'factor/', ]
+    query   = { prefix, star: '*', }
+    input   = HOLLERITH.create_phrasestream db, query
+    #.......................................................................................................
+    input
+      .pipe do =>
+        last_sbj  = null
+        target    = null
+        #...................................................................................................
+        return $ ( phrase, send, end ) =>
+          #.................................................................................................
+          if phrase?
+            [ _, prd, obj, sbj, ] = phrase
+            prd           = prd.replace /^factor\//g, ''
+            sbj           = CHR.as_uchr sbj, input: 'xncr'
+            if sbj isnt last_sbj
+              send target if target?
+              target    = Z[ sbj ]?= { glyph: sbj, }
+              last_sbj  = sbj
+            target[ prd ] = obj
+            Z[ obj ]      = target if prd is 'sortcode'
+          #.................................................................................................
+          if end?
+            send target if target?
+            end()
+      .pipe D.$on_end -> handler null, Z
+
+#-----------------------------------------------------------------------------------------------------------
+@create_phrasestream_for_selection = ( db, prd, filter ) ->
+
+#-----------------------------------------------------------------------------------------------------------
+@show_kwic_v2_sample = ( db ) ->
+  #.........................................................................................................
+  step ( resume ) =>
+    db_route      = join __dirname, '../../jizura-datasources/data/leveldb-v2'
+    db           ?= HOLLERITH.new_db db_route, create: no
+    help "using DB at #{db[ '%self' ][ 'location' ]}"
+    factors       = yield @read_factors db, resume
+    # debug '©g5bVR', factors; process.exit()
+    help "read #{( Object.keys factors ).length} entries for factors"
+    ranks         = {}
+    rank_limit    = 100
+    rank_fallback = [ null, null, null, Infinity, ]
+    sample        = [ '寿', '邦', '帮', '畴', '铸', '筹', '涛', '祷', '绑', '綁',    ]
+    #.......................................................................................................
+    insert = ( list, item, idx = 0 ) ->
+      list.splice idx, 0, item
+      return list
+    #.......................................................................................................
+    rotate_left = ( list, count = 1 ) ->
+      return list if list.length is 0
+      list.push list.shift() for _ in [ 0 ... count ]
+      return list
+    #.......................................................................................................
+    rotate_right = ( list, count = 1 ) ->
+      return list if list.length is 0
+      list.unshift list.pop() for _ in [ 0 ... count ]
+      return list
+    #.......................................................................................................
+    prefix        = [ 'pos', 'guide/kwic/sortcode/v1', ]
+    query         = { prefix, }
+    input         = HOLLERITH.create_phrasestream db, query
+    #.......................................................................................................
+    input
+      #.....................................................................................................
+      .pipe $ ( phrase, send ) =>
+        ### extract sortcode, filter out 表外字 ###
+        [ _, _, sortcode, glyph, idx, ] = phrase
+        return unless ( CHR.as_csg glyph, input: 'xncr' ) is 'u'
+        send [ glyph, sortcode, ]
+      # #.....................................................................................................
+      # .pipe $async ( [ glyph, sortcode, ], done ) =>
+      #   ### filter out 'uncommon' glyphs (whose rank exceeds rank limit) ###
+      #   # debug '©72bFK', glyph, rank if ( rank = ranks[ glyph ] )?
+      #   return done [ glyph, sortcode, rank, ] if rank_limit < 0 or rank_limit is Infinity
+      #   return done [ glyph, sortcode, rank, ] if ( rank = ranks[ glyph ] )? and rank < rank_limit
+      #   sub_prefix  = [ 'spo', glyph, 'rank/cjt', ]
+      #   sub_query   = { prefix: sub_prefix, fallback: rank_fallback, }
+      #   HOLLERITH.read_one_phrase db, sub_query, ( error, sub_phrase ) =>
+      #     return done.error error if error?
+      #     [ _, _, _, rank, ]  = sub_phrase
+      #     ranks[ glyph ]      = rank
+      #     return done() unless rank < rank_limit
+      #     done [ glyph, sortcode, ]
+      #.....................................................................................................
+      .pipe D.$filter ( [ glyph, sortcode ] ) => glyph in sample
+      #.....................................................................................................
+      .pipe $ ( [ glyph, sortcode, ], send ) =>
+        ### reformat sortcode ###
+        sortrow = ( x for x in sortcode.split /(........,..),/ when x.length > 0 )
+        sortrow = ( x.split ',' for x in sortrow )
+        send [ glyph, sortrow, ]
+      #.....................................................................................................
+      .pipe $ ( [ glyph, sortrow, ], send ) =>
+        ### shorten sortrow ###
+        new_sortrow = []
+        for entry, idx in sortrow
+          [ sortcode, position, ] = entry
+          new_sortrow.push entry if ( parseInt position, 10 ) < 6
+        send [ glyph, new_sortrow, ]
+      #.....................................................................................................
+      .pipe $ ( [ glyph, sortrow, ], send ) ->
+        lineup    = []
+        positions = ( position for [ _, position, ] in sortrow )
+        rotation  = positions.indexOf '00'
+        # rotate_left sortrow for _ in [ 0 ... rotation ]
+        for entry, idx in sortrow
+          [ sortcode, position, ] = entry
+          # sortcode                = sortcode.replace /~+$/, ''
+          sortcode                = sortcode.replace /~~~~/, 'f---'
+          factor                  = factors[ sortcode ]?[ 'glyph' ] ? '\u3000'
+          entry.push factor
+        send [ glyph, sortrow, positions, rotation, ]
+      #.....................................................................................................
+      .pipe $ ( [ glyph, sortrow, positions, rotation, ], send ) =>
+        d       = []
+        lineup  = []
+        for [ sortcode, position, factor, ] in sortrow
+          sortcode = sortcode[ 0 .. 3 ].replace /-/g, ' '
+          d.push "#{sortcode}-#{position}"
+          lineup.push factor
+        insert lineup, '\u3000', ( positions.indexOf '05' ) + 1
+        rotate_right lineup, 3
+        lineup        = lineup.join ''
+        help ( d.join ' ' ), lineup, glyph
+        # echo ( d.join ' ' ), lineup, glyph, '                         '
+        send [ glyph, sortrow, lineup, ]
+      #.....................................................................................................
+      .pipe D.$collect()
+      #.....................................................................................................
+      .pipe $ ( collection_v1, send ) =>
+        collection_v2 = CND.LODASH.cloneDeep collection_v1
+        for entry in collection_v2
+          [ glyph, sortrow, lineup, ] = entry
+          new_sortrow                 = []
+          new_sortrow.push sortcode for [ sortcode, _, _, ] in sortrow
+          new_sortrow.push position for [ _, position, _, ] in sortrow
+          entry.push new_sortrow.join ''
+        collection_v2.sort ( a, b ) ->
+          return -1 if a[ 3 ] < b[ 3 ]
+          return +1 if a[ 3 ] > b[ 3 ]
+          return  0
+        # for [ glyph, _, lineup, new_sortrow, ] in collection_v2
+        #   help lineup, glyph
+          # echo lineup, glyph
+        send [ collection_v1, collection_v2, ]
+      #.....................................................................................................
+      .pipe $ ( [ collection_v1, collection_v2, ], send ) =>
+        for entry_v1, idx in collection_v1
+          [ glyph_v1, _, lineup_v1, ] = entry_v1
+          [ glyph_v2, _, lineup_v2, ] = collection_v2[ idx ]
+          help lineup_v1, glyph_v1, '◉', lineup_v2, glyph_v2
+          echo lineup_v1, glyph_v1, '◉', lineup_v2, glyph_v2
+
 
 #-----------------------------------------------------------------------------------------------------------
 @show_encoding_sample = ->
@@ -505,14 +514,8 @@ unless module.parent?
     # 'route':            '/tmp/leveldb'
   #---------------------------------------------------------------------------------------------------------
   debug '©AoOAS', options
-  # step ( resume ) =>
-  #   yield @initialize resume
-  #   db = options[ 'db' ]
-  #   @find_good_kwic_sample_glyphs_2 db
-  # @copy_jizura_db()
-  # @dump_jizura_db()
-  # @find_good_kwic_sample_glyphs_2()
-  @find_good_kwic_sample_glyphs_3()
+  # @find_good_kwic_sample_glyphs_3()
+  @show_kwic_v2_sample()
   # @show_encoding_sample()
   # @compile_encodings()
 
