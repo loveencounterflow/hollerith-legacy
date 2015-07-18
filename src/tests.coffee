@@ -1417,16 +1417,43 @@ CODEC                     = require './codec'
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     prefix  = [ 'spo', ]
-    input_A = HOLLERITH.create_phrasestream db, { prefix, }
-    input_B = input_A
+    input   = HOLLERITH.create_phrasestream db, { prefix, }
+    input
       .pipe $shorten_spo()
       .pipe $consolidate()
-      # .pipe D.$filter ( phrase ) -> phrase[ 1 ] is 'pod'
       .pipe D.$show()
       .pipe HOLLERITH.$write db
       .pipe D.$on_end done
-    # input_B.on 'end', ->
-    #   debug '©ushuu', '***'
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "keep ordering and completeness in asynchronous streams"] = ( T, T_done ) ->
+  step ( resume ) =>
+    idx     = 0
+    input_A = D.create_throughstream()
+    #.......................................................................................................
+    input_B = input_A
+      .pipe $async ( data, done ) ->
+        dt = CND.random_number 0.5, 1.5
+        # debug '©WscFi', data, dt
+        after dt, =>
+          warn "send #{rpr data}"
+          done data
+      .pipe $ ( data, send ) ->
+        help "read #{rpr data}"
+        T.eq data, idx
+        idx += +1
+        send data
+      .pipe D.$on_end =>
+        T_done()
+    #.......................................................................................................
+    write = ->
+      for n in [ 0 .. 10 ]
+        # help "write #{n}"
+        input_A.write n
+        yield after 0.1, resume
+      input_A.end()
+    #.......................................................................................................
+    write()
 
 
 #===========================================================================================================

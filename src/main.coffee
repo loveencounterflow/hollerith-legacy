@@ -202,12 +202,9 @@ later                     = suspend.immediately
     [ phrasetype, key_bfr, value_bfr, ] = facet_bfr_plus
     send type: 'put', key: key_bfr, value: value_bfr
   #.........................................................................................................
-  $write = => $ ( batch, send, end ) =>
-    if batch?
-      substrate.batch batch
-    if end?
-      debug '©BQqOp', '###'
-      end()
+  $write = => $ ( batch, send ) =>
+    substrate.batch batch
+    send batch
   #.........................................................................................................
   if ensure_unique
     { $ensure_unique_spo, $load_bloom, $save_bloom, } = @_get_bloom_methods db
