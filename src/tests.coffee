@@ -1424,10 +1424,7 @@ CODEC                     = require './codec'
       # .pipe D.$filter ( phrase ) -> phrase[ 1 ] is 'pod'
       .pipe D.$show()
       .pipe HOLLERITH.$write db
-      .pipe D.$on_end =>
-        # T.eq count, matchers.length
-        debug '©Lqzy1', '...'
-        later -> debug '©xX5tU', '---'; done()
+      .pipe D.$on_end done
     # input_B.on 'end', ->
     #   debug '©ushuu', '***'
 
