@@ -4,9 +4,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR
 
 ### TAINT these steps should be done with gulp ###
-gulp build && \
-doctoc README.md && \
-echo "![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)"|cat - README.md > /tmp/hollerith-README.tmp && mv /tmp/hollerith-README.tmp README.md && \
+# gulp build && \
+# doctoc README.md && \
+# echo "![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)"|cat - README.md > /tmp/hollerith-README.tmp && mv /tmp/hollerith-README.tmp README.md && \
 # coffeedoc -o doc src && \
 git add --all && \
 git commit -m "autocommit"
