@@ -1417,8 +1417,8 @@ CODEC                     = require './codec'
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     prefix  = [ 'spo', ]
-    input   = HOLLERITH.create_phrasestream db, { prefix, }
-    input
+    input_A = HOLLERITH.create_phrasestream db, { prefix, }
+    input_B = input_A
       .pipe $shorten_spo()
       .pipe $consolidate()
       # .pipe D.$filter ( phrase ) -> phrase[ 1 ] is 'pod'
@@ -1427,7 +1427,9 @@ CODEC                     = require './codec'
       .pipe D.$on_end =>
         # T.eq count, matchers.length
         debug '©Lqzy1', '...'
-        # later -> debug '©xX5tU', '---'; done()
+        later -> debug '©xX5tU', '---'; done()
+    # input_B.on 'end', ->
+    #   debug '©ushuu', '***'
 
 
 #===========================================================================================================

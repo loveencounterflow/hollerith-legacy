@@ -53,7 +53,7 @@ f = ->
     #.......................................................................................................
     input_B = input_A
       .pipe $async ( data, done ) ->
-        dt = CND.random_number 0.5, 1.5
+        dt = if data is 1 then 5 else CND.random_number 0.5, 1.5
         debug '©WscFi', data, dt
         after dt, =>
           urge "send #{rpr data}"

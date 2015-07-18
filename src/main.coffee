@@ -223,8 +223,7 @@ later                     = suspend.immediately
   pipeline.push $write()
   pipeline.push $save_bloom()         if ensure_unique
   #.........................................................................................................
-  S = R.pipe D.combine pipeline...
-  S.pipe D.$on_end -> debug '©xtQq0', '+++'
+  R = R.pipe D.combine pipeline...
   return R
 
 #-----------------------------------------------------------------------------------------------------------
