@@ -330,133 +330,179 @@ HOLLERITH.$pick_values = ->
             end()
       .pipe D.$on_end -> handler null, Z
 
-#-----------------------------------------------------------------------------------------------------------
-@create_phrasestream_for_selection = ( db, prd, filter ) ->
 
 #-----------------------------------------------------------------------------------------------------------
 @show_kwic_v2_sample = ( db ) ->
   #.........................................................................................................
-  step ( resume ) =>
-    db_route      = join __dirname, '../../jizura-datasources/data/leveldb-v2'
-    db           ?= HOLLERITH.new_db db_route, create: no
-    help "using DB at #{db[ '%self' ][ 'location' ]}"
-    factors       = yield @read_factors db, resume
-    # debug '©g5bVR', factors; process.exit()
-    help "read #{( Object.keys factors ).length} entries for factors"
-    ranks         = {}
-    rank_limit    = 100
-    rank_fallback = [ null, null, null, Infinity, ]
-    sample        = [ '寿', '邦', '帮', '畴', '铸', '筹', '涛', '祷', '绑', '綁',    ]
-    #.......................................................................................................
-    insert = ( list, item, idx = 0 ) ->
-      list.splice idx, 0, item
-      return list
-    #.......................................................................................................
-    rotate_left = ( list, count = 1 ) ->
-      return list if list.length is 0
-      list.push list.shift() for _ in [ 0 ... count ]
-      return list
-    #.......................................................................................................
-    rotate_right = ( list, count = 1 ) ->
-      return list if list.length is 0
-      list.unshift list.pop() for _ in [ 0 ... count ]
-      return list
-    #.......................................................................................................
-    prefix        = [ 'pos', 'guide/kwic/sortcode/v1', ]
-    query         = { prefix, }
-    input         = HOLLERITH.create_phrasestream db, query
-    #.......................................................................................................
-    input
-      #.....................................................................................................
-      .pipe $ ( phrase, send ) =>
-        ### extract sortcode, filter out 表外字 ###
-        [ _, _, sortcode, glyph, idx, ] = phrase
-        return unless ( CHR.as_csg glyph, input: 'xncr' ) is 'u'
-        send [ glyph, sortcode, ]
-      # #.....................................................................................................
-      # .pipe $async ( [ glyph, sortcode, ], done ) =>
-      #   ### filter out 'uncommon' glyphs (whose rank exceeds rank limit) ###
-      #   # debug '©72bFK', glyph, rank if ( rank = ranks[ glyph ] )?
-      #   return done [ glyph, sortcode, rank, ] if rank_limit < 0 or rank_limit is Infinity
-      #   return done [ glyph, sortcode, rank, ] if ( rank = ranks[ glyph ] )? and rank < rank_limit
-      #   sub_prefix  = [ 'spo', glyph, 'rank/cjt', ]
-      #   sub_query   = { prefix: sub_prefix, fallback: rank_fallback, }
-      #   HOLLERITH.read_one_phrase db, sub_query, ( error, sub_phrase ) =>
-      #     return done.error error if error?
-      #     [ _, _, _, rank, ]  = sub_phrase
-      #     ranks[ glyph ]      = rank
-      #     return done() unless rank < rank_limit
-      #     done [ glyph, sortcode, ]
-      #.....................................................................................................
-      .pipe D.$filter ( [ glyph, sortcode ] ) => glyph in sample
-      #.....................................................................................................
-      .pipe $ ( [ glyph, sortcode, ], send ) =>
-        ### reformat sortcode ###
-        sortrow = ( x for x in sortcode.split /(........,..),/ when x.length > 0 )
-        sortrow = ( x.split ',' for x in sortrow )
-        send [ glyph, sortrow, ]
-      #.....................................................................................................
-      .pipe $ ( [ glyph, sortrow, ], send ) =>
-        ### shorten sortrow ###
-        new_sortrow = []
-        for entry, idx in sortrow
-          [ sortcode, position, ] = entry
-          new_sortrow.push entry if ( parseInt position, 10 ) < 6
-        send [ glyph, new_sortrow, ]
-      #.....................................................................................................
-      .pipe $ ( [ glyph, sortrow, ], send ) ->
-        lineup    = []
-        positions = ( position for [ _, position, ] in sortrow )
-        rotation  = positions.indexOf '00'
-        # rotate_left sortrow for _ in [ 0 ... rotation ]
-        for entry, idx in sortrow
-          [ sortcode, position, ] = entry
-          # sortcode                = sortcode.replace /~+$/, ''
-          sortcode                = sortcode.replace /~~~~/, 'f---'
-          factor                  = factors[ sortcode ]?[ 'glyph' ] ? '\u3000'
-          entry.push factor
-        send [ glyph, sortrow, positions, rotation, ]
-      #.....................................................................................................
-      .pipe $ ( [ glyph, sortrow, positions, rotation, ], send ) =>
-        d       = []
-        lineup  = []
-        for [ sortcode, position, factor, ] in sortrow
-          sortcode = sortcode[ 0 .. 3 ].replace /-/g, ' '
-          d.push "#{sortcode}-#{position}"
-          lineup.push factor
-        insert lineup, '\u3000', ( positions.indexOf '05' ) + 1
-        rotate_right lineup, 3
-        lineup        = lineup.join ''
-        help ( d.join ' ' ), lineup, glyph
-        # echo ( d.join ' ' ), lineup, glyph, '                         '
-        send [ glyph, sortrow, lineup, ]
-      #.....................................................................................................
-      .pipe D.$collect()
-      #.....................................................................................................
-      .pipe $ ( collection_v1, send ) =>
-        collection_v2 = CND.LODASH.cloneDeep collection_v1
-        for entry in collection_v2
-          [ glyph, sortrow, lineup, ] = entry
-          new_sortrow                 = []
-          new_sortrow.push sortcode for [ sortcode, _, _, ] in sortrow
-          new_sortrow.push position for [ _, position, _, ] in sortrow
-          entry.push new_sortrow.join ''
-        collection_v2.sort ( a, b ) ->
-          return -1 if a[ 3 ] < b[ 3 ]
-          return +1 if a[ 3 ] > b[ 3 ]
-          return  0
-        # for [ glyph, _, lineup, new_sortrow, ] in collection_v2
-        #   help lineup, glyph
-          # echo lineup, glyph
-        send [ collection_v1, collection_v2, ]
-      #.....................................................................................................
-      .pipe $ ( [ collection_v1, collection_v2, ], send ) =>
-        for entry_v1, idx in collection_v1
-          [ glyph_v1, _, lineup_v1, ] = entry_v1
-          [ glyph_v2, _, lineup_v2, ] = collection_v2[ idx ]
-          help lineup_v1, glyph_v1, '◉', lineup_v2, glyph_v2
-          echo lineup_v1, glyph_v1, '◉', lineup_v2, glyph_v2
+  # step ( resume ) =>
+  db_route      = join __dirname, '../../jizura-datasources/data/leveldb-v2'
+  db           ?= HOLLERITH.new_db db_route, create: no
+  help "using DB at #{db[ '%self' ][ 'location' ]}"
+  # factors       = yield @read_factors db, resume
+  # debug '©g5bVR', factors; process.exit()
+  # help "read #{( Object.keys factors ).length} entries for factors"
+  ranks         = {}
+  rank_limit    = 10000
+  rank_limit    = Infinity
+  sample        = [ '寿', '邦', '帮', '畴', '铸', '筹', '涛', '祷', '绑', '綁',    ]
+  #.........................................................................................................
+  $reorder_phrase = =>
+    return $ ( phrase, send ) =>
+      ### extract sortcode ###
+      [ _, _, sortcode, glyph, _, ] = phrase
+      send [ glyph, sortcode, ]
+  #.........................................................................................................
+  $exclude_gaiji = =>
+    return D.$filter ( [ glyph, sortcode ] ) =>
+      return ( not glyph.startsWith '&' ) or ( glyph.startsWith '&jzr#' )
+  #.........................................................................................................
+  $include_sample = =>
+    return D.$filter ( [ glyph, sortcode ] ) => glyph in sample
+  #.........................................................................................................
+  $exclude_rare_glyphs = =>
+    return $async ( [ glyph, sortcode, ], done ) =>
+      ### filter out 'uncommon' glyphs (whose rank exceeds rank limit) ###
+      # debug '©72bFK', glyph, rank if ( rank = ranks[ glyph ] )?
+      return done [ glyph, sortcode, ] if rank_limit < 0 or rank_limit is Infinity
+      return done [ glyph, sortcode, ] if ( rank = ranks[ glyph ] )? and rank < rank_limit
+      sub_prefix  = [ 'spo', glyph, 'rank/cjt', ]
+      sub_query   = { prefix: sub_prefix, fallback: null, }
+      HOLLERITH.read_one_phrase db, sub_query, ( error, sub_phrase ) =>
+        return done.error error if error?
+        if sub_phrase is null
+          ranks[ glyph ] = Infinity
+          return done()
+        [ _, _, _, rank, ]  = sub_phrase
+        ranks[ glyph ]      = rank
+        return done() unless rank < rank_limit
+        done [ glyph, sortcode, ]
+  #.........................................................................................................
+  $extract_lineup = =>
+    return $ ( [ glyph, sortcode ], send ) =>
+      [ _, lineup, ]              = sortcode.split ';'
+      [ infix, suffix, prefix, ]  = lineup.split ','
+      lineup                      = prefix + '|' + infix + '|' + suffix
+      send [ glyph, lineup, ]
+  #.........................................................................................................
+  $transform = => D.combine [
+      $reorder_phrase()
+      $exclude_gaiji()
+      # $include_sample()
+      $exclude_rare_glyphs()
+      $extract_lineup()
+      ]
+  #.........................................................................................................
+  prefix_v1 = { prefix: [ 'pos', 'guide/kwic/v1/sortcode', ], }
+  prefix_v2 = { prefix: [ 'pos', 'guide/kwic/v2/sortcode', ], }
+  input_v1  = ( HOLLERITH.create_phrasestream db, prefix_v1 ).pipe $transform()
+  input_v2  = ( HOLLERITH.create_phrasestream db, prefix_v2 ).pipe $transform()
+  #.........................................................................................................
+  input_v1
+    .pipe D.$lockstep input_v2
+    .pipe do =>
+      count = 0
+      return $ ( [ [ glyph_v1, lineup_v1, ], [ glyph_v2, lineup_v2, ], ], send ) =>
+        spc   = '\u3000'
+        line  = lineup_v1 + spc + glyph_v1 + spc + '◉' + spc + lineup_v2 + spc + glyph_v2
+        # help line
+        count += 1
+        help ƒ count if count % 10000 is 0
+        echo line
+  #.........................................................................................................
+  return null
 
+#-----------------------------------------------------------------------------------------------------------
+@show_codepoints_with_missing_predicates = ( v2_db, prd = 'guide/kwic/v1/lineup' ) ->
+  #.........................................................................................................
+  home          = join __dirname, '../../jizura-datasources'
+  v1_route      = join home, 'data/leveldb'
+  v2_route      = join home, 'data/leveldb-v2'
+  v1_db         = HOLLERITH.new_db v1_route, create: no
+  v2_db        ?= HOLLERITH.new_db v2_route, create: no
+  help "using DB at #{v1_db[ '%self' ][ 'location' ]}"
+  help "using DB at #{v2_db[ '%self' ][ 'location' ]}"
+  rank_limit    = Infinity
+  rank_limit    = 100
+  #.........................................................................................................
+  $extract_glyph = => $ ( xpos, send ) => send xpos[ 3 ]
+  $exclude_gaiji = => D.$filter ( glyph ) => ( not glyph.startsWith '&' ) or ( glyph.startsWith '&jzr#' )
+  #.........................................................................................................
+  $show_progress = =>
+    count = 0
+    return D.$observe =>
+      count += +1
+      echo ƒ count if count % 10000 is 0
+  #.........................................................................................................
+  $show = => D.$observe ( [ glyph, keys, ] ) =>
+    echo ( CHR.as_fncr glyph, input: 'xncr' ), CHR.as_uchr glyph, input: 'xncr'
+    for key in keys
+      echo '  ' + key
+  #.........................................................................................................
+  $exclude_rare_glyphs = =>
+    ### TAINT code duplication; factor out ###
+    ranks = {}
+    return $async ( glyph, done ) =>
+      ### filter out 'uncommon' glyphs (whose rank exceeds rank limit) ###
+      # debug '©72bFK', glyph, rank if ( rank = ranks[ glyph ] )?
+      return done glyph if rank_limit < 0 or rank_limit is Infinity
+      return done glyph if ( rank = ranks[ glyph ] )? and rank < rank_limit
+      sub_prefix  = [ 'spo', glyph, 'rank/cjt', ]
+      sub_query   = { prefix: sub_prefix, fallback: null, }
+      HOLLERITH.read_one_phrase v2_db, sub_query, ( error, sub_phrase ) =>
+        return done.error error if error?
+        if sub_phrase is null
+          ranks[ glyph ] = Infinity
+          return done()
+        [ _, _, _, rank, ]  = sub_phrase
+        ranks[ glyph ]      = rank
+        return done() unless rank < rank_limit
+        done glyph
+  #.........................................................................................................
+  $test_for_predicate = ( prd ) =>
+    return $async ( glyph, done ) =>
+      sub_prefix  = [ 'spo', glyph, prd, ]
+      sub_query   = { prefix: sub_prefix, fallback: null, }
+      HOLLERITH.read_one_phrase v2_db, sub_query, ( error, sub_phrase ) =>
+        return done.error error if error?
+        return done glyph if sub_phrase is null
+        done()
+  #.........................................................................................................
+  v1_lte_from_gte = ( gte ) ->
+    R = new Buffer ( last_idx = Buffer.byteLength gte ) + 1
+    R.write gte
+    R[ last_idx ] = 0xff
+    return R
+  #.........................................................................................................
+  $fetch_v1_entries = =>
+    return $async ( glyph, done ) =>
+      gte         = "so|glyph:#{glyph}"
+      lte         = v1_lte_from_gte gte
+      sub_input   = v1_db[ '%self' ].createKeyStream { gte, lte, }
+      Z           = []
+      # sub_input.on 'data', ( data ) -> debug '©9Wqdh', data
+      sub_input
+        .pipe $ ( key, send, end ) =>
+          if key?
+            Z.push key.toString 'utf-8'
+          if end?
+            end()
+            done [ glyph, Z, ]
+  #.........................................................................................................
+  # prefix  = { prefix: [ 'pos', 'cp/cid', ], }
+  prefix  = { prefix: [ 'pos', 'cp/inner/original', ], }
+  input   = HOLLERITH.create_phrasestream v2_db, prefix
+  #.........................................................................................................
+  input
+    .pipe $extract_glyph()
+    .pipe $exclude_gaiji()
+    # .pipe $show_progress()
+    # .pipe $exclude_rare_glyphs()
+    .pipe $test_for_predicate prd
+    .pipe $fetch_v1_entries()
+    .pipe D.$show()
+    .pipe $show()
+  #.........................................................................................................
+  return null
 
 #-----------------------------------------------------------------------------------------------------------
 @show_encoding_sample = ->
@@ -515,7 +561,8 @@ unless module.parent?
   #---------------------------------------------------------------------------------------------------------
   debug '©AoOAS', options
   # @find_good_kwic_sample_glyphs_3()
-  @show_kwic_v2_sample()
+  # @show_kwic_v2_sample()
+  @show_codepoints_with_missing_predicates()
   # @show_encoding_sample()
   # @compile_encodings()
 

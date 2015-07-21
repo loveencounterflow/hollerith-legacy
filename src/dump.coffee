@@ -96,7 +96,8 @@ HOLLERITH                 = require './main'
           #     value_rpr = '|' + value_rpr
           # else
           #   value_rpr = ''
-          write ( CND.grey ƒ count ), key_rpr
+          count_txt = if colors then ( CND.grey ƒ count ) else ƒ count
+          write count_txt, key_rpr
           # else
           #   echo ( ƒ count ), key_bfr
           send key_bfr

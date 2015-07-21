@@ -54,6 +54,75 @@ CODEC                     = require './codec'
 #   @_decode_list list
 #   return list
 
+
+#===========================================================================================================
+# HELPERS
+#-----------------------------------------------------------------------------------------------------------
+show_keys_and_key_bfrs = ( keys, key_bfrs ) ->
+  f = ( p ) -> ( t for t in ( p.toString 'hex' ).split /(..)/ when t isnt '' ).join ' '
+  #.........................................................................................................
+  columnify_settings =
+    paddingChr: ' '
+  #.........................................................................................................
+  data      = []
+  key_bfrs  = ( f p for p in key_bfrs )
+  for key, idx in keys
+    key_txt = ( rpr key ).replace /\\u0000/g, '∇'
+    data.push { 'str': key_txt, 'bfr': key_bfrs[ idx ]}
+  help '\n' + CND.columnify data, columnify_settings
+  return null
+
+#-----------------------------------------------------------------------------------------------------------
+show_db_entries = ( handler ) ->
+  input = db[ '%self' ].createReadStream()
+  input
+    .pipe D.$show()
+    .pipe $ ( { key, value, }, send ) => send [ key, value, ]
+    .pipe $ ( [ key, value, ], send ) => send [ key, value, ] unless HOLLERITH._is_meta db, key
+    .pipe $ ( [ key, value, ], send ) =>
+      # debug '©RluhF', ( HOLLERITH.CODEC.decode key ), ( JSON.parse value )
+      send [ key, value, ]
+    .pipe D.$collect()
+    .pipe $ ( facets, send ) =>
+      help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
+      # buffer = new Buffer JSON.stringify [ '开', '彡' ]
+      # debug '©GJfL6', HOLLERITH.DUMP.rpr_of_buffer null, buffer
+    .pipe D.$on_end => handler()
+
+#-----------------------------------------------------------------------------------------------------------
+get_new_db_name = ->
+  get_new_db_name.idx += +1
+  return "/tmp/hollerith2-testdb-#{get_new_db_name.idx}"
+get_new_db_name.idx = 0
+
+#-----------------------------------------------------------------------------------------------------------
+read_all_keys = ( db, handler ) ->
+  Z = []
+  input = db.createKeyStream()
+  input.on 'end', -> handler null, Z
+  input
+    .pipe $ ( data, send ) => Z.push data
+
+#-----------------------------------------------------------------------------------------------------------
+clear_leveldb = ( leveldb, handler ) ->
+  step ( resume ) =>
+    route = leveldb[ 'location' ]
+    yield leveldb.close resume
+    whisper "closed LevelDB"
+    yield leveldown.destroy route, resume
+    whisper "destroyed LevelDB"
+    yield leveldb.open resume
+    whisper "re-opened LevelDB"
+    # help "erased and re-opened LevelDB at #{route}"
+    handler null
+
+#-----------------------------------------------------------------------------------------------------------
+@_main = ( handler ) ->
+  db_route    = join __dirname, '..', 'dbs/tests'
+  db_settings = size: 500
+  db = HOLLERITH.new_db db_route, db_settings
+  test @, 'timeout': 2500
+
 #-----------------------------------------------------------------------------------------------------------
 @_feed_test_data = ( db, probes_idx, settings, handler ) ->
   switch arity = arguments.length
@@ -1455,74 +1524,21 @@ CODEC                     = require './codec'
     #.......................................................................................................
     write()
 
-
-#===========================================================================================================
-# HELPERS
 #-----------------------------------------------------------------------------------------------------------
-show_keys_and_key_bfrs = ( keys, key_bfrs ) ->
-  f = ( p ) -> ( t for t in ( p.toString 'hex' ).split /(..)/ when t isnt '' ).join ' '
+@[ "read phrases in lockstep" ] = ( T, done ) ->
+  probes_idx  = 2
   #.........................................................................................................
-  columnify_settings =
-    paddingChr: ' '
-  #.........................................................................................................
-  data      = []
-  key_bfrs  = ( f p for p in key_bfrs )
-  for key, idx in keys
-    key_txt = ( rpr key ).replace /\\u0000/g, '∇'
-    data.push { 'str': key_txt, 'bfr': key_bfrs[ idx ]}
-  help '\n' + CND.columnify data, columnify_settings
-  return null
-
-#-----------------------------------------------------------------------------------------------------------
-show_db_entries = ( handler ) ->
-  input = db[ '%self' ].createReadStream()
-  input
-    .pipe D.$show()
-    .pipe $ ( { key, value, }, send ) => send [ key, value, ]
-    .pipe $ ( [ key, value, ], send ) => send [ key, value, ] unless HOLLERITH._is_meta db, key
-    .pipe $ ( [ key, value, ], send ) =>
-      # debug '©RluhF', ( HOLLERITH.CODEC.decode key ), ( JSON.parse value )
-      send [ key, value, ]
-    .pipe D.$collect()
-    .pipe $ ( facets, send ) =>
-      help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
-      # buffer = new Buffer JSON.stringify [ '开', '彡' ]
-      # debug '©GJfL6', HOLLERITH.DUMP.rpr_of_buffer null, buffer
-    .pipe D.$on_end => handler()
-
-#-----------------------------------------------------------------------------------------------------------
-get_new_db_name = ->
-  get_new_db_name.idx += +1
-  return "/tmp/hollerith2-testdb-#{get_new_db_name.idx}"
-get_new_db_name.idx = 0
-
-#-----------------------------------------------------------------------------------------------------------
-read_all_keys = ( db, handler ) ->
-  Z = []
-  input = db.createKeyStream()
-  input.on 'end', -> handler null, Z
-  input
-    .pipe $ ( data, send ) => Z.push data
-
-#-----------------------------------------------------------------------------------------------------------
-clear_leveldb = ( leveldb, handler ) ->
   step ( resume ) =>
-    route = leveldb[ 'location' ]
-    yield leveldb.close resume
-    whisper "closed LevelDB"
-    yield leveldown.destroy route, resume
-    whisper "destroyed LevelDB"
-    yield leveldb.open resume
-    whisper "re-opened LevelDB"
-    # help "erased and re-opened LevelDB at #{route}"
-    handler null
+    yield @_feed_test_data db, probes_idx, resume
+    input_1     = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', 'strokecount'    ], }
+    input_2     = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', 'componentcount' ], }
+    input_3     = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', 'components'     ], }
+    input_1
+      .pipe D.$lockstep input_2, fallback: null
+      .pipe D.$lockstep input_3, fallback: null
+      .pipe $ ( data, send ) => help JSON.stringify data; send data
+      .pipe D.$on_end done
 
-#-----------------------------------------------------------------------------------------------------------
-@_main = ( handler ) ->
-  db_route    = join __dirname, '..', 'dbs/tests'
-  db_settings = size: 500
-  db = HOLLERITH.new_db db_route, db_settings
-  test @, 'timeout': 2500
 
 ############################################################################################################
 unless module.parent?

@@ -66,6 +66,7 @@ later                     = suspend.immediately
   substrate = _new_level_db route, level_settings, ( error ) ->
     if error?
       if error[ 'name' ] is 'OpenError'
+        ### TAINT error also thrown wis misleading message if rout doesn't exist up the penultimate term ###
         throw new Error "No database found at #{route} and no `create` setting given"
       throw error
   #.........................................................................................................
@@ -564,9 +565,9 @@ later                     = suspend.immediately
       sbj         = CND.RED       sbj
       prd         = CND.YELLOW    prd
       obj         = CND.GREEN     obj
-      return phrasetype + I + sbj + I + prd + E + obj
-    else
-      return "spo|#{sbj}|#{prd}|"
+    return phrasetype + I + sbj + I + prd + E + obj
+    # else
+    #   return "spo|#{sbj}|#{prd}|"
   else
     [ prd, obj, sbj, idx, ] = tail
     idx_rpr = if idx? then rpr idx else ''

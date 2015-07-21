@@ -41,42 +41,51 @@ leveldown                 = require 'level/node_modules/leveldown'
 CODEC                     = require './codec'
 #...........................................................................................................
 ƒ                         = CND.format_number
+misfit                    = Symbol 'misfit'
 
 
-
-
-
-
+#-----------------------------------------------------------------------------------------------------------
 f = ->
   step ( resume ) =>
-    input_A = D.create_throughstream()
+    number_input = D.create_throughstream()
+    lc_input    = D.create_throughstream()
+    uc_input    = D.create_throughstream()
     #.......................................................................................................
-    input_B = input_A
-      .pipe $async ( data, done ) ->
-        dt = if data is 1 then 5 else CND.random_number 0.5, 1.5
-        debug '©WscFi', data, dt
-        after dt, =>
-          urge "send #{rpr data}"
-          done data
+    number_input
+      .pipe D.$lockstep lc_input, fallback: 'missing'
+      .pipe D.$lockstep uc_input, fallback: 'missing'
+      # .pipe $async ( data, done ) ->
+      #   dt = if data is 1 then 5 else CND.random_number 0.5, 1.5
+      #   # debug '©WscFi', data, dt
+      #   after dt, =>
+      #     urge "send #{rpr data}"
+      #     done data
       .pipe D.$show()
       .pipe D.$on_end ( end ) =>
         urge '$on_end 1'
-        after 1, => urge '$on_end 2'; end()
+        after 0.5, => urge '$on_end 2'; end()
     #.......................................................................................................
-    input_A.on  'end', -> urge "input_A.end"
-    input_B.on  'end', -> urge "input_B.end"
+    for n in [ 0 .. 7 ]
+      letter = String.fromCodePoint ( 'a'.codePointAt 0 ) + n
+      help "write #{letter}"
+      lc_input.write letter
+      yield after 0.25, resume
+    lc_input.end()
     #.......................................................................................................
-    write = ->
-      for n in [ 0 .. 10 ]
-        help "write #{n}"
-        input_A.write n
-        yield after 0.5, resume
-      input_A.end()
+    for n in [ 0 .. 7 ]
+      letter = String.fromCodePoint ( 'A'.codePointAt 0 ) + n
+      help "write #{letter}"
+      uc_input.write letter
+      yield after 0.25, resume
+    uc_input.end()
     #.......................................................................................................
-    write()
-
-
-
+    for n in [ 0 .. 9 ]
+      help "write #{n}"
+      number_input.write n
+      yield after 0.25, resume
+    number_input.end()
+    #.......................................................................................................
+    return null
 
 
 f()

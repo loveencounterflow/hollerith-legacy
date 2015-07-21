@@ -37,8 +37,8 @@ DEMO                      = require './demo'
 
 #-----------------------------------------------------------------------------------------------------------
 options =
-  sample:         null
-  # sample:         [ '中', '國', '皇', '帝', ]
+  # sample:         null
+  sample:         [ '疈', '國', '𠵓', ]
 
 #-----------------------------------------------------------------------------------------------------------
 @$show_progress = ( size ) ->
@@ -133,40 +133,123 @@ options =
     send [ sbj, prd, obj, ]
 
 #-----------------------------------------------------------------------------------------------------------
+@$add_version_to_kwic_v1 = ->
+  ### mark up all predicates `guide/kwic/*` as `guide/kwic/v1/*` ###
+  return $ ( [ sbj, prd, obj, ], send ) =>
+    if prd.startsWith 'guide/kwic/'
+      prd = prd.replace /^guide\/kwic\//, 'guide/kwic/v1/'
+    send [ sbj, prd, obj, ]
+
+#-----------------------------------------------------------------------------------------------------------
 @$add_kwic_v2 = ->
   ### see `demo/show_kwic_v2_sample` ###
+  last_glyph  = null
+  lineup_v1   = null
   return $ ( [ sbj, prd, obj, ], send ) =>
-    if prd is 'guide/kwic/sortcode'
-      [ glyph, _, sortcodes_v1, ] = [ sbj, prd, obj, ]
-      sortcodes_v2                = []
-      for sortcode_v1 in sortcodes_v1
-        sortrow_v1 = ( x for x in sortcode_v1.split /(........,..),/ when x.length > 0 )
-        sortrow_v1 = ( x.split ',' for x in sortrow_v1 )
-        sortrow_v2 = []
-        sortrow_v2.push sortcode for [ sortcode, _, ] in sortrow_v1
-        sortrow_v2.push position for [ _, position, ] in sortrow_v1
-        sortcodes_v2.push sortrow_v2.join ','
-      send [ glyph, 'guide/kwic/sortcode/v1', sortcodes_v1, ]
-      send [ glyph, 'guide/kwic/sortcode/v2', sortcodes_v2, ]
-      # debug '©yfv5d', glyph, sortcodes_v2
-    else
-      send [ sbj, prd, obj, ]
+    # return send [ sbj, prd, obj, ] unless prd.startsWith 'guide/kwic/v1/'
+    ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
+    return unless prd.startsWith 'guide/kwic/v1/'
+    debug '©1ZuwT', [ sbj, prd, obj, ]
+    ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
+    switch prd.replace /^guide\/kwic\/v1\//, ''
+      when 'lineup/wrapped/infix', 'lineup/wrapped/prefix', 'lineup/wrapped/suffix'
+        ### copy to target ###
+        send [ sbj, prd, obj, ]
+      when 'lineup/wrapped/single'
+        ### memorize ###
+        debug '©bTNJ0', [ sbj, prd, obj, ]
+        last_glyph  = sbj
+        lineup_v1   = obj
+      when 'sortcode'
+        [ glyph, _, sortcodes_v1, ] = [ sbj, prd, obj, ]
+        sortcodes_v2                = []
+        #...................................................................................................
+        ### The difference between KWIC sortcodes of version 1 and version 2 lies in the re-arrangement
+        of the factor codes and the index codes. In v1, the index codes appeared interspersed with
+        the factor codes; in v2, the index codes come up front and the index codes come in the latter half
+        of the sortcode strings. The effect of this rearrangement is that now that all of the indexes
+        (which indicate the position of each factor in the lineup) are weaker than any of the factor codes,
+        like sequences of factor codes (and, therefore, factors) will always be grouped together (whereas
+        in v1, only like factors with like positions appeared together, and often like sequences appeared
+        with other sequences interspersed where their indexes demanded it so). ###
+        for sortcode_v1 in sortcodes_v1
+          sortrow_v1 = ( x for x in sortcode_v1.split /(........,..),/ when x.length > 0 )
+          sortrow_v1 = ( x.split ',' for x in sortrow_v1 )
+          sortrow_v2 = []
+          sortrow_v2.push sortcode for [ sortcode, _, ] in sortrow_v1
+          sortrow_v2.push position for [ _, position, ] in sortrow_v1
+          sortcodes_v2.push sortrow_v2.join ','
+        #...................................................................................................
+        urge '©IwQEK1', lineup_v1
+        urge '©IwQEK2', sortcodes_v1
+        #...................................................................................................
+        unless glyph is last_glyph
+          return send.error new Error "unexpected mismatch: #{rpr glyph}, #{rpr last_glyph}"
+        #...................................................................................................
+        unless lineup_v1?
+          return send.error new Error "missing lineup for glyph #{rpr glyph}"
+        #...................................................................................................
+        lineup_v2 = lineup_v1
+        sortcodes_v1[ idx ] += ";" + lineup for lineup, idx in lineup_v1
+        sortcodes_v2[ idx ] += ";" + lineup for lineup, idx in lineup_v2
+        send [ glyph, 'guide/kwic/v1/lineup/wrapped/single', lineup_v1, ]
+        send [ glyph, 'guide/kwic/v2/lineup/wrapped/single', lineup_v2, ]
+        lineup_v1 = null
+        #...................................................................................................
+        send [ glyph, prd, sortcodes_v1, ]
+        send [ glyph, 'guide/kwic/v2/sortcode', sortcodes_v2, ]
+      else
+        send.error new Error "unhandled predicate #{rpr prd}"
+
+#-----------------------------------------------------------------------------------------------------------
+@v1_split_so_bkey = ( bkey ) ->
+  R       = bkey.toString 'utf-8'
+  R       = R.split '|'
+  idx_txt = R[ 3 ]
+  R       = [ ( R[ 1 ].split ':' )[ 1 ], ( R[ 2 ].split ':' )..., ]
+  R.push ( parseInt idx_txt, 10 ) if idx_txt? and idx_txt.length > 0
+  for r, idx in R
+    continue unless CND.isa_text r
+    continue unless 'µ' in r
+    R[ idx ] = @v1_unescape r
+  return R
+
+#-----------------------------------------------------------------------------------------------------------
+@v1_$split_so_bkey = -> $ ( bkey, send ) => send @v1_split_so_bkey bkey
+
+#-----------------------------------------------------------------------------------------------------------
+@v1_lte_from_gte = ( gte ) ->
+  R = new Buffer ( last_idx = Buffer.byteLength gte ) + 1
+  R.write gte
+  R[ last_idx ] = 0xff
+  return R
+
+#-----------------------------------------------------------------------------------------------------------
+@v1_unescape = ( text_esc ) ->
+  matcher = /µ([0-9a-f]{2})/g
+  return text_esc.replace matcher, ( _, cid_hex ) ->
+    return String.fromCharCode parseInt cid_hex, 16
 
 #-----------------------------------------------------------------------------------------------------------
 @copy_jizura_db = ->
   home            = join __dirname, '../../jizura-datasources'
   source_route    = join home, 'data/leveldb'
-  target_route    = join home, 'data/leveldb-v2'
+  # target_route    = join home, 'data/leveldb-v2'
+  ### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ###
+  target_route    = '/tmp/leveldb-v2'
   target_db_size  = 1e6
   ds_options      = require join home, 'options'
   source_db       = HOLLERITH.new_db source_route
-  target_db       = HOLLERITH.new_db target_route, size: target_db_size
+  target_db       = HOLLERITH.new_db target_route, size: target_db_size, create: yes
+  help "using DB at #{source_db[ '%self' ][ 'location' ]}"
+  help "using DB at #{target_db[ '%self' ][ 'location' ]}"
   #.........................................................................................................
   step ( resume ) =>
     yield HOLLERITH.clear target_db, resume
     # gte         = 'so|glyph:中'
+    # gte         = 'so|glyph:覆'
     gte         = 'so|'
-    lte         = DEMO._lte_from_gte gte
+    lte         = @v1_lte_from_gte gte
     input       = source_db[ '%self' ].createKeyStream { gte, lte, }
     batch_size  = 1e4
     output      = HOLLERITH.$write target_db, { batch: batch_size, }
@@ -180,14 +263,15 @@ options =
       #.......................................................................................................
       .pipe @$show_progress 1e4
       .pipe D.$count ( count ) -> help "read #{ƒ count} keys"
-      .pipe DEMO._$split_so_bkey()
+      .pipe @v1_$split_so_bkey()
       .pipe @$keep_small_sample()
       .pipe @$throw_out_pods()
       .pipe @$cast_types ds_options
       .pipe @$collect_lists()
       .pipe @$compact_lists()
+      .pipe @$add_version_to_kwic_v1()
       .pipe @$add_kwic_v2()
-      # .pipe D.$show()
+      .pipe D.$show()
       .pipe D.$count ( count ) -> help "kept #{ƒ count} entries"
       .pipe output
 
