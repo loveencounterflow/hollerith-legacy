@@ -38,17 +38,33 @@ DEMO                      = require './demo'
 #-----------------------------------------------------------------------------------------------------------
 options =
   # sample:         null
-  sample:         [ '疈', '國', '𠵓', ]
-  sample:         [ '𡬜', '國', '𠵓', ]
+  # sample:         [ '疈', '國', '𠵓', ]
+  # sample:         [ '𡬜', '國', '𠵓', ]
+
+# #-----------------------------------------------------------------------------------------------------------
+# @$show_progress = ( size ) ->
+#   size   ?= 1e3
+#   count   = 0
+#   return $ ( data, send ) =>
+#     count += 1
+#     echo ƒ count if count % size is 0
+#     send data
 
 #-----------------------------------------------------------------------------------------------------------
 @$show_progress = ( size ) ->
-  size   ?= 1e3
-  count   = 0
-  return $ ( data, send ) =>
-    count += 1
-    echo ƒ count if count % size is 0
-    send data
+  size         ?= 1e3
+  phrase_count  = 0
+  glyph_count   = 0
+  last_glyph    = null
+  return D.$observe ( phrase, has_ended ) =>
+    unless has_ended
+      phrase_count += 1
+      echo ƒ phrase_count if phrase_count % size is 0
+      glyph_count  += +1 if ( glyph = phrase[ 0 ] ) isnt last_glyph
+      last_glyph    = glyph
+    else
+      help "read #{ƒ phrase_count} phrases for #{ƒ glyph_count} glyphs"
+      help "(#{( phrase_count / glyph_count ).toFixed 2} phrases per glyph)"
 
 #-----------------------------------------------------------------------------------------------------------
 @$keep_small_sample = ->
@@ -165,12 +181,9 @@ options =
   long_wrapped_lineups  = null
   return $ ( [ sbj, prd, obj, ], send ) =>
     #.......................................................................................................
-    ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
     if prd is 'guide/has/uchr'
       last_glyph            = sbj
       long_wrapped_lineups  = @_long_wrapped_lineups_from_guide_has_uchr obj
-      warn long_wrapped_lineups
-    ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
     #.......................................................................................................
     return send [ sbj, prd, obj, ] unless prd.startsWith 'guide/kwic/v1/'
     #.......................................................................................................
@@ -279,9 +292,8 @@ options =
     #.........................................................................................................
     input
       #.......................................................................................................
-      .pipe @$show_progress 1e4
-      .pipe D.$count ( count ) -> help "read #{ƒ count} keys"
       .pipe @v1_$split_so_bkey()
+      .pipe @$show_progress 1e4
       .pipe @$keep_small_sample()
       .pipe @$throw_out_pods()
       .pipe @$cast_types ds_options
@@ -289,8 +301,8 @@ options =
       .pipe @$compact_lists()
       .pipe @$add_version_to_kwic_v1()
       .pipe @$add_kwic_v2()
-      .pipe D.$show()
-      .pipe D.$count ( count ) -> help "kept #{ƒ count} entries"
+      # .pipe D.$show()
+      .pipe D.$count ( count ) -> help "kept #{ƒ count} phrases"
       .pipe output
 
 
