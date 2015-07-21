@@ -39,6 +39,7 @@ DEMO                      = require './demo'
 options =
   # sample:         null
   sample:         [ '疈', '國', '𠵓', ]
+  sample:         [ '𡬜', '國', '𠵓', ]
 
 #-----------------------------------------------------------------------------------------------------------
 @$show_progress = ( size ) ->
@@ -141,25 +142,42 @@ options =
     send [ sbj, prd, obj, ]
 
 #-----------------------------------------------------------------------------------------------------------
+@_long_wrapped_lineups_from_guide_has_uchr = ( guides ) ->
+  ### Extending lineups to accommodate for glyphs with 'overlong' factorials (those with more than 6
+  factors; these were previously excluded from the gamut in `feed-db.coffee`, line 2135,
+  `@KWIC.$compose_lineup_facets`). ###
+  lineup      = guides[ .. ]
+  last_idx    = lineup.length - 1 + 6
+  lineup.push    '\u3000' while lineup.length < 19
+  lineup.unshift '\u3000' while lineup.length < 25
+  R           = []
+  for idx in [ 6 .. last_idx ]
+    infix   = lineup[ idx ]
+    suffix  = lineup[ idx + 1 .. idx + 6 ].join ''
+    prefix  = lineup[ idx - 6 .. idx - 1 ].join ''
+    R.push [ infix, suffix, prefix, ].join ','
+  return R
+
+#-----------------------------------------------------------------------------------------------------------
 @$add_kwic_v2 = ->
   ### see `demo/show_kwic_v2_sample` ###
-  last_glyph  = null
-  lineup_v1   = null
+  last_glyph            = null
+  long_wrapped_lineups  = null
   return $ ( [ sbj, prd, obj, ], send ) =>
-    # return send [ sbj, prd, obj, ] unless prd.startsWith 'guide/kwic/v1/'
+    #.......................................................................................................
     ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
-    return unless prd.startsWith 'guide/kwic/v1/'
-    debug '©1ZuwT', [ sbj, prd, obj, ]
+    if prd is 'guide/has/uchr'
+      last_glyph            = sbj
+      long_wrapped_lineups  = @_long_wrapped_lineups_from_guide_has_uchr obj
+      warn long_wrapped_lineups
     ### >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ###
+    #.......................................................................................................
+    return send [ sbj, prd, obj, ] unless prd.startsWith 'guide/kwic/v1/'
+    #.......................................................................................................
     switch prd.replace /^guide\/kwic\/v1\//, ''
-      when 'lineup/wrapped/infix', 'lineup/wrapped/prefix', 'lineup/wrapped/suffix'
+      when 'lineup/wrapped/infix', 'lineup/wrapped/prefix', 'lineup/wrapped/suffix', 'lineup/wrapped/single'
         ### copy to target ###
         send [ sbj, prd, obj, ]
-      when 'lineup/wrapped/single'
-        ### memorize ###
-        debug '©bTNJ0', [ sbj, prd, obj, ]
-        last_glyph  = sbj
-        lineup_v1   = obj
       when 'sortcode'
         [ glyph, _, sortcodes_v1, ] = [ sbj, prd, obj, ]
         sortcodes_v2                = []
@@ -180,21 +198,21 @@ options =
           sortrow_v2.push position for [ _, position, ] in sortrow_v1
           sortcodes_v2.push sortrow_v2.join ','
         #...................................................................................................
-        urge '©IwQEK1', lineup_v1
-        urge '©IwQEK2', sortcodes_v1
-        #...................................................................................................
         unless glyph is last_glyph
           return send.error new Error "unexpected mismatch: #{rpr glyph}, #{rpr last_glyph}"
         #...................................................................................................
-        unless lineup_v1?
-          return send.error new Error "missing lineup for glyph #{rpr glyph}"
+        unless long_wrapped_lineups?
+          return send.error new Error "missing long wrapped lineups for glyph #{rpr glyph}"
         #...................................................................................................
-        lineup_v2 = lineup_v1
-        sortcodes_v1[ idx ] += ";" + lineup for lineup, idx in lineup_v1
-        sortcodes_v2[ idx ] += ";" + lineup for lineup, idx in lineup_v2
-        send [ glyph, 'guide/kwic/v1/lineup/wrapped/single', lineup_v1, ]
-        send [ glyph, 'guide/kwic/v2/lineup/wrapped/single', lineup_v2, ]
-        lineup_v1 = null
+        unless sortcodes_v2.length is long_wrapped_lineups.length
+          warn 'sortcodes_v2:         ', sortcodes_v2
+          warn 'long_wrapped_lineups: ', long_wrapped_lineups
+          return send.error new Error "length mismatch for glyph #{rpr glyph}"
+        #...................................................................................................
+        sortcodes_v1[ idx ] += ";" + lineup for lineup, idx in long_wrapped_lineups
+        sortcodes_v2[ idx ] += ";" + lineup for lineup, idx in long_wrapped_lineups
+        send [ glyph, 'guide/kwic/v2/lineup/wrapped/single', long_wrapped_lineups, ]
+        long_wrapped_lineups  = null
         #...................................................................................................
         send [ glyph, prd, sortcodes_v1, ]
         send [ glyph, 'guide/kwic/v2/sortcode', sortcodes_v2, ]
