@@ -158,10 +158,11 @@ options =
     send [ sbj, prd, obj, ]
 
 #-----------------------------------------------------------------------------------------------------------
-@_long_wrapped_lineups_from_guide_has_uchr = ( guides ) ->
+@_long_wrapped_lineups_from_guides = ( guides ) ->
   ### Extending lineups to accommodate for glyphs with 'overlong' factorials (those with more than 6
   factors; these were previously excluded from the gamut in `feed-db.coffee`, line 2135,
   `@KWIC.$compose_lineup_facets`). ###
+  ### TAINT here be magic numbers ###
   lineup      = guides[ .. ]
   last_idx    = lineup.length - 1 + 6
   lineup.push    '\u3000' while lineup.length < 19
@@ -183,7 +184,7 @@ options =
     #.......................................................................................................
     if prd is 'guide/has/uchr'
       last_glyph            = sbj
-      long_wrapped_lineups  = @_long_wrapped_lineups_from_guide_has_uchr obj
+      long_wrapped_lineups  = @_long_wrapped_lineups_from_guides obj
     #.......................................................................................................
     return send [ sbj, prd, obj, ] unless prd.startsWith 'guide/kwic/v1/'
     #.......................................................................................................
@@ -265,9 +266,7 @@ options =
 @copy_jizura_db = ->
   home            = join __dirname, '../../jizura-datasources'
   source_route    = join home, 'data/leveldb'
-  # target_route    = join home, 'data/leveldb-v2'
-  ### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ###
-  target_route    = '/tmp/leveldb-v2'
+  target_route    = join home, 'data/leveldb-v2'
   target_db_size  = 1e6
   ds_options      = require join home, 'options'
   source_db       = HOLLERITH.new_db source_route
