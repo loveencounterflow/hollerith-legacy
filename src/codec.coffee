@@ -7,8 +7,6 @@ rpr                       = CND.rpr
 badge                     = 'HOLLERITH/CODEC'
 debug                     = CND.get_logger 'debug',     badge
 warn                      = CND.get_logger 'warn',      badge
-#...........................................................................................................
-HOLLERITH                 = require './main'
 
 
 #-----------------------------------------------------------------------------------------------------------
@@ -255,7 +253,7 @@ _encode = ( key, idx, is_top_level ) ->
           key_rpr = []
           for element in key
             if CND.isa_jsbuffer element
-              key_rpr.push "#{HOLLERITH.DUMP.rpr_of_buffer null, key[ 2 ]}"
+              key_rpr.push "#{@rpr_of_buffer null, key[ 2 ]}"
             else
               key_rpr.push rpr element
           warn "detected problem with key [ #{rpr key_rpr.join ', '} ]"
@@ -293,3 +291,67 @@ _decode = ( buffer, idx, is_top_level, single ) ->
 # debug ( require './dump' ).rpr_of_buffer null, buffer = @encode [ 'aaa', [], ]
 # debug '©tP5xQ', @decode buffer
 
+#===========================================================================================================
+#
+#-----------------------------------------------------------------------------------------------------------
+@encodings =
+
+  #.........................................................................................................
+  dbcs2: """
+    ⓪①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛
+    ㉜！＂＃＄％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？
+    ＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿
+    ｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～㉠
+    ㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿㋐㋑㋒㋓㋔㋕㋖㋗㋘㋙㋚㋛㋜㋝
+    ㋞㋟㋠㋡㋢㋣㋤㋥㋦㋧㋨㋩㋪㋫㋬㋭㋮㋯㋰㋱㋲㋳㋴㋵㋶㋷㋸㋹㋺㋻㋼㋽
+    ㋾㊊㊋㊌㊍㊎㊏㊐㊑㊒㊓㊔㊕㊖㊗㊘㊙㊚㊛㊜㊝㊞㊟㊠㊡㊢㊣㊤㊥㊦㊧㊨
+    ㊩㊪㊫㊬㊭㊮㊯㊰㊀㊁㊂㊃㊄㊅㊆㊇㊈㊉㉈㉉㉊㉋㉌㉍㉎㉏⓵⓶⓷⓸⓹〓
+    """
+  #.........................................................................................................
+  aleph: """
+    БДИЛЦЧШЭЮƆƋƏƐƔƥƧƸψŐőŒœŊŁłЯɔɘɐɕəɞ
+    ␣!"#$%&'()*+,-./0123456789:;<=>?
+    @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_
+    `abcdefghijklmnopqrstuvwxyz{|}~ω
+    ΓΔΘΛΞΠΣΦΨΩαβγδεζηθικλμνξπρςστυφχ
+    Ж¡¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
+    ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
+    àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
+    """
+  #.........................................................................................................
+  rdctn: """
+    ∇≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡
+    ␣!"#$%&'()*+,-./0123456789:;<=>?
+    @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_
+    `abcdefghijklmnopqrstuvwxyz{|}~≡
+    ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃
+    ∃∃¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
+    ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
+    àáâãäåæçèéêëìíîïðñò≢≢≢≢≢≢≢≢≢≢≢≢Δ
+    """
+
+
+#-----------------------------------------------------------------------------------------------------------
+@rpr_of_buffer = ( db, buffer, encoding ) ->
+  return ( rpr buffer ) + ' ' +  @_encode_buffer db, buffer, encoding
+
+#-----------------------------------------------------------------------------------------------------------
+@_encode_buffer = ( db, buffer, encoding = 'rdctn' ) ->
+  ### TAINT use switch, emit error if `encoding` not list or known key ###
+  encoding = @encodings[ encoding ] unless CND.isa_list encoding
+  return ( encoding[ buffer[ idx ] ] for idx in [ 0 ... buffer.length ] ).join ''
+
+#-----------------------------------------------------------------------------------------------------------
+@_compile_encodings = ->
+  #.........................................................................................................
+  chrs_of = ( text ) ->
+    text = text.split /([\ud800-\udbff].|.)/
+    return ( chr for chr in text when chr isnt '' )
+  #.........................................................................................................
+  for name, encoding of @encodings
+    encoding = chrs_of encoding.replace /\n+/g, ''
+    unless ( length = encoding.length ) is 256
+      throw new Error "expected 256 characters, found #{length} in encoding #{rpr name}"
+    @encodings[ name ] = encoding
+  return null
+@_compile_encodings()

@@ -86,7 +86,7 @@ show_db_entries = ( handler ) ->
     .pipe $ ( facets, send ) =>
       help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
       # buffer = new Buffer JSON.stringify [ '开', '彡' ]
-      # debug '©GJfL6', HOLLERITH.DUMP.rpr_of_buffer null, buffer
+      # debug '©GJfL6', HOLLERITH.CODEC.rpr_of_buffer null, buffer
     .pipe D.$on_end => handler()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -1079,7 +1079,7 @@ clear_leveldb = ( leveldb, handler ) ->
         # debug '©54IKt', facets
         help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
         buffer = new Buffer JSON.stringify [ '开', '彡' ]
-        debug '©GJfL6', HOLLERITH.DUMP.rpr_of_buffer db, buffer
+        debug '©GJfL6', HOLLERITH.CODEC.rpr_of_buffer db, buffer
       .pipe D.$on_end => done()
   #.........................................................................................................
   return null

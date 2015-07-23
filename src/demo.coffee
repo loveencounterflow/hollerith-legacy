@@ -519,9 +519,9 @@ HOLLERITH.$pick_values = ->
 
 #-----------------------------------------------------------------------------------------------------------
 @show_encoding_sample = ->
-  encoding  = HOLLERITH.DUMP.encodings[ 'dbcs2' ]
-  encoding  = HOLLERITH.DUMP.encodings[ 'aleph' ]
-  encoding  = HOLLERITH.DUMP.encodings[ 'rdctn' ]
+  encoding  = HOLLERITH.CODEC.encodings[ 'dbcs2' ]
+  encoding  = HOLLERITH.CODEC.encodings[ 'aleph' ]
+  encoding  = HOLLERITH.CODEC.encodings[ 'rdctn' ]
   phrases   = [
     [ '丁', 'strokecount',     2,                          ]
     [ '三', 'strokecount',     3,                          ]
@@ -549,7 +549,7 @@ HOLLERITH.$pick_values = ->
   # text = new Buffer '一'
   # text_rpr =
   # help b, text_rpr
-  help HOLLERITH.DUMP.rpr_of_buffer null, HOLLERITH.CODEC.encode [ true, -1 / 7, ]
+  help HOLLERITH.CODEC.rpr_of_buffer null, HOLLERITH.CODEC.encode [ true, -1 / 7, ]
 
   # chrs = []
   # for cid in [ 0 .. 255 ]

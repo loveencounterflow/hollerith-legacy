@@ -179,54 +179,6 @@ HOLLERITH                 = require './main'
 #===========================================================================================================
 #
 #-----------------------------------------------------------------------------------------------------------
-@encodings =
-
-  #.........................................................................................................
-  dbcs2: """
-    ⓪①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛
-    ㉜！＂＃＄％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？
-    ＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿
-    ｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～㉠
-    ㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿㋐㋑㋒㋓㋔㋕㋖㋗㋘㋙㋚㋛㋜㋝
-    ㋞㋟㋠㋡㋢㋣㋤㋥㋦㋧㋨㋩㋪㋫㋬㋭㋮㋯㋰㋱㋲㋳㋴㋵㋶㋷㋸㋹㋺㋻㋼㋽
-    ㋾㊊㊋㊌㊍㊎㊏㊐㊑㊒㊓㊔㊕㊖㊗㊘㊙㊚㊛㊜㊝㊞㊟㊠㊡㊢㊣㊤㊥㊦㊧㊨
-    ㊩㊪㊫㊬㊭㊮㊯㊰㊀㊁㊂㊃㊄㊅㊆㊇㊈㊉㉈㉉㉊㉋㉌㉍㉎㉏⓵⓶⓷⓸⓹〓
-    """
-  #.........................................................................................................
-  aleph: """
-    БДИЛЦЧШЭЮƆƋƏƐƔƥƧƸψŐőŒœŊŁłЯɔɘɐɕəɞ
-    ␣!"#$%&'()*+,-./0123456789:;<=>?
-    @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_
-    `abcdefghijklmnopqrstuvwxyz{|}~ω
-    ΓΔΘΛΞΠΣΦΨΩαβγδεζηθικλμνξπρςστυφχ
-    Ж¡¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
-    ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
-    àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
-    """
-  #.........................................................................................................
-  rdctn: """
-    ∇≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡
-    ␣!"#$%&'()*+,-./0123456789:;<=>?
-    @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_
-    `abcdefghijklmnopqrstuvwxyz{|}~≡
-    ∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃∃
-    ∃∃¢£¤¥¦§¨©ª«¬Я®¯°±²³´µ¶·¸¹º»¼½¾¿
-    ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß
-    àáâãäåæçèéêëìíîïðñò≢≢≢≢≢≢≢≢≢≢≢≢Δ
-    """
-
-
-#-----------------------------------------------------------------------------------------------------------
-@rpr_of_buffer = ( db, buffer, encoding ) ->
-  return ( rpr buffer ) + ' ' +  @_encode_buffer db, buffer, encoding
-
-#-----------------------------------------------------------------------------------------------------------
-@_encode_buffer = ( db, buffer, encoding = 'rdctn' ) ->
-  ### TAINT use switch, emit error if `encoding` not list or known key ###
-  encoding = @encodings[ encoding ] unless CND.isa_list encoding
-  return ( encoding[ buffer[ idx ] ] for idx in [ 0 ... buffer.length ] ).join ''
-
-#-----------------------------------------------------------------------------------------------------------
 @rpr_of_facets = ( db, facets, encoding ) ->
   columnify_settings =
     paddingChr:       ' '
@@ -241,26 +193,11 @@ HOLLERITH                 = require './main'
     a.push [ key_rpr, value_rpr, ]
   a = CND.columnify a, columnify_settings
   for [ key, value, ] in facets
-    key_rpr   = @_encode_buffer db, key,   encoding
-    value_rpr = @_encode_buffer db, value, encoding
+    key_rpr   = HOLLERITH.CODEC._encode_buffer db, key,   encoding
+    value_rpr = HOLLERITH.CODEC._encode_buffer db, value, encoding
     b.push [ key_rpr, value_rpr, ]
   b = CND.columnify b, columnify_settings
   return a + '\n' + b
-
-#-----------------------------------------------------------------------------------------------------------
-@_compile_encodings = ->
-  #.........................................................................................................
-  chrs_of = ( text ) ->
-    text = text.split /([\ud800-\udbff].|.)/
-    return ( chr for chr in text when chr isnt '' )
-  #.........................................................................................................
-  for name, encoding of @encodings
-    encoding = chrs_of encoding.replace /\n+/g, ''
-    unless ( length = encoding.length ) is 256
-      throw new Error "expected 256 characters, found #{length} in encoding #{rpr name}"
-    @encodings[ name ] = encoding
-  return null
-@_compile_encodings()
 
 
 
