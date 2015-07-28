@@ -37,6 +37,7 @@ $                         = D.remit.bind D
 $async                    = D.remit_async.bind D
 ASYNC                     = require 'async'
 CHR                       = require 'coffeenode-chr'
+KWIC                      = require 'kwic'
 #...........................................................................................................
 new_db                    = require 'level'
 # new_levelgraph            = require 'levelgraph'
@@ -362,19 +363,20 @@ HOLLERITH.$pick_values = ->
     .pipe D.$on_end -> handler null, Z
 
 #-----------------------------------------------------------------------------------------------------------
-@show_kwic_v2_sample = ( db ) ->
+@show_kwic_v2_and_v3_sample = ( db ) ->
   #.........................................................................................................
   step ( resume ) =>
     db_route      = join __dirname, '../../jizura-datasources/data/leveldb-v2'
     db           ?= HOLLERITH.new_db db_route, create: no
     help "using DB at #{db[ '%self' ][ 'location' ]}"
-    # factors       = yield @read_factors db, resume
+    factor_infos  = yield @read_factors db, resume
     # debug '©g5bVR', factors; process.exit()
-    # help "read #{( Object.keys factors ).length} entries for factors"
+    help "read #{( Object.keys factor_infos ).length} entries for factor_infos"
     ranks         = {}
     include       = Infinity
-    include       = [ '寿', '邦', '帮', '畴', '铸', '筹', '涛', '祷', '绑', '綁',    ]
     include       = 10000
+    include       = [ '寿', '邦', '帮', '畴', '铸', '筹', '涛', '祷', '绑', '綁',    ]
+    # 'guide/hierarchy/uchr'
     #.........................................................................................................
     sample        = yield @read_sample db, include, resume
     #.........................................................................................................
@@ -395,30 +397,70 @@ HOLLERITH.$pick_values = ->
       return $ ( [ glyph, sortcode ], send ) =>
         [ _, lineup, ]              = sortcode.split ';'
         [ infix, suffix, prefix, ]  = lineup.split ','
-        lineup                      = prefix + '|' + infix + '|' + suffix
+        lineup                      = prefix + '|' + infix + suffix
         send [ glyph, lineup, ]
     #.........................................................................................................
-    $transform = => D.combine [
+    $format_sortcode_v3 = =>
+      return $ ( [ glyph, sortcode, ], send ) =>
+        [ _, infix, suffix, prefix, ] = sortcode
+        prefix.unshift '\u3000' until prefix.length >= 6
+        suffix.push    '\u3000' until suffix.length >= 6
+        prefix                        = prefix.join ''
+        suffix                        = suffix.join ''
+        lineup                        = prefix + '|' + infix + suffix
+        send [ glyph, lineup, ]
+    #.........................................................................................................
+    $unpack = =>
+      return $ ( [ [ v1, v2, ], v3, ], send ) =>
+        send [ v1, v2, v3, ]
+    #.........................................................................................................
+    $transform_v1_v2 = => D.combine [
         $reorder_phrase()
         $exclude_gaiji()
         $include_sample()
         $extract_lineup()
         ]
     #.........................................................................................................
-    prefix_v1 = { prefix: [ 'pos', 'guide/kwic/v1/sortcode', ], }
-    prefix_v2 = { prefix: [ 'pos', 'guide/kwic/v2/sortcode', ], }
-    input_v1  = ( HOLLERITH.create_phrasestream db, prefix_v1 ).pipe $transform()
-    input_v2  = ( HOLLERITH.create_phrasestream db, prefix_v2 ).pipe $transform()
+    $transform_v3 = => D.combine [
+        $reorder_phrase()
+        $exclude_gaiji()
+        $include_sample()
+        $format_sortcode_v3()
+        ]
+    #.........................................................................................................
+    query_v1  = { prefix: [ 'pos', 'guide/kwic/v1/sortcode', ], }
+    query_v2  = { prefix: [ 'pos', 'guide/kwic/v2/sortcode', ], }
+    query_v3  = { prefix: [ 'pos', 'guide/kwic/v3/sortcode', ], }
+    input_v1  = ( HOLLERITH.create_phrasestream db, query_v1 ).pipe $transform_v1_v2()
+    input_v2  = ( HOLLERITH.create_phrasestream db, query_v2 ).pipe $transform_v1_v2()
+    input_v3  = ( HOLLERITH.create_phrasestream db, query_v3 ).pipe $transform_v3()
+      .pipe D.$observe ( [ glyph, lineup, ] ) -> help glyph, lineup if glyph is '畴'
     #.........................................................................................................
     input_v1
-      .pipe D.$lockstep input_v2
+      .pipe D.$lockstep input_v2, fallback: [ null, null, ]
+      .pipe D.$lockstep input_v3
+      .pipe $unpack()
       .pipe do =>
-        count = 0
-        return $ ( [ [ glyph_v1, lineup_v1, ], [ glyph_v2, lineup_v2, ], ], send ) =>
-          spc   = '\u3000'
-          line  = lineup_v1 + spc + glyph_v1 + spc + '◉' + spc + lineup_v2 + spc + glyph_v2
-          # help line
-          count += 1
+        count       = 0
+        spc         = '\u3000'
+        include_v1  = no
+        return D.$observe ( [ v1, v2, v3, ] ) =>
+          [ glyph_v1, lineup_v1, ]  = v1
+          [ glyph_v2, lineup_v2, ]  = v2
+          [ glyph_v3, lineup_v3, ]  = v3
+          diff                      = []
+          diff_v1                   = if glyph_v1 is glyph_v2 then ' ' else '<'
+          diff_v2                   = if glyph_v2 is glyph_v3 then ' ' else '>'
+          if include_v1
+            line                      =                                       lineup_v1 + spc + glyph_v1
+            line                     += spc + diff_v1 + '◉'           + spc + lineup_v2 + spc + glyph_v2
+            line                     += spc +           '◉' + diff_v2 + spc + lineup_v3 + spc + glyph_v3
+            line                     += spc + spc + spc
+          else
+            line                      =                                       lineup_v2 + spc + glyph_v2
+            line                     += spc +           '◉' + diff_v2 + spc + lineup_v3 + spc + glyph_v3
+            line                     += spc + spc + spc
+          count                    += 1
           help ƒ count if count % 10000 is 0
           echo line
     #.........................................................................................................
@@ -574,7 +616,7 @@ unless module.parent?
   #---------------------------------------------------------------------------------------------------------
   debug '©AoOAS', options
   # @find_good_kwic_sample_glyphs_3()
-  @show_kwic_v2_sample()
+  @show_kwic_v2_and_v3_sample()
   # @show_codepoints_with_missing_predicates()
   # @show_encoding_sample()
   # @compile_encodings()

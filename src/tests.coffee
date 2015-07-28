@@ -43,7 +43,7 @@ db                        = null
 #...........................................................................................................
 levelup                   = require 'level'
 leveldown                 = require 'level/node_modules/leveldown'
-CODEC                     = require './codec'
+CODEC                     = require 'hollerith-codec'
 #...........................................................................................................
 ƒ                         = CND.format_number
 
@@ -1538,6 +1538,53 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe D.$lockstep input_3, fallback: null
       .pipe $ ( data, send ) => help JSON.stringify data; send data
       .pipe D.$on_end done
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "has_any yields existence of key" ] = ( T, done ) ->
+  probes_idx  = 2
+  probes_and_matchers = [
+    [ [ 'spo', '形', 'strokecount',      ], true, ]
+    [ [ 'spo', '丁', 'componentcount',   ], true, ]
+    [ [ 'spo', '三', 'componentcount',   ], true, ]
+    [ [ 'spo', '夫', 'componentcount',   ], true, ]
+    [ [ 'spo', '國', 'componentcount',   ], true, ]
+    [ [ 'spo', '形', 'componentcount',   ], true, ]
+    [ [ 'spo', '丁', 'components',       ], true, ]
+    [ [ 'spo', '丁', 'xxxx',             ], false, ]
+    [ [ 'spo', '丁',                     ], true, ]
+    [ [ 'spo',                           ], true, ]
+    [ [ 'xxx',                           ], false, ]
+    ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    for [ probe, matcher, ] in probes_and_matchers
+      T.eq matcher, yield HOLLERITH.has_any db, { prefix: probe, }, resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "$write rejects duplicate S/P pairs" ] = ( T, done ) ->
+  probes_idx  = 2
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    #.......................................................................................................
+    try_writing = ->
+      input = D.create_throughstream()
+      #.....................................................................................................
+      input
+        .pipe D.$show()
+        .pipe HOLLERITH.$write db
+        .pipe D.$on_end ->
+          T.fail "should never be called"
+          done()
+      #.....................................................................................................
+      input.write [ '形', 'strokecount', 1234, ]
+      input.end()
+    #.......................................................................................................
+    D.run try_writing, ( error ) ->
+      T.eq "S/P pair already in DB: [ '形', 'strokecount' ]", error[ 'message' ]
+      done()
 
 
 ############################################################################################################

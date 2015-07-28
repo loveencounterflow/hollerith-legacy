@@ -20,7 +20,7 @@ echo                      = CND.echo.bind CND
 suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
 #...........................................................................................................
-CODEC                     = @CODEC = require './codec'
+CODEC                     = @CODEC = require 'hollerith-codec'
 DUMP                      = @DUMP  = require './dump'
 _codec_encode             = CODEC.encode.bind CODEC
 _codec_decode             = CODEC.decode.bind CODEC
@@ -66,7 +66,7 @@ later                     = suspend.immediately
   substrate = _new_level_db route, level_settings, ( error ) ->
     if error?
       if error[ 'name' ] is 'OpenError'
-        ### TAINT error also thrown wis misleading message if rout doesn't exist up the penultimate term ###
+        ### TAINT error also thrown with misleading message if route doesn't exist up the penultimate term ###
         throw new Error "No database found at #{route} and no `create` setting given"
       throw error
   #.........................................................................................................
@@ -178,6 +178,7 @@ later                     = suspend.immediately
   ensure_unique     = settings[ 'unique' ] ? true
   substrate         = db[ '%self' ]
   R                 = D.create_throughstream()
+  batch_written     = null
   #.........................................................................................................
   $index = => $ ( spo, send ) =>
     [ sbj, prd, obj, ] = spo
@@ -205,17 +206,20 @@ later                     = suspend.immediately
   #.........................................................................................................
   $write = => $ ( batch, send ) =>
     substrate.batch batch
+    batch_written()
     send batch
   #.........................................................................................................
   if ensure_unique
-    { $ensure_unique_spo, $load_bloom, $save_bloom, } = @_get_bloom_methods db
+    { batch_written, $ensure_unique_sp, $load_bloom, $save_bloom, } = @_get_bloom_methods db
+  else
+    batch_written = ->
   #.........................................................................................................
   pipeline = []
   pipeline.push $load_bloom()         if ensure_unique
   pipeline.push @$validate_spo()
+  pipeline.push $ensure_unique_sp()   if ensure_unique
   pipeline.push $index()
   pipeline.push $encode()
-  pipeline.push $ensure_unique_spo()  if ensure_unique
   pipeline.push $as_batch_entry()
   pipeline.push D.$batch batch_size
   pipeline.push $write()
@@ -246,42 +250,41 @@ later                     = suspend.immediately
 #-----------------------------------------------------------------------------------------------------------
 @_get_bloom_methods = ( db ) ->
   #---------------------------------------------------------------------------------------------------------
-  entry_count           = 0
-  false_positive_count  = 0
   bloom_settings        = size: db[ 'size' ] ? 1e5
+  seen                  = {}
+  #---------------------------------------------------------------------------------------------------------
+  batch_written = ->
+    seen = {}
   #---------------------------------------------------------------------------------------------------------
   show_bloom_info = =>
     CND.BLOOM.report db[ '%bloom' ]
   #---------------------------------------------------------------------------------------------------------
-  $ensure_unique_spo = =>
-    ### We skip all phrases except for SPO entries, the problem being that even IF some erroneous processing
-    should result in bogus `[ 'pos', 'foo', 'bar', 'baz', ]` tuples, fact is that the object value of that
-    bogus phrase gets right into the key—which may or may not be on record. In other words, you could still
-    create millions of wrong entries like `[ 'pos', 'weighs', kgs, 'my-rabbit' ]` for non-existing (but in
-    themselves, were those actually on record, repetitive) assertions like `[ 'spo', 'my-rabbit', 'weighs',
-    kgs, ]` for any possible value of `kgs` without ever being caught by the no-duplicates restriction.
-
-    It seems better to forgo this test as it only incurs a performance and space burden without being really
-    helpful (a worthwhile alternative would be to check that for all SPO entries there are all the POS
-    entries and that there are no extraneous POS entries, which is even more of a computational burden, but
-    at least reaches a meaningful level of safety against malformed data. ###
+  $ensure_unique_sp = =>
     #.......................................................................................................
-    return $async ( xphrase, done ) =>
-      ### Skip if this is not a main entry to the DB: ###
-      return done xphrase unless xphrase[ 0 ] is 'spo'
-      key_bfr               = xphrase[ 1 ]
+    return $async ( spo, done ) =>
+      [ sbj, prd, _, ]      = spo
+      XXX = prd is 'guide/kwic/v3/sortcode'
+      key                   = [ sbj, prd, ]
+      key_bfr               = CODEC.encode key
+      key_txt               = key_bfr.toString 'hex'
       bloom                 = db[ '%bloom' ]
+      seen_has_key          = seen[ key_txt ]?
       bloom_has_key         = CND.BLOOM.has bloom, key_bfr
-      CND.BLOOM.add bloom, key_bfr
-      entry_count          += +1
-      return done xphrase unless bloom_has_key
-      false_positive_count += +1
       #.....................................................................................................
-      @has db, key_bfr, ( error, db_has_key ) =>
+      if seen_has_key
+        warn key
+        return done.error new Error "S/P pair already in DB: #{rpr key}"
+      #.....................................................................................................
+      seen[ key_txt ] = 1
+      CND.BLOOM.add bloom, key_bfr
+      #.....................................................................................................
+      return done spo unless bloom_has_key
+      #.....................................................................................................
+      @has_any db, { prefix: [ 'spo', sbj, prd, ], }, ( error, db_has_key ) =>
         return done.error error if error?
-        ### At this point `rpr xphrase` show raw buffers; should decode ###
-        return done.error new Error "phrase already in DB: #{rpr xphrase}" if db_has_key
-        done xphrase
+        if db_has_key
+          return done.error new Error "S/P pair already in DB: #{rpr key}"
+        done spo
   #---------------------------------------------------------------------------------------------------------
   $load_bloom = =>
     is_first = yes
@@ -305,19 +308,8 @@ later                     = suspend.immediately
         return if data? then done data else done()
   #---------------------------------------------------------------------------------------------------------
   $save_bloom = =>
-    # return $async ( send, end ) =>
-    #   whisper "saving Bloom filter..."
-    #   bloom_bfr = CND.BLOOM.as_buffer db[ '%bloom' ]
-    #   whisper "serialized bloom filter to #{ƒ bloom_bfr.length} bytes"
-    #   show_bloom_info()
-    #   #.....................................................................................................
-    #   @_put_meta db, 'bloom', bloom_bfr, ( error ) =>
-    #     return send.error error if error?
-    #     whisper "...ok"
-    #     end()
-    # ###
-    # # It *might* be that `$on_end` shouldn't be asynchronous, so we swap it fron `$async`.
     return D.$on_end ( send, end ) =>
+      debug '©tN1vA', "seen: #{( Object.keys seen ).length} entries"
       whisper "saving Bloom filter..."
       bloom_bfr = CND.BLOOM.as_buffer db[ '%bloom' ]
       whisper "serialized bloom filter to #{ƒ bloom_bfr.length} bytes"
@@ -327,9 +319,8 @@ later                     = suspend.immediately
         return send.error error if error?
         whisper "...ok"
         end()
-    # ###
   #---------------------------------------------------------------------------------------------------------
-  return { $ensure_unique_spo, $load_bloom, $save_bloom, }
+  return { batch_written, $ensure_unique_sp, $load_bloom, $save_bloom, }
 
 
 #===========================================================================================================
@@ -471,12 +462,31 @@ later                     = suspend.immediately
 #-----------------------------------------------------------------------------------------------------------
 @has = ( db, key, handler ) ->
   key_bfr = if CND.isa_jsbuffer then key else @_encode_key db, key
+  #.........................................................................................................
   db[ '%self' ].get key_bfr, ( error, obj_bfr ) =>
     if error?
       return handler null, false if error[ 'type' ] is 'NotFoundError'
       return handler error
     handler null, true
+  #.........................................................................................................
+  return null
 
+#-----------------------------------------------------------------------------------------------------------
+@has_any = ( db, query, handler ) ->
+  input   = @create_facetstream db, query
+  active  = yes
+  #.........................................................................................................
+  input
+    .pipe $ ( data, send, end ) =>
+      if data?
+        active = no
+        input.destroy()
+        handler null, true
+      if end?
+        handler null, false if active?
+        end()
+  #.........................................................................................................
+  return null
 
 #===========================================================================================================
 # KEYS & VALUES

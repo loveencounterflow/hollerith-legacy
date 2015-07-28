@@ -38,7 +38,7 @@ db                        = null
 #...........................................................................................................
 levelup                   = require 'level'
 leveldown                 = require 'level/node_modules/leveldown'
-CODEC                     = require './codec'
+CODEC                     = require 'hollerith-codec'
 #...........................................................................................................
 ƒ                         = CND.format_number
 misfit                    = Symbol 'misfit'

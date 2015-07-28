@@ -33,6 +33,7 @@ $async                    = D.remit_async.bind D
 #...........................................................................................................
 HOLLERITH                 = require './main'
 DEMO                      = require './demo'
+KWIC                      = require 'kwic'
 ƒ                         = CND.format_number.bind CND
 
 #-----------------------------------------------------------------------------------------------------------
@@ -177,7 +178,7 @@ options =
 
 #-----------------------------------------------------------------------------------------------------------
 @$add_kwic_v2 = ->
-  ### see `demo/show_kwic_v2_sample` ###
+  ### see `demo/show_kwic_v2_and_v3_sample` ###
   last_glyph            = null
   long_wrapped_lineups  = null
   return $ ( [ sbj, prd, obj, ], send ) =>
@@ -234,6 +235,34 @@ options =
         send.error new Error "unhandled predicate #{rpr prd}"
 
 #-----------------------------------------------------------------------------------------------------------
+@$add_kwic_v3 = ( factor_infos ) ->
+  ### see `demo/show_kwic_v2_and_v3_sample` ###
+  #.........................................................................................................
+  return $ ( [ sbj, prd, obj, ], send ) =>
+    send [ sbj, prd, obj, ]
+    return unless prd is 'guide/kwic/v1/sortcode'
+    #.......................................................................................................
+    [ glyph, _, [ sortcode_v1, ... ], ] = [ sbj, prd, obj, ]
+    #.......................................................................................................
+    sortrow_v1    = ( x for x in sortcode_v1.split /(........,..),/ when x.length > 0 )
+    weights       = ( x.split ',' for x in sortrow_v1 )
+    weights.pop()
+    weights       = ( sortcode for [ sortcode, _, ] in weights )
+    weights       = ( sortcode for sortcode in weights when sortcode isnt '--------' )
+    weights       = ( ( sortcode.replace    /~/g, '-'    ) for sortcode in weights )
+    weights       = ( ( sortcode.replace /----/g, 'f---' ) for sortcode in weights )
+    #.......................................................................................................
+    factors       = ( factor_infos[ sortcode ] for sortcode in weights )
+    factors       = ( ( if factor? then factor else '〓' ) for factor in factors )
+    #.......................................................................................................
+    unless weights.length is factors.length
+      warn glyph, weights, factors, weights.length, factors.length
+      return
+    #.......................................................................................................
+    permutations = KWIC.get_permutations factors, weights
+    send [ glyph, 'guide/kwic/v3/sortcode', permutations, ]
+
+#-----------------------------------------------------------------------------------------------------------
 @v1_split_so_bkey = ( bkey ) ->
   R       = bkey.toString 'utf-8'
   R       = R.split '|'
@@ -263,26 +292,52 @@ options =
     return String.fromCharCode parseInt cid_hex, 16
 
 #-----------------------------------------------------------------------------------------------------------
+@read_factors = ( db, handler ) ->
+  #.........................................................................................................
+  Z         = {}
+  #.......................................................................................................
+  gte         = 'os|factor/sortcode'
+  lte         = @v1_lte_from_gte gte
+  input       = db[ '%self' ].createKeyStream { gte, lte, }
+  XNCHR       = require '../../jizura-datasources/lib/XNCHR'
+  #.......................................................................................................
+  input
+    .pipe @v1_$split_so_bkey()
+    .pipe D.$observe ( [ sortcode, _, factor, ] ) =>
+      Z[ sortcode ] = XNCHR.as_uchr factor
+    .pipe D.$on_end -> handler null, Z
+
+#-----------------------------------------------------------------------------------------------------------
 @copy_jizura_db = ->
   home            = join __dirname, '../../jizura-datasources'
   source_route    = join home, 'data/leveldb'
   target_route    = join home, 'data/leveldb-v2'
+  # target_route    = '/tmp/leveldb-v2'
   target_db_size  = 1e6
   ds_options      = require join home, 'options'
   source_db       = HOLLERITH.new_db source_route
   target_db       = HOLLERITH.new_db target_route, size: target_db_size, create: yes
+  #.........................................................................................................
+  ### TAINT this setting should come from Jizura DB options ###
+  # solids          = [ 'guide/kwic/v3/sortcode', ]
+  solids          = []
+  #.........................................................................................................
   help "using DB at #{source_db[ '%self' ][ 'location' ]}"
   help "using DB at #{target_db[ '%self' ][ 'location' ]}"
   #.........................................................................................................
   step ( resume ) =>
     yield HOLLERITH.clear target_db, resume
+    #.........................................................................................................
+    factor_infos  = yield @read_factors source_db, resume
+    help "read #{( Object.keys factor_infos ).length} entries for factor_infos"
+    #.........................................................................................................
     # gte         = 'so|glyph:中'
     # gte         = 'so|glyph:覆'
     gte         = 'so|'
     lte         = @v1_lte_from_gte gte
     input       = source_db[ '%self' ].createKeyStream { gte, lte, }
     batch_size  = 1e4
-    output      = HOLLERITH.$write target_db, { batch: batch_size, }
+    output      = HOLLERITH.$write target_db, { batch: batch_size, solids }
     #.........................................................................................................
     help "copying from  #{source_route}"
     help "to            #{target_route}"
@@ -300,6 +355,7 @@ options =
       .pipe @$compact_lists()
       .pipe @$add_version_to_kwic_v1()
       .pipe @$add_kwic_v2()
+      .pipe @$add_kwic_v3 factor_infos
       # .pipe D.$show()
       .pipe D.$count ( count ) -> help "kept #{ƒ count} phrases"
       .pipe output
