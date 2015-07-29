@@ -358,6 +358,7 @@ options =
       .pipe @$add_kwic_v3 factor_infos
       # .pipe D.$show()
       .pipe D.$count ( count ) -> help "kept #{ƒ count} phrases"
+      .pipe D.$stop_time "copy Jizura DB"
       .pipe output
 
 

@@ -1494,13 +1494,15 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe HOLLERITH.$write db
       .pipe D.$on_end done
 
+###
 #-----------------------------------------------------------------------------------------------------------
-@[ "keep ordering and completeness in asynchronous streams"] = ( T, T_done ) ->
+@[ "keep ordering and completeness in asynchronous streams" ] = ( T, T_done ) ->
   step ( resume ) =>
     idx     = 0
     input_A = D.create_throughstream()
     #.......................................................................................................
     input_B = input_A
+      .pipe D.$stop_time "keep ordering and completeness in asynchronous streams"
       .pipe $async ( data, done ) ->
         dt = CND.random_number 0.5, 1.5
         # debug '©WscFi', data, dt
@@ -1523,6 +1525,7 @@ clear_leveldb = ( leveldb, handler ) ->
       input_A.end()
     #.......................................................................................................
     write()
+###
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "read phrases in lockstep" ] = ( T, done ) ->
@@ -1584,6 +1587,36 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     D.run try_writing, ( error ) ->
       T.eq "S/P pair already in DB: [ '形', 'strokecount' ]", error[ 'message' ]
+      done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "codec accepts long keys" ] = ( T, done ) ->
+  probes_idx  = 2
+  probes      = []
+  long_text   = ( new Array 2048 ).join '#'
+  probes.push [ 'foo', long_text, [ long_text, long_text, long_text, long_text, long_text, ], ]
+  #.........................................................................................................
+  step ( resume ) =>
+    yield @_feed_test_data db, probes_idx, resume
+    #.......................................................................................................
+    try_writing = ->
+      input = D.create_throughstream()
+      #.....................................................................................................
+      input
+        # .pipe D.$show()
+        .pipe HOLLERITH.$write db
+        .pipe D.$on_end ->
+          T.eq 1, 1
+          done()
+      #.....................................................................................................
+      for probe in probes
+        input.write probe
+        # yield later resume
+      input.end()
+    #.......................................................................................................
+    D.run try_writing, ( error ) ->
+      T.fail "should never be called"
+      warn error
       done()
 
 

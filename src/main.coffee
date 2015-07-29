@@ -263,7 +263,6 @@ later                     = suspend.immediately
     #.......................................................................................................
     return $async ( spo, done ) =>
       [ sbj, prd, _, ]      = spo
-      XXX = prd is 'guide/kwic/v3/sortcode'
       key                   = [ sbj, prd, ]
       key_bfr               = CODEC.encode key
       key_txt               = key_bfr.toString 'hex'
@@ -309,7 +308,6 @@ later                     = suspend.immediately
   #---------------------------------------------------------------------------------------------------------
   $save_bloom = =>
     return D.$on_end ( send, end ) =>
-      debug '©tN1vA', "seen: #{( Object.keys seen ).length} entries"
       whisper "saving Bloom filter..."
       bloom_bfr = CND.BLOOM.as_buffer db[ '%bloom' ]
       whisper "serialized bloom filter to #{ƒ bloom_bfr.length} bytes"
