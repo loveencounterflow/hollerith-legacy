@@ -1593,8 +1593,12 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "codec accepts long keys" ] = ( T, done ) ->
   probes_idx  = 2
   probes      = []
-  long_text   = ( new Array 2048 ).join '#'
-  probes.push [ 'foo', long_text, [ long_text, long_text, long_text, long_text, long_text, ], ]
+  long_text   = ( new Array 1025 ).join '#'
+  # probes.push [ 'foo', long_text, [ long_text, long_text, long_text, long_text, long_text, ], ]
+  # probes.push [ 'foo', [ long_text, long_text, long_text, long_text, long_text, ],
+  #   [ long_text, long_text, long_text, long_text, long_text, ], ]
+  # probes.push [ 'foo', [ long_text, long_text, long_text, long_text, long_text, ], ]
+  probes.push [ 'foo', [ long_text, long_text, long_text, long_text, ], 42, ]
   #.........................................................................................................
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
@@ -1615,7 +1619,7 @@ clear_leveldb = ( leveldb, handler ) ->
       input.end()
     #.......................................................................................................
     D.run try_writing, ( error ) ->
-      T.fail "should never be called"
+      T.fail "should not throw error"
       warn error
       done()
 
