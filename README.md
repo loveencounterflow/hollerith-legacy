@@ -126,38 +126,34 @@ the net effect is that null bytes will sort *after* Basic Latin capital letters
 A—Z, but *before* Basic Latin lower case letters a—z.
 
 `bytewise` has none of these issues. Sadly, it is considerably slower than JSON.
-When you do `gulp --harmony build && node --harmony lib/benchmark.js` from
-inside the `hollerith2` directory to run some benchmarks, you will get an output
+When you do `npm run benchmark`, you will get an output
 like below; the figures in the `DT` column show the number of seconds needed to
-process 100'000 arbitrary strings; the `REL` column shows relative times in
+process 100'000 arbitrary probes; the `REL` column shows relative times in
 comparison to JSON, while the `MAX` column show relative times in comparison to
 the slowest test case:
 
 ```
+hollerith-codec ► npm run benchmark
 NAME                               DT  REL  MAX
-bytewise.encode           4.498304699 9.09 1.00
-new Buffer JSON.stringify 0.494802098 1.00 0.11
-H2C.encode                0.626849639 1.27 0.14
-new_buffer                0.095245441 0.19 0.02
-buffer_write              0.055629900 0.11 0.01
-string_replace            0.034068078 0.07 0.01
+bytewise.encode           4.441503192 8.51 1.00
+new Buffer JSON.stringify 0.521810996 1.00 0.12
+H2C.encode                1.471865467 2.82 0.33
 ```
 
-Roughly speaking, `bytewise` achieves around 10% of the throughput achievable by
-encoding to JSON and then turning that string into a buffer. By comparison, the
-H2C codec allows for almost 80% throughput as compared to the JSON solution.
-Since it has not been aggressively optimized yet, further performance gains are
-not impossible in the future.
+Roughly speaking, `bytewise` (v1.1.0) achieves less than 12% of the throughput
+that would be achievable by first encoding each probe to JSON and then turning
+the resulting string into a buffer. By comparison, the H2C codec allows for
+around 35% throughput of the JSON solution. Since H2C has not been aggressively
+optimized, further performance gains are not impossible.
 
 ### Encoding Details
 
-H2C achieves its good performance by being *much* more restrictive than
-`bytewise`. `bytewise` strives to support all JavaScript data types (including
-objects and nested lists) and to work in both the browser and in NodeJS. By
-contrast, H2C is not currently designed to run in the browser, and, more
-importantly, **it only supports flat lists as keys** whose elements can only be
-one of
+H2C is much more restrictive than `bytewise`. `bytewise` strives to support all
+JavaScript data types (including objects) and to work in both the browser and in
+NodeJS. By contrast, H2C is not currently designed to run in the browser. Also,
+it only supports lists as keys whose elements can only be
 
+* lists (which may be nested),
 * `null`,
 * `false`,
 * `true`,
@@ -315,16 +311,22 @@ explanation: lexicographical ordering (in computer science) is somewhat differen
 representation* are considered in a purely mechanical way to decide what comes first and what comes next;
 there are no further considerations of a linguistic, orthographic or cultural nature made.
 
-Because early computers *were* in fact mechanical beasts that operated quite 'close to the metal' (resp. the
-holes on punched cards that were detected with rods, electric brushes, or photosensors, as the case may be),
-early encoding schemes had a huge impact on whether or not you could sort that huge card deck with customer
-names and sales figures in a convenient manner using period machinery. Incidentally, this consideration is
-the reason why, to this day, Unicode's first block (Basic Latin, a holdover from the 1960s' 7bit ASCII
-standard) looks so orderly with its contiguous ranges that comprise the digits `0`&nbsp;⋯&nbsp;`9`, the
-upper case letters `A`&nbsp;⋯&nbsp;`Z`, and the lower case letters `a`&nbsp;⋯&nbsp;`z`, all of them in
-alphabetic respectively numerical order. As shown below, this property makes binary-based lexicographic
-sorting straightforward and intuitive. The table also shows that as soon as we leave that comfort zone, the
-equivalence between alphabetical and lexicographical ordering breaks down quickly:
+Because early computers *were* in fact mechanical beasts that operated quite
+'close to the metal' (resp. the holes on punched cards that were detected with
+rods, electric brushes, or photosensors, as the case may be), the bit-level
+details of early encoding schemes (such as
+[EBCDIC](https://en.wikipedia.org/wiki/EBCDIC) or
+[US-ASCII](https://en.wikipedia.org/wiki/ASCII)) had a very direct impact on
+whether or not you could sort that huge card deck with customer names and sales
+figures in a convenient manner using period machinery. Incidentally, this
+consideration is the reason why, to this day, Unicode's first block (Basic
+Latin, a holdover from the 1960s' 7bit ASCII standard) looks so orderly with its
+contiguous ranges that comprise the digits `0`&nbsp;⋯&nbsp;`9`, the upper case
+letters `A`&nbsp;⋯&nbsp;`Z`, and the lower case letters `a`&nbsp;⋯&nbsp;`z`, all
+of them in alphabetic respectively numerical order. As shown below, this
+property makes binary-based lexicographic sorting straightforward and intuitive.
+The table also shows that as soon as we leave that comfort zone, the equivalence
+between alphabetical and lexicographical ordering breaks down quickly:
 
 
 

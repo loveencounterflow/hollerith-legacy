@@ -32,7 +32,7 @@ $                         = D.remit.bind D
 $async                    = D.remit_async.bind D
 #...........................................................................................................
 HOLLERITH                 = require './main'
-DEMO                      = require './demo'
+# DEMO                      = require './demo'
 KWIC                      = require 'kwic'
 ƒ                         = CND.format_number.bind CND
 
