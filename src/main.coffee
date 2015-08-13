@@ -63,6 +63,8 @@ later                     = suspend.immediately
     'compression':          yes
     'sync':                 no
   #.........................................................................................................
+  ( require 'mkdirp' ).sync route if create_if_missing
+  #.........................................................................................................
   substrate = _new_level_db route, level_settings, ( error ) ->
     if error?
       if error[ 'name' ] is 'OpenError'
