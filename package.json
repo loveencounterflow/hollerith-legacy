@@ -1,5 +1,5 @@
 {
-  "name": "hollerith2",
+  "name": "hollerith",
   "version": "1.0.0",
   "description": "Next version of hollerith, the Binary Phrase DB",
   "main": "lib/main.js",
@@ -14,7 +14,7 @@
     "level": "^1.2.0",
     "lodash": "^3.10.0",
     "mkdirp": "^0.5.1",
-    "pipedreams2": "^0.2.24",
+    "pipedreams": "^0.2.24",
     "segfault-handler": "^0.2.4"
   },
   "devDependencies": {
@@ -32,7 +32,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/loveencounterflow/hollerith2.git"
+    "url": "git+https://github.com/loveencounterflow/hollerith.git"
   },
   "keywords": [
     "level",
@@ -43,7 +43,7 @@
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/loveencounterflow/hollerith2/issues"
+    "url": "https://github.com/loveencounterflow/hollerith/issues"
   },
-  "homepage": "https://github.com/loveencounterflow/hollerith2#readme"
+  "homepage": "https://github.com/loveencounterflow/hollerith#readme"
 }
