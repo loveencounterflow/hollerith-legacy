@@ -24,7 +24,7 @@ echo                      = CND.echo.bind CND
 # LevelBatch                = require 'level-batch-stream'
 # BatchStream               = require 'batch-stream'
 # parallel                  = require 'concurrent-writable'
-D                         = require 'pipedreams2'
+D                         = require 'pipedreams'
 $                         = D.remit.bind D
 #...........................................................................................................
 new_db                    = require 'level'

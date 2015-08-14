@@ -25,11 +25,11 @@ DUMP                      = @DUMP  = require './dump'
 _codec_encode             = CODEC.encode.bind CODEC
 _codec_decode             = CODEC.decode.bind CODEC
 #...........................................................................................................
-D                         = require 'pipedreams2'
+D                         = require 'pipedreams'
 $                         = D.remit.bind D
 $async                    = D.remit_async.bind D
 _new_level_db             = require 'level'
-leveldown                 = require 'level/node_modules/leveldown'
+leveldown                 = require 'leveldown'
 #...........................................................................................................
 suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step

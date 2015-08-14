@@ -27,7 +27,7 @@ immediately               = suspend.immediately
 repeat_immediately        = suspend.repeat_immediately
 every                     = suspend.every
 #...........................................................................................................
-D                         = require 'pipedreams2'
+D                         = require 'pipedreams'
 $                         = D.remit.bind D
 $async                    = D.remit_async.bind D
 #...........................................................................................................
