@@ -591,7 +591,7 @@ HOLLERITH.$pick_values = ->
   # text = new Buffer '一'
   # text_rpr =
   # help b, text_rpr
-  help HOLLERITH.CODEC.rpr_of_buffer null, HOLLERITH.CODEC.encode [ true, -1 / 7, ]
+  help HOLLERITH.CODEC.rpr_of_buffer HOLLERITH.CODEC.encode [ true, -1 / 7, ]
 
   # chrs = []
   # for cid in [ 0 .. 255 ]

@@ -11,6 +11,7 @@
 			- [Numbers](#numbers)
 			- [Dates](#dates)
 			- [Singular Values](#singular-values)
+			- [Private Values](#private-values)
 		- [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
 		- [X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X](#x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x)
 	- [The Hollerith2 Phrase Structure](#the-hollerith2-phrase-structure)
@@ -298,6 +299,9 @@ above formulas with `1` subtracted or added to the arguments, you will get an
 A so-called 'singular' encoding is used to capture the solitary values `null`,
 `false` and `true`; these are expressed as their type markers `0x42 ≙ 'B'`
 `0x43 ≙ 'C'` `0x44 ≙ 'D'`, respectively.
+
+#### Private Values
+
 
 
 ### Lexicographic Order and UTF-8

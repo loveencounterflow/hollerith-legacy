@@ -1081,7 +1081,7 @@ clear_leveldb = ( leveldb, handler ) ->
         # debug '©54IKt', facets
         help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
         buffer = new Buffer JSON.stringify [ '开', '彡' ]
-        debug '©GJfL6', HOLLERITH.CODEC.rpr_of_buffer db, buffer
+        debug '©GJfL6', HOLLERITH.CODEC.rpr_of_buffer buffer
       .pipe D.$on_end => done()
   #.........................................................................................................
   return null
