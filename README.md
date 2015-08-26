@@ -1,5 +1,6 @@
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
+![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
