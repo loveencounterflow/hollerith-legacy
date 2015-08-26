@@ -1,5 +1,5 @@
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
+
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -365,18 +365,51 @@ values that go into the index and the values that the rest of
 the application gets to see, or to support data types that are not directly
 supported by H2C. For these use cases, there are so-called 'Private Types'.
 
+To demonstrate the use of private types, let's consider the case where
+you have stored, as keys in your database, a number of texts associated
+with some kind of values. Later on, you discover you also want to have
+an index to some files in the file system. Of course, files (and web content) 
+are commonly refered to by way of routes (paths, filenames), which are
+nothing but specially-formatted strings that are given special semantics
+when fed to, say, a method to open a file. 
+
+Now what you'd like to do is to both keep the routes apart from the other
+strings in the index, and to make it so that the indexed routes lend
+themselves to common search tasks. The latter part can be achieved 
+by splitting each route `foo/bar/baz` into its constituent parts and 
+use the resulting lists `[ 'foo', 'bar', 'baz', ]` as keys (thereby
+avoiding the sorting issues that you might run into when some
+part contains code points below `/` `U+002f`). However, routes are 
+still not marked up as routes—they look like any other list of strings.
+With private types, that's easy to achieve.
+
+To work with private types, we need a way to *encode* ('prepare') a piece of
+data, a way to *store* that encoded piece of data, and, after retrieval,
+to *decode* ('interpret') it again to resurrect the original. In our
+example, a **route encoder** might look like this:
 
 ```coffee
-#.....................................................................
-route_encoder = ( value ) ->
-  return value.split '/'
+route_encoder = ( value ) -> value.split '/'
+```
 
-#.....................................................................
+This is just a function that accepts a text and returns the result 
+of splitting that text using `/` as seperator. 
+
+A **route decoder** (which should accept a `type` and a `value`,
+the reason for which will become apparent below) should turn a 
+suitable list back into a string by joining the parts with `/`:
+
+```coffee
 route_decoder = ( type, value ) ->
+  ### NB a more capable decoder could acccept any number of different types ###
   return value.join '/' if type is 'route'
   throw new Error "unknown private type #{rpr type}"
+```
 
-#.....................................................................
+Now that we have a way to encode and decode custom types, we're ready
+to demonstrate how keys are formed for storage:
+
+```coffee
 value         = '/etc/cron.d/anacron'
 encoded_value = route_encoder value
 typed_value   = { type: 'route', value: encoded_value, }
@@ -392,7 +425,9 @@ debug decoded_key
 
 ```
 ZETroute∇ET∇Tetc∇Tcron.d∇Tanacron∇∇∇
+```
 
+```
 [ { type: 'route', value: [ '', 'etc', 'cron.d', 'anacron' ] } ]
 [ '/etc/cron.d/anacron' ]
 ```
