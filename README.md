@@ -1,4 +1,5 @@
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
+![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -407,7 +408,24 @@ route_decoder = ( type, value ) ->
 ```
 
 Now that we have a way to encode and decode custom types, we're ready
-to demonstrate how keys are formed for storage:
+to demonstrate how keys are formed for storage: In the below snippet,
+we take a `value`, encode it, and then, crucially, we wrap it 
+into an object that receives a `type` annotation and the encoded value;
+this *typed value* can then be used as part of a H2C key (which
+must always be lists, so we just put the typed value inside of one). 
+
+> Needless to say that both the encoding and the wrapping  
+> could and maybe should be done in a single step.
+
+The wrapping works because `CODEC.encode` ordinarily does not accept
+objects (as per the [preceding section](#pods-and-maps)), so when it 
+does get to see an object, it assumes a private type object (which should
+have a `type` and a `value` member; where `type` is missing, `'private'`
+will be taken as the default type annotation).
+
+Finally, we decode the key again using `CODEC.decode`, to which we pass
+our decoder as an additional argument; for our demo, we then 
+print some informative data to the console:
 
 ```coffee
 value         = '/etc/cron.d/anacron'
@@ -416,22 +434,45 @@ typed_value   = { type: 'route', value: encoded_value, }
 key           = [ typed_value, ]
 key_bfr       = CODEC.encode key
 #.....................................................................
-decoded_key   = CODEC.decode key_bfr, route_decoder
+# ... store some value using `key_bfr` ...
+# ... retrieve `key_bfr` from database ...
 #.....................................................................
+decoded_key   = CODEC.decode key_bfr, route_decoder
 debug CODEC.rpr_of_buffer key_bfr
 debug CODEC.decode key_bfr
 debug decoded_key
 ```
 
+The above code will print three lines; first up, there's a nifty
+representation of what the key-as-buffer looks like; comparing this
+with similar displays in this document, you can readily deduce
+that private types get a `Z` (`0x5a`) as type marker, which indeed
+serves to keep apart all private types from all other data:
+
 ```
-ZETroute∇ET∇Tetc∇Tcron.d∇Tanacron∇∇∇
+<Buffer 5a 45 54 72 6f 75 74 65 00 ...> ZETroute∇ET∇Tetc∇Tcron.d∇Tanacron∇∇∇
 ```
+
+Decoding this byte sequence naively (without the use of a dedicated decoder)
+will result in the application of a default decoder which resurrects
+an object with a `type` and a `value` member:
 
 ```
 [ { type: 'route', value: [ '', 'etc', 'cron.d', 'anacron' ] } ]
+```
+
+Lastly, decoding the same byte sequence using our `route_decoder`, we do 
+in fact get back the route that we started with (again wrapped inside a list
+because all H2C keys are lists):
+
+```
 [ '/etc/cron.d/anacron' ]
 ```
 
+Our custom decoder did not preserve the type annotation, the 
+assumption being that at this point we do not need it anymore.
+Of course, we could have chosen to make the decoder return 
+some more elaborate piece of data.
 
 
 ### Lexicographic Order and UTF-8
