@@ -1,4 +1,5 @@
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
+![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
@@ -350,14 +351,42 @@ On the bright side, one can always fall back to ordinary flat or nested lists of
 use `[ name, value, ]` pairs (facets) enumerated in a list, or have a look
 at H2C's [Private Types](#private-types).
 
-> Incidentally, [ES6 Maps]() *do* preserve ordering of facets as per the 
+> Incidentally, [ES6 Maps](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Map) *do* preserve ordering of facets as per the 
 > standard, so it is conceivable that they will be added to H2C in the 
 > future.
   
 
 #### Private Types
 
+Sometimes it is practical or necessary to keep some class of values 
+separate from other classes, to arbitrate (translate) between the 
+values that go into the index and the values that the rest of
+the application gets to see, or to support data types that are not directly
+supported by H2C. For these use cases, there are so-called 'Private Types'.
 
+```
+ZETroute∇ET∇Tetc∇Tcron.d∇Tanacron∇∇∇
+```
+
+[ { type: 'route', value: [ '', 'etc', 'cron.d', 'anacron' ] } ]
+[ '/etc/cron.d/anacron' ]
+
+
+```coffee
+value         = '/etc/cron.d/anacron'
+encoded_value = value.split '/'
+typed_value   = { type: 'route', value: encoded_value, }
+key           = [ typed_value, ]
+key_bfr       = CODEC.encode key
+#.........................................................................................................
+decoded_key   = CODEC.decode key_bfr, ( type, value ) ->
+  return value.join '/' if type is 'route'
+  throw new Error "unknown private type #{rpr type}"
+#.........................................................................................................
+debug CODEC.rpr_of_buffer key_bfr
+debug CODEC.decode key_bfr
+debug decoded_key
+```
 
 
 
