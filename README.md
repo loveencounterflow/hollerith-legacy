@@ -1,5 +1,6 @@
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
+![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
@@ -364,28 +365,36 @@ values that go into the index and the values that the rest of
 the application gets to see, or to support data types that are not directly
 supported by H2C. For these use cases, there are so-called 'Private Types'.
 
-```
-ZETroute∇ET∇Tetc∇Tcron.d∇Tanacron∇∇∇
-```
-
-[ { type: 'route', value: [ '', 'etc', 'cron.d', 'anacron' ] } ]
-[ '/etc/cron.d/anacron' ]
-
 
 ```coffee
+#.....................................................................
+route_encoder = ( value ) ->
+  return value.split '/'
+
+#.....................................................................
+route_decoder = ( type, value ) ->
+  return value.join '/' if type is 'route'
+  throw new Error "unknown private type #{rpr type}"
+
+#.....................................................................
 value         = '/etc/cron.d/anacron'
-encoded_value = value.split '/'
+encoded_value = route_encoder value
 typed_value   = { type: 'route', value: encoded_value, }
 key           = [ typed_value, ]
 key_bfr       = CODEC.encode key
-#.........................................................................................................
-decoded_key   = CODEC.decode key_bfr, ( type, value ) ->
-  return value.join '/' if type is 'route'
-  throw new Error "unknown private type #{rpr type}"
-#.........................................................................................................
+#.....................................................................
+decoded_key   = CODEC.decode key_bfr, route_decoder
+#.....................................................................
 debug CODEC.rpr_of_buffer key_bfr
 debug CODEC.decode key_bfr
 debug decoded_key
+```
+
+```
+ZETroute∇ET∇Tetc∇Tcron.d∇Tanacron∇∇∇
+
+[ { type: 'route', value: [ '', 'etc', 'cron.d', 'anacron' ] } ]
+[ '/etc/cron.d/anacron' ]
 ```
 
 
