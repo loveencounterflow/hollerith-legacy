@@ -23,6 +23,7 @@ step                      = suspend.step
 CODEC                     = @CODEC = require 'hollerith-codec'
 DUMP                      = @DUMP  = require './dump'
 _codec_encode             = CODEC.encode.bind CODEC
+_codec_encode_plus_tm_hi  = CODEC.encode_plus_hi.bind CODEC
 _codec_decode             = CODEC.decode.bind CODEC
 #...........................................................................................................
 D                         = require 'pipedreams'
@@ -52,8 +53,10 @@ later                     = suspend.immediately
 #-----------------------------------------------------------------------------------------------------------
 @new_db = ( route, settings ) ->
   ### TAINT we should force this operation to be asynchronous; otherwise, DB may not be writeable ###
-  create_if_missing = settings?[ 'create' ] ? yes
-  size              = settings?[ 'size'   ] ? 1e5
+  create_if_missing = settings?[ 'create'   ] ? yes
+  size              = settings?[ 'size'     ] ? 1e5
+  encoder           = settings?[ 'encoder'  ] ? null
+  decoder           = settings?[ 'decoder'  ] ? null
   #.........................................................................................................
   level_settings =
     'keyEncoding':          'binary'
@@ -76,6 +79,8 @@ later                     = suspend.immediately
     '~isa':           'HOLLERITH/db'
     '%self':          substrate
     'size':           size
+    'encoder':        encoder
+    'decoder':        decoder
   #.........................................................................................................
   return R
 
@@ -382,7 +387,7 @@ later                     = suspend.immediately
   ###
   * If none of `lo`, `hi` or 'prefix' are given, the stream will iterate over all entries.
   * If both `lo` and `hi` are given, a query with lower and upper, inclusive boundaries (in LevelDB these
-    are called `gte` and `lte`, repsectively) is issued.
+    are called `gte` and `lte`, respectively) is issued.
   * If only `prefix` is given, a prefix query is issued. Prefix queries may be 'exclusive' or 'inclusive'.
     Exclusive prefixes match the list elements that make up the HOLLERITH entry keys in a component-wise
     fashion, while inclusive queries also match when the last prefix element is the start of the
@@ -491,13 +496,15 @@ later                     = suspend.immediately
 #===========================================================================================================
 # KEYS & VALUES
 #-----------------------------------------------------------------------------------------------------------
-@_encode_key = ( db, key, extra_byte ) ->
+@_encode_key = ( db, key, plus_tm_hi ) ->
   throw new Error "illegal key #{rpr key}" if key is undefined
-  return _codec_encode key, extra_byte
+  return _codec_encode_plus_tm_hi key, db[ 'encoder' ] if plus_tm_hi
+  return _codec_encode            key, db[ 'encoder' ]
 
 #-----------------------------------------------------------------------------------------------------------
 @_decode_key = ( db, key ) ->
-  throw new Error "illegal key #{rpr key}" if ( R = _codec_decode key ) is undefined
+  R = _codec_decode key, db[ 'decoder' ]
+  throw new Error "illegal key #{rpr key}" if R is undefined
   return R
 
 #-----------------------------------------------------------------------------------------------------------
@@ -615,7 +622,7 @@ later                     = suspend.immediately
   #.........................................................................................................
   else
     ### 'Classical' encoding: only full key segments match ###
-    base  = @_encode_key db, prefix, CODEC[ 'typemarkers'  ][ 'hi' ]
+    base  = @_encode_key db, prefix, true
     gte   = base.slice 0, base.length - 1
     lte   = base.slice 0, base.length
   #.........................................................................................................

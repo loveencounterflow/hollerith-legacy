@@ -310,22 +310,22 @@ object, although this is just a convention and not strictly part of the
 standard. On the other hand, V8 [treats keys that look like 32-bit unsigned
 integer literals](https://code.google.com/p/v8/issues/detail?id=164) differently. The net effect is that answering what ordering you will see
 when doing `Object.keys x` or `for name, value of x` against some POD `x`
-is somewhat of a thorny issue, which makes objects patently unsuited for 
+is somewhat of a thorny issue, which makes objects patently unsuited for
 building sorted indexes.
 
 On the bright side, one can always fall back to ordinary flat or nested lists of values (with the semantics of the values being positionally defined),
 use `[ name, value, ]` pairs (facets) enumerated in a list, or have a look
 at H2C's [Private Types](#private-types).
 
-> Incidentally, [ES6 Maps](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Map) *do* preserve ordering of facets as per the 
-> standard, so it is conceivable that they will be added to H2C in the 
+> Incidentally, [ES6 Maps](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Map) *do* preserve ordering of facets as per the
+> standard, so it is conceivable that they will be added to H2C in the
 > future.
-  
+
 
 #### Private Types
 
-Sometimes it is practical or necessary to keep some class of values 
-separate from other classes, to arbitrate (translate) between the 
+Sometimes it is practical or necessary to keep some class of values
+separate from other classes, to arbitrate (translate) between the
 values that go into the index and the values that the rest of
 the application gets to see, or to support data types that are not directly
 supported by H2C. For these use cases, there are so-called 'Private Types'.
@@ -333,18 +333,18 @@ supported by H2C. For these use cases, there are so-called 'Private Types'.
 To demonstrate the use of private types, let's consider the case where
 you have stored, as keys in your database, a number of texts associated
 with some kind of values. Later on, you discover you also want to have
-an index to some files in the file system. Of course, files (and web content) 
+an index to some files in the file system. Of course, files (and web content)
 are commonly refered to by way of routes (paths, filenames), which are
 nothing but specially-formatted strings that are given special semantics
-when fed to, say, a method to open a file. 
+when fed to, say, a method to open a file.
 
 Now what you'd like to do is to both keep the routes apart from the other
 strings in the index, and to make it so that the indexed routes lend
-themselves to common search tasks. The latter part can be achieved 
-by splitting each route `foo/bar/baz` into its constituent parts and 
+themselves to common search tasks. The latter part can be achieved
+by splitting each route `foo/bar/baz` into its constituent parts and
 use the resulting lists `[ 'foo', 'bar', 'baz', ]` as keys (thereby
 avoiding the sorting issues that you might run into when some
-part contains code points below `/` `U+002f`). However, routes are 
+part contains code points below `/` `U+002f`). However, routes are
 still not marked up as routes—they look like any other list of strings.
 With private types, that's easy to achieve.
 
@@ -357,11 +357,11 @@ example, a **route encoder** might look like this:
 route_encoder = ( value ) -> value.split '/'
 ```
 
-This is just a function that accepts a text and returns the result 
-of splitting that text using `/` as seperator. 
+This is just a function that accepts a text and returns the result
+of splitting that text using `/` as seperator.
 
 A **route decoder** (which should accept a `type` and a `value`,
-the reason for which will become apparent below) should turn a 
+the reason for which will become apparent below) should turn a
 suitable list back into a string by joining the parts with `/`:
 
 ```coffee
@@ -373,22 +373,22 @@ route_decoder = ( type, value ) ->
 
 Now that we have a way to encode and decode custom types, we're ready
 to demonstrate how keys are formed for storage: In the below snippet,
-we take a `value`, encode it, and then, crucially, we wrap it 
+we take a `value`, encode it, and then, crucially, we wrap it
 into an object that receives a `type` annotation and the encoded value;
 this *typed value* can then be used as part of a H2C key (which
-must always be lists, so we just put the typed value inside of one). 
+must always be lists, so we just put the typed value inside of one).
 
-> Needless to say that both the encoding and the wrapping  
+> Needless to say that both the encoding and the wrapping
 > could and maybe should be done in a single step.
 
 The wrapping works because `CODEC.encode` ordinarily does not accept
-objects (as per the [preceding section](#pods-and-maps)), so when it 
+objects (as per the [preceding section](#pods-and-maps)), so when it
 does get to see an object, it assumes a private type object (which should
 have a `type` and a `value` member; where `type` is missing, `'private'`
 will be taken as the default type annotation).
 
 Finally, we decode the key again using `CODEC.decode`, to which we pass
-our decoder as an additional argument; for our demo, we then 
+our decoder as an additional argument; for our demo, we then
 print some informative data to the console:
 
 ```coffee
@@ -425,7 +425,7 @@ an object with a `type` and a `value` member:
 [ { type: 'route', value: [ '', 'etc', 'cron.d', 'anacron' ] } ]
 ```
 
-Lastly, decoding the same byte sequence using our `route_decoder`, we do 
+Lastly, decoding the same byte sequence using our `route_decoder`, we do
 in fact get back the route that we started with (again wrapped inside a list
 because all H2C keys are lists):
 
@@ -433,10 +433,44 @@ because all H2C keys are lists):
 [ '/etc/cron.d/anacron' ]
 ```
 
-Our custom decoder did not preserve the type annotation, the 
+Our custom decoder did not preserve the type annotation, the
 assumption being that at this point we do not need it anymore.
-Of course, we could have chosen to make the decoder return 
+Of course, we could have chosen to make the decoder return
 some more elaborate piece of data.
+
+Our sample `route_decoder` was written so that it would
+only accept data of known types and throw an error otherwise;
+this is a good way to make sure no unexpected data slips
+through. But since sometimes what you want is rather to
+mangle only types that need mangling and leave other
+types in their default shapes, H2C's `decode` offers a
+simple way to do just that, as the following code from
+the tests clarifies:
+
+```coffee
+@[ "private type takes default shape when handler returns use_fallback" ] = ( T ) ->
+  matcher       = [ 84, { type: 'bar', value: 108, }, ]
+  key           = [ { type: 'foo', value: 42, }, { type: 'bar', value: 108, }, ]
+  key_bfr       = CODEC.encode key
+  #.........................................................................................................
+  decoded_key   = CODEC.decode key_bfr, ( type, value, use_fallback ) ->
+    return value * 2 if type is 'foo'
+    return use_fallback
+  #.........................................................................................................
+  T.eq matcher, decoded_key
+```
+
+The convention here is that the callback that is passed to
+`decode` may choose to take a third argument, `use_fallback`,
+which, when returned in place of a computed value, will cause
+`decode` to put the private type's default shape (i.e.
+an object `{ type, value, }`) into the key.
+
+> Note that `undefined` is not an acceptable return value for the decoder, both
+> because `undefined` is not an acceptable type to encode keys with, and
+> also to avoid spurious occurrences of `undefined` in decoded keys
+> where you forgot to either handle the type, throw an error or return an
+> explicit 'I don't care' value.
 
 
 ### Lexicographic Order and UTF-8

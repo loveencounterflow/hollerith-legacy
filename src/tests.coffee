@@ -159,7 +159,7 @@ clear_leveldb = ( leveldb, handler ) ->
           yield later resume
         input.end()
       #-----------------------------------------------------------------------------------------------------
-      when 0, 2, 3, 4
+      when 0, 2, 3, 4, 5
         input
           .pipe HOLLERITH.$write db, settings
           # .pipe D.$show()
@@ -316,6 +316,28 @@ clear_leveldb = ( leveldb, handler ) ->
   [ '𧷟1', 'z', 42 ]
   ]
 
+#-----------------------------------------------------------------------------------------------------------
+### probes_idx == 5 ###
+@_feed_test_data.probes.push [
+  [ '丁', 'strokecount',     2,                          ]
+  # [ '三', 'strokecount',     3,                          ]
+  # [ '夫', 'strokecount',     5,                          ]
+  # [ '國', 'strokecount',     11,                         ]
+  # [ '形', 'strokecount',     7,                          ]
+  [ '丁', 'componentcount',  1,                          ]
+  # [ '三', 'componentcount',  1,                          ]
+  # [ '夫', 'componentcount',  1,                          ]
+  # [ '國', 'componentcount',  4,                          ]
+  # [ '形', 'componentcount',  2,                          ]
+  [ '丁', 'components',      [ '丁', ],                  ]
+  # [ '三', 'components',      [ '三', ],                  ]
+  # [ '夫', 'components',      [ '夫', ],                  ]
+  # [ '國', 'components',      [ '囗', '戈', '口', '一', ], ]
+  # [ '形', 'components',      [ '开', '彡', ],             ]
+  # [ { type: 'route', value: '/foo/bar', }, 'mtime', new Date '2011-10-10T14:48:00Z', ]
+  [ { type: 'route', value: '/foo/bar', }, 'mtime', 123456789, ]
+  ]
+
 # pos|guide/kwic/sortcode
 
 # # [
@@ -362,8 +384,6 @@ clear_leveldb = ( leveldb, handler ) ->
   probes_idx  = 0
   idx = -1
   step ( resume ) =>
-    debug '©7lEgy', db['%self'].isClosed()
-    debug '©7lEgy', db['%self'].isOpen()
     yield @_feed_test_data db, probes_idx, resume
     # done()
     input = HOLLERITH.create_facetstream db
@@ -381,11 +401,13 @@ clear_leveldb = ( leveldb, handler ) ->
     ### TAINT awaiting better solution ###
     NULL = HOLLERITH._encode_value db, 1
     for idx in [ 0 ... 10 ]
-      db[ '%self' ].put ( HOLLERITH._encode_key db, [ 'x', idx, 'x', ] ), NULL
+      key_bfr = HOLLERITH._encode_key db, [ 'x', idx, 'x', ]
+      db[ '%self' ].put key_bfr, NULL
     #.......................................................................................................
     probe_idx = 4
     count     = 0
     query     = HOLLERITH._query_from_prefix db, [ 'x', probe_idx, ]
+    # debug '©ETONp', HOLLERITH.CODEC.rpr_of_buffer key_bfr
     input     = db[ '%self' ].createReadStream query
     input
       .pipe $ ( { key, value, }, send ) =>
@@ -577,119 +599,6 @@ clear_leveldb = ( leveldb, handler ) ->
         T.eq count, matchers.length
         end()
         done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "read with sub-read (1)" ] = ( T, done ) ->
-#   probes_idx  = 0
-#   idx         = -1
-#   count       = 0
-#   #.........................................................................................................
-#   matchers = [
-#     [ '𧷟', [ 'spo', '八', 'factor/strokeclass/wbf', '34' ] ]
-#     ]
-#   #.........................................................................................................
-#   step ( resume ) =>
-#     yield @_feed_test_data db, probes_idx, resume
-#     prefix    = [ 'spo', '𧷟', 'guide/uchr/has', ]
-#     input     = HOLLERITH.create_phrasestream db, { prefix, }
-#     settings  = { indexed: no, }
-#     input
-#       .pipe HOLLERITH.read_sub db, settings, ( [ phrasetype, glyph, prd, guides, ] ) =>
-#         sub_prefix  = [ 'spo', guides[ 0 ], 'factor/strokeclass/wbf', ]
-#         sub_input   = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, }
-#         return [ glyph, sub_input, ]
-#       .pipe $ ( phrase, send ) =>
-#         count  += +1
-#         idx    += +1
-#         T.eq phrase, matchers[ idx ]
-#       .pipe D.$on_end ( end ) =>
-#         T.eq count, matchers.length
-#         end()
-#         done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "read with sub-read (2)" ] = ( T, done ) ->
-#   probes_idx  = 0
-#   idx         = -1
-#   count       = 0
-#   #.........................................................................................................
-#   matchers = [
-#     [ '𧷟', [ 'spo', '八', 'factor/strokeclass/wbf', '34' ] ]
-#     [ '𧷟', [ 'spo', '刀', 'factor/strokeclass/wbf', '5(12)3' ] ]
-#     [ '𧷟', [ 'spo', '宀', 'factor/strokeclass/wbf', '44' ] ]
-#     [ '𧷟', [ 'spo', '貝', 'factor/strokeclass/wbf', '25(12)' ] ]
-#     [ '𧷟', [ 'spo', '', 'factor/strokeclass/wbf', '12' ] ]
-#     ]
-#   #.........................................................................................................
-#   step ( resume ) =>
-#     yield @_feed_test_data db, probes_idx, resume
-#     prefix    = [ 'pos', 'guide/uchr/has', ]
-#     input     = HOLLERITH.create_phrasestream db, { prefix, }
-#     settings  = { indexed: no, }
-#     input
-#       .pipe HOLLERITH.read_sub db, settings, ( phrase ) =>
-#         [ _, glyph, prd, guide, ] = phrase
-#         prefix                    = [ 'spo', guide, 'factor/strokeclass/wbf', ]
-#         sub_input                 = HOLLERITH.create_phrasestream db, { prefix, }
-#         return [ glyph, sub_input, ]
-#       .pipe $ ( phrase, send ) =>
-#         debug '©quPbg', JSON.stringify phrase
-#         count  += +1
-#         idx    += +1
-#         T.eq phrase, matchers[ idx ]
-#       .pipe D.$on_end ( end ) =>
-#         T.eq count, matchers.length
-#         end()
-#         done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "read with sub-read (3)" ] = ( T, done ) ->
-#   step ( resume ) =>
-#     yield @_read_with_sub_read_3 T, batch: 0,    resume
-#     yield @_read_with_sub_read_3 T, batch: 3,    resume
-#     yield @_read_with_sub_read_3 T, batch: 5,    resume
-#     yield @_read_with_sub_read_3 T, batch: 1000, resume
-#     done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @_read_with_sub_read_3 = ( T, write_settings, done ) ->
-#   probes_idx  = 0
-#   idx         = -1
-#   count       = 0
-#   #.........................................................................................................
-#   matchers = [
-#     [["𧷟","八","34"],      ["spo","八","rank/cjt",12541]]
-#     [["𧷟","刀","5(12)3"],  ["spo","刀","rank/cjt",12542]]
-#     [["𧷟","宀","44"],      ["spo","宀","rank/cjt",12543]]
-#     [["𧷟","貝","25(12)"],  ["spo","貝","rank/cjt",12545]]
-#     [["𧷟","","12"],      ["spo","","rank/cjt",12544]]
-#     ]
-#   #.........................................................................................................
-#   step ( resume ) =>
-#     yield @_feed_test_data db, probes_idx, write_settings, resume
-#     prefix        = [ 'pos', 'guide/uchr/has', ]
-#     input         = HOLLERITH.create_phrasestream db, { prefix, }
-#     read_settings = { indexed: no, }
-#     input
-#       .pipe HOLLERITH.read_sub db, read_settings, ( phrase ) =>
-#         [ _, glyph, prd, guide, ] = phrase
-#         prefix                    = [ 'spo', guide, 'factor/strokeclass/wbf', ]
-#         sub_input                 = HOLLERITH.create_phrasestream db, { prefix, }
-#         return [ glyph, sub_input, ]
-#       .pipe HOLLERITH.read_sub db, read_settings, ( xphrase ) =>
-#         [ glyph, [ _, guide, prd, shapeclass, ] ] = xphrase
-#         prefix                                    = [ 'spo', guide, 'rank/cjt', ]
-#         sub_input                                 = HOLLERITH.create_phrasestream db, { prefix, }
-#         return [ [ glyph, guide, shapeclass, ], sub_input, ]
-#       .pipe $ ( xphrase, send ) =>
-#         debug '©quPbg', JSON.stringify xphrase
-#         count  += +1
-#         idx    += +1
-#         T.eq xphrase, matchers[ idx ]
-#       .pipe D.$on_end ( end ) =>
-#         T.eq count, matchers.length
-#         end()
-#         done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "sorting (1)" ] = ( T, done ) ->
@@ -1179,67 +1088,6 @@ clear_leveldb = ( leveldb, handler ) ->
         # T.eq count, matchers.length
         done()
 
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "XXX" ] = ( T, done ) ->
-#   warn "must test for bug with multiple identical entries"
-#   probes_idx  = 3
-#   #.........................................................................................................
-#   glyphs = [ '丁', '三', '夫', '國', '形', ]
-#   #.........................................................................................................
-#   step ( resume ) =>
-#     yield @_feed_test_data db, probes_idx, resume
-#     yield show_db_entries resume
-#     ### TAINT doesn't work: ###
-#     # prefix    = [ 'pos', 'isa', '*', ]
-#     prefix    = [ 'pos', 'isa', 'glyph', ]
-#     input     = HOLLERITH.create_phrasestream db, { prefix, }
-#     input
-#       .pipe D.$map ( phrase, handler ) =>
-#         debug '©gg5Fr', phrase
-#         [ _, sbj, _, obj, ] = phrase
-#         debug '©NxZo4', sbj
-#         sub_prefix  = [ 'spo', obj + ':' + sbj, 'guide', ]
-#         sub_input   = HOLLERITH.create_phrasestream db, { prefix: sub_prefix, star: '*', }
-#         sub_input
-#           .pipe D.$collect()
-#           .pipe D.$show 'A'
-#           .pipe $ ( sub_results, send ) =>
-#             handler null, sub_results
-#       .pipe D.$show 'B'
-#       .pipe D.$on_end =>
-#         # T.eq count, matchers.length
-#         done()
-
-# #-----------------------------------------------------------------------------------------------------------
-# @[ "YYY" ] = ( T, T_done ) ->
-#   warn "must test for bug with multiple identical entries"
-#   probes_idx  = 3
-#   #.........................................................................................................
-#   glyphs = [ '丁', '三', '夫', '國', '形', ]
-#   #.........................................................................................................
-#   step ( resume ) =>
-#     yield @_feed_test_data db, probes_idx, resume
-#     yield show_db_entries resume
-#     prefix    = [ 'pos', 'isa', 'glyph', ]
-#     input     = HOLLERITH.create_phrasestream db, { prefix, }
-#     input
-#       .pipe $async ( phrase, done ) =>
-#         # debug '©PCj9R', phrase
-#         [ _, sbj, _, obj, ] = phrase
-#         sub_prefix  = [ 'spo', obj + ':' + sbj, 'guide', ]
-#         query       = prefix: sub_prefix, star: '*'
-#         HOLLERITH.read_phrases db, query, ( error, sub_phrases ) =>
-#           # debug '©VOZ0p', sbj, sub_phrases
-#           return done.error error if error?
-#           for sub_phrase, sub_phrase_idx in sub_phrases
-#             [ _, _, sub_prd, sub_obj, ] = sub_phrase
-#             sub_phrases[ sub_phrase_idx ] = [ sub_prd, sub_obj, ]
-#           done [ sbj, sub_phrases..., ]
-#       .pipe D.$show 'B'
-#       .pipe D.$on_end =>
-#         # T.eq count, matchers.length
-#         T_done()
-
 #-----------------------------------------------------------------------------------------------------------
 @[ "read partial POS phrases" ] = ( T, done ) ->
   # ### !!!!!!!!!!!!!!!!!!!!!! ###
@@ -1624,6 +1472,178 @@ clear_leveldb = ( leveldb, handler ) ->
       T.fail "should not throw error"
       warn error
       done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "write private types (1)" ] = ( T, done ) ->
+  probes_idx  = 5
+  idx         = -1
+  count       = 0
+  #.........................................................................................................
+  matchers = [
+    ["pos","componentcount",1,"丁"]
+    ["pos","components","丁","丁",0]
+    ["pos","mtime",123456789,{"type":"route","value":"/foo/bar"}]
+    ["pos","strokecount",2,"丁"]
+    ["spo","丁","componentcount",1]
+    ["spo","丁","components",["丁"]]
+    ["spo","丁","strokecount",2]
+    ["spo",{"type":"route","value":"/foo/bar"},"mtime",123456789]
+    ]
+  #.........................................................................................................
+  write_data = ( handler ) =>
+    input = D.create_throughstream()
+    input
+      # .pipe D.$show()
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end -> handler()
+    #.......................................................................................................
+    for probe in @_feed_test_data.probes[ probes_idx ]
+      input.write probe
+    input.end()
+  #.........................................................................................................
+  read_data = ( handler ) ->
+    #.......................................................................................................
+    input = HOLLERITH.create_phrasestream db
+    input
+      # .pipe D.$show()
+      .pipe $ ( phrase, send ) =>
+        count  += +1
+        idx    += +1
+        debug '©Sc5FG', JSON.stringify phrase
+        T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end -> handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield HOLLERITH.clear db, resume
+    yield write_data resume
+    yield read_data  resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "write private types (2)" ] = ( T, done ) ->
+  probes_idx    = 5
+  idx           = -1
+  count         = 0
+  #.........................................................................................................
+  encoder = ( type, value ) ->
+    debug '©XXX-encoder', type, rpr value
+    return value.split '/' if type is 'route'
+    throw new Error "unknown private type #{rpr type}"
+  #.........................................................................................................
+  xdb_route     = join __dirname, '..', 'dbs/tests-with-private-types'
+  #.........................................................................................................
+  xdb_settings  =
+    size:           500
+    encoder:        encoder
+  #.........................................................................................................
+  xdb           = HOLLERITH.new_db xdb_route, xdb_settings
+  #.........................................................................................................
+  matchers = [
+    ["pos","componentcount",1,"丁"]
+    ["pos","components","丁","丁",0]
+    ["pos","mtime",123456789,{"type":"route","value":["","foo","bar"]}]
+    ["pos","strokecount",2,"丁"]
+    ["spo","丁","componentcount",1]
+    ["spo","丁","components",["丁"]]
+    ["spo","丁","strokecount",2]
+    ["spo",{"type":"route","value":["","foo","bar"]},"mtime",123456789]
+    ]
+  #.........................................................................................................
+  write_data = ( handler ) =>
+    input = D.create_throughstream()
+    input
+      # .pipe D.$show()
+      .pipe HOLLERITH.$write xdb
+      .pipe D.$on_end -> handler()
+    #.......................................................................................................
+    for probe in @_feed_test_data.probes[ probes_idx ]
+      input.write probe
+    input.end()
+  #.........................................................................................................
+  read_data = ( handler ) ->
+    #.......................................................................................................
+    input = HOLLERITH.create_phrasestream xdb
+    input
+      # .pipe D.$show()
+      .pipe $ ( phrase, send ) =>
+        count  += +1
+        idx    += +1
+        debug '©Sc5FG', JSON.stringify phrase
+        T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end -> handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield HOLLERITH.clear xdb, resume
+    yield write_data resume
+    yield read_data  resume
+    yield xdb[ '%self' ].close resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "write private types (3)" ] = ( T, done ) ->
+  probes_idx    = 5
+  idx           = -1
+  count         = 0
+  #.........................................................................................................
+  encoder = ( type, value ) ->
+    # debug '©XXX-encoder', type, rpr value
+    return value.split '/' if type is 'route'
+    throw new Error "unknown private type #{rpr type}"
+  #.........................................................................................................
+  decoder = ( type, value ) ->
+    # debug '©XXX-decoder', type, rpr value
+    return value.join '/' if type is 'route'
+    throw new Error "unknown private type #{rpr type}"
+  #.........................................................................................................
+  xdb_route     = join __dirname, '..', 'dbs/tests-with-private-types'
+  #.........................................................................................................
+  xdb_settings  =
+    size:           500
+    encoder:        encoder
+    decoder:        decoder
+  #.........................................................................................................
+  xdb           = HOLLERITH.new_db xdb_route, xdb_settings
+  #.........................................................................................................
+  matchers = [
+    ["pos","componentcount",1,"丁"]
+    ["pos","components","丁","丁",0]
+    ["pos","mtime",123456789,"/foo/bar"]
+    ["pos","strokecount",2,"丁"]
+    ["spo","丁","componentcount",1]
+    ["spo","丁","components",["丁"]]
+    ["spo","丁","strokecount",2]
+    ["spo","/foo/bar","mtime",123456789]
+    ]
+  #.........................................................................................................
+  write_data = ( handler ) =>
+    input = D.create_throughstream()
+    input
+      # .pipe D.$show()
+      .pipe HOLLERITH.$write xdb
+      .pipe D.$on_end -> handler()
+    #.......................................................................................................
+    for probe in @_feed_test_data.probes[ probes_idx ]
+      input.write probe
+    input.end()
+  #.........................................................................................................
+  read_data = ( handler ) ->
+    #.......................................................................................................
+    input = HOLLERITH.create_phrasestream xdb
+    input
+      # .pipe D.$show()
+      .pipe $ ( phrase, send ) =>
+        count  += +1
+        idx    += +1
+        urge '©Sc5FG', JSON.stringify phrase
+        T.eq phrase, matchers[ idx ]
+      .pipe D.$on_end -> handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield HOLLERITH.clear xdb, resume
+    yield write_data resume
+    yield read_data  resume
+    yield xdb[ '%self' ].close resume
+    done()
 
 
 ############################################################################################################
