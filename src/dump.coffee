@@ -85,7 +85,12 @@ HOLLERITH                 = require './main'
         if HOLLERITH._is_meta db, key_bfr
           warn "skipped meta: #{rpr key_bfr.toString()}"
         else
-          key_rpr     = HOLLERITH.as_url db, key_bfr, value_bfr, colors: colors
+          try
+            key_rpr     = HOLLERITH.as_url db, key_bfr, value_bfr, colors: colors
+          catch error
+            key_rpr     = ( CND.green HOLLERITH.CODEC.rpr_of_buffer key_bfr ) + \
+              '\n  ' + ( CND.orange HOLLERITH.CODEC.rpr_of_buffer value_bfr ) + \
+              '\n  ' + ( CND.red rpr error )
           # phrasetype  = ( key_bfr.slice 1, 4 ).toString()
           # if phrasetype is 'spo' and value_bfr?
           #   value     = value_bfr.toString 'utf-8'

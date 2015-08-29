@@ -6,6 +6,7 @@
   "dependencies": {
     "async": "^1.3.0",
     "cnd": "^1.0.8",
+    "coffeenode-docopt": "^0.1.1",
     "coffeenode-suspend": "^0.1.11",
     "hollerith-codec": "^1.0.23",
     "kwic": "^1.0.7",
@@ -24,7 +25,7 @@
     "gulp": "^3.9.0",
     "gulp-coffee": "^2.3.1",
     "gulp-sourcemaps": "^1.5.2",
-    "guy-test": "^1.0.2"
+    "guy-test": "^1.0.5"
   },
   "scripts": {
     "test": "gulp --harmony build && node --harmony lib/tests.js"
