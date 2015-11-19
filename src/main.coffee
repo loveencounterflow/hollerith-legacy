@@ -182,6 +182,7 @@ later                     = suspend.immediately
   in the order of around a thousand entries. ###
   batch_size        = settings[ 'batch'  ] ? 1000
   solid_predicates  = settings[ 'solids' ] ? []
+  loner_predicates  = settings[ 'loners' ] ? []
   ensure_unique     = settings[ 'unique' ] ? true
   substrate         = db[ '%self' ]
   R                 = D.create_throughstream()
@@ -191,7 +192,7 @@ later                     = suspend.immediately
     [ sbj, prd, obj, ] = spo
     send [ [ 'spo', sbj, prd, ], obj, ]
     #.......................................................................................................
-    unless ( obj_type = CND.type_of obj ) is 'pod'
+    unless ( ( obj_type = CND.type_of obj ) is 'pod' ) or ( prd in loner_predicates )
       #.....................................................................................................
       if ( obj_type is 'list' ) and not ( prd in solid_predicates )
         for obj_element, obj_idx in obj
@@ -455,6 +456,7 @@ later                     = suspend.immediately
   ### TAINT Should we test for well-formed entries here? ###
   R = db[ '%self' ].createReadStream query
   #.........................................................................................................
+  ### TAINT decoding transfrom should be made public ###
   R = R.pipe $ ( { key, value }, send ) =>
     unless @_is_meta db, key
       send [ ( @_decode_key db, key ), ( @_decode_value db, value ), ]
@@ -613,6 +615,7 @@ later                     = suspend.immediately
 #===========================================================================================================
 # PREFIXES & QUERIES
 #-----------------------------------------------------------------------------------------------------------
+### TAINT should be public ###
 @_query_from_prefix = ( db, prefix, star ) ->
   if star?
     ### 'Asterisk' encoding: partial key segments match ###

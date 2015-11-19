@@ -1,4 +1,38 @@
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [hollerith](#hollerith)
+- [Theory](#theory)
+  - [What is LevelDB?](#what-is-leveldb)
+  - [The Hollerith2 Codec (H2C)](#the-hollerith2-codec-h2c)
+    - [Performance Considerations](#performance-considerations)
+    - [Encoding Details](#encoding-details)
+      - [Texts (Strings)](#texts-strings)
+      - [Numbers](#numbers)
+      - [Dates](#dates)
+      - [Singular Values](#singular-values)
+      - [PODs and Maps](#pods-and-maps)
+      - [Private Types](#private-types)
+    - [Lexicographic Order and UTF-8](#lexicographic-order-and-utf-8)
+    - [X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X](#x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x)
+  - [The Hollerith2 Phrase Structure](#the-hollerith2-phrase-structure)
+    - [SPO and POS](#spo-and-pos)
+- [Practice](#practice)
+  - [Inserting Data](#inserting-data)
+  - [Indexing Data](#indexing-data)
+  - [Deleting Data](#deleting-data)
+  - [Reading Data](#reading-data)
+  - [Error Handling](#error-handling)
+    - [@create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->](#@create_phrasestream---db-lo_hint--null-hi_hint--null---)
+    - [@create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->](#@create_facetstream---db-lo_hint--null-hi_hint--null---)
+    - [@read_sub = ( db, settings, read ) ->](#@read_sub---db-settings-read---)
+- [XXXXXXX](#xxxxxxx)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 
 
 - [hollerith](#hollerith)

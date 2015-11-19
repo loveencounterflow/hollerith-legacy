@@ -4,28 +4,28 @@
   "description": "Next version of hollerith, the Binary Phrase DB",
   "main": "lib/main.js",
   "dependencies": {
-    "async": "^1.3.0",
-    "cnd": "^1.0.8",
+    "async": "^1.5.0",
+    "cnd": "^1.0.9",
     "coffeenode-docopt": "^0.1.1",
     "coffeenode-suspend": "^0.1.11",
-    "hollerith-codec": "^1.0.23",
+    "hollerith-codec": "^1.0.24",
     "kwic": "^1.0.7",
-    "level": "^1.2.0",
-    "leveldown": "^1.4.0",
-    "lodash": "^3.10.0",
+    "level": "^1.3.0",
+    "leveldown": "^1.4.2",
+    "lodash": "^3.10.1",
     "mkdirp": "^0.5.1",
-    "pipedreams": "^0.2.24",
-    "segfault-handler": "^0.2.4"
+    "pipedreams": "^1.0.6",
+    "segfault-handler": "^1.0.0"
   },
   "devDependencies": {
-    "coffee-script": "^1.9.2",
+    "coffee-script": "^1.10.0",
     "coffeelint-variable-scope": "0.0.3",
-    "coffeenode-chr": "^0.1.6",
+    "coffeenode-chr": "^1.0.2",
     "coffeenode-passphrase": "^0.1.7",
     "gulp": "^3.9.0",
     "gulp-coffee": "^2.3.1",
-    "gulp-sourcemaps": "^1.5.2",
-    "guy-test": "^1.0.5"
+    "gulp-sourcemaps": "^1.6.0",
+    "guy-test": "^1.1.2"
   },
   "scripts": {
     "test": "gulp --harmony build && node --harmony lib/tests.js"
