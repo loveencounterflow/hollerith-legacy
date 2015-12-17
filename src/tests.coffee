@@ -1645,6 +1645,20 @@ clear_leveldb = ( leveldb, handler ) ->
     yield xdb[ '%self' ].close resume
     done()
 
+#-----------------------------------------------------------------------------------------------------------
+@[ "bloom filter serialization without writes" ] = ( T, done ) ->
+  #.........................................................................................................
+  step ( resume ) =>
+    xdb   = HOLLERITH.new_db get_new_db_name()
+    input = HOLLERITH.create_phrasestream xdb
+    input.pause()
+    input.pipe HOLLERITH.$write xdb
+    input.resume()
+    input.end()
+    T.ok true
+    done()
+
+
 
 ############################################################################################################
 unless module.parent?
