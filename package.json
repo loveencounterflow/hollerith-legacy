@@ -1,6 +1,6 @@
 {
   "name": "hollerith",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Next version of hollerith, the Binary Phrase DB",
   "main": "lib/main.js",
   "dependencies": {
