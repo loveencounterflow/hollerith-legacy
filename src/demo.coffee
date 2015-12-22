@@ -375,7 +375,9 @@ HOLLERITH.$pick_values = ->
     ranks         = {}
     include       = Infinity
     include       = 10000
-    include       = [ '寿', '邦', '帮', '畴', '铸', '筹', '涛', '祷', '绑', '綁',    ]
+    include       = 5000
+    # include       = [ '寿', '邦', '帮', '畴', '铸', '筹', '涛', '祷', '绑', '綁',    ]
+    # include       = Array.from '未釐犛剺味昧眛魅鮇沬妹業寐鄴澲末抹茉枺沫袜妺'
     # 'guide/hierarchy/uchr'
     #.........................................................................................................
     sample        = yield @read_sample db, include, resume
@@ -434,7 +436,7 @@ HOLLERITH.$pick_values = ->
     input_v1  = ( HOLLERITH.create_phrasestream db, query_v1 ).pipe $transform_v1_v2()
     input_v2  = ( HOLLERITH.create_phrasestream db, query_v2 ).pipe $transform_v1_v2()
     input_v3  = ( HOLLERITH.create_phrasestream db, query_v3 ).pipe $transform_v3()
-      .pipe D.$observe ( [ glyph, lineup, ] ) -> help glyph, lineup if glyph is '畴'
+      # .pipe D.$observe ( [ glyph, lineup, ] ) -> help glyph, lineup if glyph is '畴'
     #.........................................................................................................
     input_v1
       .pipe D.$lockstep input_v2, fallback: [ null, null, ]
@@ -442,26 +444,56 @@ HOLLERITH.$pick_values = ->
       .pipe $unpack()
       .pipe do =>
         count       = 0
-        spc         = '\u3000'
-        include_v1  = no
+        wspc        = '\u3000'
+        nspc        = '\u3000'
+        # style       = 'A'
+        style       = 'B'
+        switch style
+          when 'A'
+            vsep        = '◉'
+            include_v1  = no
+            for_mkts    = no
+            ldiff_0     = ' '
+            ldiff_1     = '<'
+            rdiff_0     = ' '
+            rdiff_1     = '>'
+          when 'B'
+            vsep        = '║'
+            include_v1  = yes
+            for_mkts    = yes
+            ldiff_0     = wspc
+            ldiff_1     = '＜'
+            rdiff_0     = wspc
+            rdiff_1     = '＞'
+          else throw new Error "unknown style #{rpr style}"
+        #...................................................................................................
         return D.$observe ( [ v1, v2, v3, ] ) =>
           [ glyph_v1, lineup_v1, ]  = v1
           [ glyph_v2, lineup_v2, ]  = v2
           [ glyph_v3, lineup_v3, ]  = v3
+          #.................................................................................................
           diff                      = []
-          diff_v1                   = if glyph_v1 is glyph_v2 then ' ' else '<'
-          diff_v2                   = if glyph_v2 is glyph_v3 then ' ' else '>'
+          diff_v1                   = if glyph_v1 is glyph_v2 then ldiff_0 else ldiff_1
+          diff_v2                   = if glyph_v2 is glyph_v3 then rdiff_0 else rdiff_1
+          # debug '©28420', rpr lineup_v3
+          #.................................................................................................
           if include_v1
-            line                      =                                       lineup_v1 + spc + glyph_v1
-            line                     += spc + diff_v1 + '◉'           + spc + lineup_v2 + spc + glyph_v2
-            line                     += spc +           '◉' + diff_v2 + spc + lineup_v3 + spc + glyph_v3
-            line                     += spc + spc + spc
+            line  =                                          lineup_v1 + nspc + glyph_v1
+            line += nspc + diff_v1 + vsep           + nspc + lineup_v2 + nspc + glyph_v2
+            line += nspc +           vsep + diff_v2 + nspc + lineup_v3 + nspc + glyph_v3
+          #.................................................................................................
           else
-            line                      =                                       lineup_v2 + spc + glyph_v2
-            line                     += spc +           '◉' + diff_v2 + spc + lineup_v3 + spc + glyph_v3
-            line                     += spc + spc + spc
+            line  =                                          lineup_v2 + nspc + glyph_v2
+            line += nspc +           vsep + diff_v2 + nspc + lineup_v3 + nspc + glyph_v3
+          #.................................................................................................
+          if for_mkts
+            line += '<<< >>>'
+          #.................................................................................................
+          else
+            line += spc + spc + spc
+          #.................................................................................................
           count                    += 1
-          help ƒ count if count % 10000 is 0
+          help ƒ count if count % 500 is 0
           echo line
     #.........................................................................................................
     return null
@@ -611,7 +643,7 @@ unless module.parent?
   options =
     #.......................................................................................................
     # 'route':                njs_path.join __dirname, '../dbs/demo'
-    'route':                '/Volumes/Storage/io/jizura-datasources/data/leveldb'
+    'route':                njs_path.resolve __dirname, '../../jizura-datasources/data/leveldb-v2'
     # 'route':            '/tmp/leveldb'
   #---------------------------------------------------------------------------------------------------------
   debug '©AoOAS', options
