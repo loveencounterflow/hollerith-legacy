@@ -315,19 +315,21 @@ later                     = suspend.immediately
         return if data? then done data else done()
   #---------------------------------------------------------------------------------------------------------
   $save_bloom = =>
-    return D.$on_end ( send, end ) =>
-      if db[ '%bloom' ]?
-        whisper "saving Bloom filter..."
-        bloom_bfr = CND.BLOOM.as_buffer db[ '%bloom' ]
-        whisper "serialized bloom filter to #{ƒ bloom_bfr.length} bytes"
-        show_bloom_info()
-        #...................................................................................................
-        @_put_meta db, 'bloom', bloom_bfr, ( error ) =>
-          return send.error error if error?
-          whisper "...ok"
-          end()
-      else
-        whisper "no data written, no Bloom filter to save"
+    return $ ( data, send, end ) =>
+      send data if data?
+      if end?
+        if db[ '%bloom' ]?
+          whisper "saving Bloom filter..."
+          bloom_bfr = CND.BLOOM.as_buffer db[ '%bloom' ]
+          whisper "serialized bloom filter to #{ƒ bloom_bfr.length} bytes"
+          show_bloom_info()
+          #.................................................................................................
+          @_put_meta db, 'bloom', bloom_bfr, ( error ) =>
+            return send.error error if error?
+            whisper "...ok"
+            end()
+        else
+          whisper "no data written, no Bloom filter to save"
   #---------------------------------------------------------------------------------------------------------
   return { batch_written, $ensure_unique_sp, $load_bloom, $save_bloom, }
 

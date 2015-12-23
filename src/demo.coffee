@@ -374,7 +374,7 @@ HOLLERITH.$pick_values = ->
     help "read #{( Object.keys factor_infos ).length} entries for factor_infos"
     ranks         = {}
     include       = Infinity
-    include       = 10000
+    include       = 15000
     include       = 5000
     # include       = [ '寿', '邦', '帮', '畴', '铸', '筹', '涛', '祷', '绑', '綁',    ]
     # include       = Array.from '未釐犛剺味昧眛魅鮇沬妹業寐鄴澲末抹茉枺沫袜妺'
@@ -442,6 +442,17 @@ HOLLERITH.$pick_values = ->
       .pipe D.$lockstep input_v2, fallback: [ null, null, ]
       .pipe D.$lockstep input_v3
       .pipe $unpack()
+      .pipe do =>
+        last_guide = null
+        return $ ( [ v1, v2, v3, ], send ) =>
+          [ glyph_v1
+            lineup_v1 ] = v1
+          this_guide    = ( Array.from lineup_v1 )[ 7 ]
+          return send [ v1, v2, v3, ] if this_guide is last_guide
+          last_guide    = this_guide
+          linup         = "　　　　　　|#{this_guide}　　　　　　"
+          send [ [ this_guide, linup, ], [ this_guide, linup, ], [ this_guide, linup, ], ]
+          send [ v1, v2, v3, ]
       .pipe do =>
         count       = 0
         wspc        = '\u3000'
