@@ -375,6 +375,7 @@ HOLLERITH.$pick_values = ->
     ranks         = {}
     include       = Infinity
     include       = 15000
+    include       = 50
     include       = 5000
     # include       = [ '寿', '邦', '帮', '畴', '铸', '筹', '涛', '祷', '绑', '綁',    ]
     # include       = Array.from '未釐犛剺味昧眛魅鮇沬妹業寐鄴澲末抹茉枺沫袜妺'
@@ -403,14 +404,14 @@ HOLLERITH.$pick_values = ->
         send [ glyph, lineup, ]
     #.........................................................................................................
     $format_sortcode_v3 = =>
-      return $ ( [ glyph, sortcode, ], send ) =>
-        [ _, infix, suffix, prefix, ] = sortcode
+      return $ ( [ glyph, sortcode_plus, ], send ) =>
+        [ sortcode, infix, suffix, prefix, ]  = sortcode_plus
         prefix.unshift '\u3000' until prefix.length >= 6
         suffix.push    '\u3000' until suffix.length >= 6
-        prefix                        = prefix.join ''
-        suffix                        = suffix.join ''
-        lineup                        = prefix + '|' + infix + suffix
-        send [ glyph, lineup, ]
+        prefix                                = prefix.join ''
+        suffix                                = suffix.join ''
+        lineup                                = prefix + '|' + infix + suffix
+        send [ glyph, lineup, sortcode, ]
     #.........................................................................................................
     $unpack = =>
       return $ ( [ [ v1, v2, ], v3, ], send ) =>
@@ -442,6 +443,7 @@ HOLLERITH.$pick_values = ->
       .pipe D.$lockstep input_v2, fallback: [ null, null, ]
       .pipe D.$lockstep input_v3
       .pipe $unpack()
+      #.....................................................................................................
       .pipe do =>
         last_guide = null
         return $ ( [ v1, v2, v3, ], send ) =>
@@ -451,37 +453,55 @@ HOLLERITH.$pick_values = ->
           return send [ v1, v2, v3, ] if this_guide is last_guide
           last_guide    = this_guide
           linup         = "　　　　　　|#{this_guide}　　　　　　"
-          send [ [ this_guide, linup, ], [ this_guide, linup, ], [ this_guide, linup, ], ]
+          sortcode_v3   = v3[ 2 ]
+          send [ [ this_guide, linup, ], [ this_guide, linup, ], [ this_guide, linup, sortcode_v3, ], ]
           send [ v1, v2, v3, ]
+      #.....................................................................................................
       .pipe do =>
         count       = 0
         wspc        = '\u3000'
         nspc        = '\u3000'
         # style       = 'A'
-        style       = 'B'
+        # style       = 'B'
+        style       = 'C'
         switch style
           when 'A'
-            vsep        = '◉'
-            include_v1  = no
-            for_mkts    = no
-            ldiff_0     = ' '
-            ldiff_1     = '<'
-            rdiff_0     = ' '
-            rdiff_1     = '>'
+            vsep              = '◉'
+            include_v1        = no
+            include_sortcode  = no
+            for_mkts          = no
+            ldiff_0           = ' '
+            ldiff_1           = '<'
+            rdiff_0           = ' '
+            rdiff_1           = '>'
           when 'B'
-            vsep        = '║'
-            include_v1  = yes
-            for_mkts    = yes
-            ldiff_0     = wspc
-            ldiff_1     = '＜'
-            rdiff_0     = wspc
-            rdiff_1     = '＞'
+            vsep              = '║'
+            include_v1        = yes
+            for_mkts          = yes
+            include_sortcode  = no
+            ldiff_0           = wspc
+            ldiff_1           = '＜'
+            rdiff_0           = wspc
+            rdiff_1           = '＞'
+          when 'C'
+            vsep              = '║'
+            include_v1        = yes
+            for_mkts          = yes
+            include_sortcode  = no
+            ldiff_0           = wspc
+            ldiff_1           = '＜'
+            rdiff_0           = wspc
+            rdiff_1           = '＞'
           else throw new Error "unknown style #{rpr style}"
         #...................................................................................................
         return D.$observe ( [ v1, v2, v3, ] ) =>
-          [ glyph_v1, lineup_v1, ]  = v1
-          [ glyph_v2, lineup_v2, ]  = v2
-          [ glyph_v3, lineup_v3, ]  = v3
+          [ glyph_v1, lineup_v1,              ]  = v1
+          [ glyph_v2, lineup_v2,              ]  = v2
+          [ glyph_v3, lineup_v3, sortcode_v3, ]  = v3
+          #.................................................................................................
+          if include_sortcode
+            ( sortcode_v3[ idx ] = '________' if code is null ) for code, idx in sortcode_v3
+            sortcode_v3 = sortcode_v3.join ' '
           #.................................................................................................
           diff                      = []
           diff_v1                   = if glyph_v1 is glyph_v2 then ldiff_0 else ldiff_1
@@ -499,6 +519,7 @@ HOLLERITH.$pick_values = ->
           #.................................................................................................
           if for_mkts
             line += '<<< >>>'
+            line += sortcode_v3 if include_sortcode
           #.................................................................................................
           else
             line += spc + spc + spc
