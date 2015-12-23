@@ -375,7 +375,7 @@ HOLLERITH.$pick_values = ->
     ranks         = {}
     include       = Infinity
     include       = 10000
-    include       = 5000
+    include       = 15000
     # include       = [ '寿', '邦', '帮', '畴', '铸', '筹', '涛', '祷', '绑', '綁',    ]
     # include       = Array.from '未釐犛剺味昧眛魅鮇沬妹業寐鄴澲末抹茉枺沫袜妺'
     # 'guide/hierarchy/uchr'
