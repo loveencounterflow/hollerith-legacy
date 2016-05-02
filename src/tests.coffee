@@ -1658,10 +1658,107 @@ clear_leveldb = ( leveldb, handler ) ->
     T.ok true
     done()
 
+#-----------------------------------------------------------------------------------------------------------
+@[ "use non-string subjects in phrases" ] = ( T, done ) ->
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    input = D.create_throughstream()
+    #.......................................................................................................
+    input
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end ->
+        handler()
+    #.......................................................................................................
+    input.write [ '千', 'guide/kwic/v3/sortcode', [ [ [ '0686f---', null ], '千', [], [] ] ], ]
+    # input.write [ '亻', 'guide/kwic/v3/sortcode', [ [ [ '0774f---', null ], '亻', [], [] ] ], ]
+    # input.write [ '一', 'guide/kwic/v3/sortcode', [ [ [ '0000f---', null ], '一', [], [] ] ], ]
+    # input.write [ '丿', 'guide/kwic/v3/sortcode', [ [ [ '0645f---', null ], '丿', [], [] ] ], ]
+    # input.write [ '十', 'guide/kwic/v3/sortcode', [ [ [ '0104f---', null ], '十', [], [] ] ], ]
+    input.write [ [ 'ref', '千', 0, ], 'guide/kwic/v3/sortcode', [
+      [ [ '0774f---', '0000f---', null, ], [ '亻', [],        [ '一', ] ], ]
+      [ [ '0000f---', null, '0774f---', ], [ '一', [ '亻', ], []        ], ]
+      ] ]
+    # input.write [ [ 'ref', '千', 1, ], 'guide/kwic/v3/sortcode', [
+    #   [ [], [ '丿', '十', ], ], ]
+    #   ]
+    input.end()
+  #.........................................................................................................
+  show = ( handler ) ->
+    input = HOLLERITH.create_phrasestream db
+    input
+      .pipe D.$observe ( phrase ) =>
+        info JSON.stringify phrase
+      .pipe D.$on_end ->
+        handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    # yield feed_test_data db, probes_idx, resume
+    yield write_data resume
+    yield show resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@_prune = ->
+  for name, value of @
+    continue if name.startsWith '_'
+    delete @[ name ] unless name in include
+  return null
 
 
 ############################################################################################################
 unless module.parent?
+  # debug '0980', JSON.stringify ( Object.keys @ ), null, '  '
+  include = [
+    # "write without error (1)",
+    # "write without error (2)",
+    # "read without error",
+    # "read keys without error (1)",
+    # "read keys without error (2)",
+    # "read keys without error (3)",
+    # "read keys without error (4)",
+    # "create_facetstream throws with wrong arguments",
+    # "read POS facets",
+    # "read POS phrases (1)",
+    # "read POS phrases (2)",
+    # "read SPO phrases",
+    # "sorting (1)",
+    # "sorting (2)",
+    # "H2 codec `encode` throws on anything but a list",
+    # "sort texts with H2 codec (1)",
+    # "sort texts with H2 codec (2)",
+    # "sort numbers with H2 codec (1)",
+    # "sort mixed values with H2 codec",
+    # "sort lists of mixed values with H2 codec",
+    # "sort routes with values (1)",
+    # "sort routes with values (2)",
+    # "read sample data",
+    # "read and write keys with lists",
+    # "encode keys with list elements",
+    # "read and write phrases with unanalyzed lists",
+    # "read partial POS phrases",
+    # "read single phrases (1)",
+    # "read single phrases (2)",
+    # "read single phrases (3)",
+    # "read single phrases (4)",
+    # "writing phrases with non-unique keys fails",
+    # "reminders",
+    # "invalid key not accepted (1)",
+    # "invalid key not accepted (2)",
+    # "catching errors (2)",
+    # "catching errors (1)",
+    # "building PODs from SPO phrases",
+    # "read phrases in lockstep",
+    # "has_any yields existence of key",
+    # "$write rejects duplicate S/P pairs",
+    # "codec accepts long keys",
+    # "write private types (1)",
+    # "write private types (2)",
+    # "write private types (3)",
+    # "bloom filter serialization without writes",
+    "use non-string subjects in phrases"
+    ]
+  @_prune()
   @_main()
   # @[ "XXX" ] null, -> help "(done)"
   # @[ "YYY" ] null, -> help "(done)"
