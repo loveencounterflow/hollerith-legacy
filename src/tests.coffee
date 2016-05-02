@@ -1669,6 +1669,14 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe D.$on_end ->
         handler()
     #.......................................................................................................
+    input.write [ '于', 'guide/kwic/v3/sortcode', [ [ [ '0019f---', null ],
+        '于',
+        [ '　', '　', '　' ],
+        [ '　', '　', '　' ] ] ] ]
+    input.write [ '干', 'guide/kwic/v3/sortcode', [ [ [ '0020f---', null ],
+        '干',
+        [ '　', '　', '　' ],
+        [ '　', '　', '　' ] ] ] ]
     input.write [ '千', 'guide/kwic/v3/sortcode', [ [ [ '0686f---', null ], '千', [], [] ] ], ]
     input.write [ '亻', 'guide/kwic/v3/sortcode', [ [ [ '0774f---', null ], '亻', [], [] ] ], ]
     input.write [ '一', 'guide/kwic/v3/sortcode', [ [ [ '0000f---', null ], '一', [], [] ] ], ]
@@ -1683,6 +1691,9 @@ clear_leveldb = ( leveldb, handler ) ->
       [ [ '0104f---', null, '0645f---', ], [ '十', [ '丿', ], []        ], ]
       ] ]
     input.end()
+
+
+
   #.........................................................................................................
   show = ( handler ) ->
     input = HOLLERITH.create_phrasestream db
