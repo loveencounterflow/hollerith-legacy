@@ -8,7 +8,7 @@
     "cnd": "^1.0.9",
     "coffeenode-docopt": "^0.1.1",
     "coffeenode-suspend": "^0.1.11",
-    "hollerith-codec": "^1.0.24",
+    "hollerith-codec": "^1.2.0",
     "kwic": "^1.0.7",
     "level": "^1.4.0",
     "leveldown": "^1.4.3",

@@ -687,7 +687,7 @@ clear_leveldb = ( leveldb, handler ) ->
   T.throws "expected a list, got a number",       ( -> CODEC.encode 42 )
   T.throws "expected a list, got a boolean",      ( -> CODEC.encode true )
   T.throws "expected a list, got a boolean",      ( -> CODEC.encode false )
-  T.throws "expected a list, got a jsundefined",  ( -> CODEC.encode() )
+  T.throws "expected a list, got a undefined",    ( -> CODEC.encode() )
   done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -895,6 +895,44 @@ clear_leveldb = ( leveldb, handler ) ->
     for probe, probe_idx in probes
       matcher = matchers[ probe_idx ]
       T.eq probe, matcher
+    leveldb.close -> done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "ensure `Buffer.compare` gives same sorting as LevelDB" ] = ( T, done ) ->
+  step ( resume ) =>
+    settings =
+      db:           leveldown
+      keyEncoding:  'binary'
+    leveldb = levelup '/tmp/hollerith2-test', settings
+    yield clear_leveldb leveldb, resume
+    probes = [
+      # { x: 1234.5678 }
+      [ "",             '',              ]
+      [ "1234",          1234,           ]
+      [ "Infinity",      Infinity,       ]
+      [ "String.fromCodePoint 0x10ffff", String.fromCodePoint 0x10ffff ]
+      [ "false",         false,          ]
+      [ "new Date 0",    new Date 0,     ]
+      [ "new Date 8e11", new Date 8e11,  ]
+      [ "new Date()",    new Date(),     ]
+      [ "null",          null,           ]
+      [ "true",          true,           ]
+      [ "一",            '一',            ]
+      [ "三",            '三',            ]
+      [ "二",            '二',            ]
+      [ "𠀀",            '𠀀',            ]
+      [ "𠀀\x00",        '𠀀\x00',        ]
+      ]
+    CND.shuffle probes
+    for probe in probes
+      probe_bfr = CODEC.encode probe
+      yield leveldb.put probe_bfr, '1', resume
+    probe_bfrs  = yield read_all_keys leveldb, resume
+    last_probe_bfr = null
+    for probe_bfr in probe_bfrs
+      if last_probe_bfr?
+        T.eq ( Buffer.compare last_probe_bfr, probe_bfr ), -1
+      last_probe_bfr = probe_bfr
     leveldb.close -> done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -1648,15 +1686,15 @@ clear_leveldb = ( leveldb, handler ) ->
 #-----------------------------------------------------------------------------------------------------------
 @[ "bloom filter serialization without writes" ] = ( T, done ) ->
   #.........................................................................................................
-  step ( resume ) =>
-    xdb   = HOLLERITH.new_db get_new_db_name()
-    input = HOLLERITH.create_phrasestream xdb
-    input.pause()
-    input.pipe HOLLERITH.$write xdb
-    input.resume()
-    input.end()
-    T.ok true
-    done()
+  # step ( resume ) =>
+  xdb   = HOLLERITH.new_db get_new_db_name()
+  input = HOLLERITH.create_phrasestream xdb
+  input.pause()
+  input.pipe HOLLERITH.$write xdb
+  input.resume()
+  input.end()
+  T.ok true
+  done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "use non-string subjects in phrases" ] = ( T, done ) ->
@@ -1669,30 +1707,34 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe D.$on_end ->
         handler()
     #.......................................................................................................
-    input.write [ '于', 'guide/kwic/v3/sortcode', [ [ [ '0019f---', null ],
-        '于',
-        [ '　', '　', '　' ],
-        [ '　', '　', '　' ] ] ] ]
-    input.write [ '干', 'guide/kwic/v3/sortcode', [ [ [ '0020f---', null ],
-        '干',
-        [ '　', '　', '　' ],
-        [ '　', '　', '　' ] ] ] ]
     input.write [ '千', 'guide/kwic/v3/sortcode', [ [ [ '0686f---', null ], '千', [], [] ] ], ]
+    input.write [ '于', 'guide/kwic/v3/sortcode', [ [ [ '0019f---', null ], '于', [], [] ] ], ]
+    input.write [ '干', 'guide/kwic/v3/sortcode', [ [ [ '0020f---', null ], '干', [], [] ] ], ]
+    #.......................................................................................................
+    ### Three phrases to register '千 looks similar to both 于 and 干': ###
+    input.write [ '千', 'shape/similarity', [ '于', '干', ], ]
+    input.write [ '于', 'shape/similarity', [ '干', '千', ], ]
+    input.write [ '干', 'shape/similarity', [ '千', '于', ], ]
+    ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
+    input.write [ [ '千', 'shape/similarity', [ '于', '干', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0686f---', null ], '千', [], [] ] ], ]
+    input.write [ [ '于', 'shape/similarity', [ '千', '干', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0019f---', null ], '于', [], [] ] ], ]
+    input.write [ [ '干', 'shape/similarity', [ '千', '于', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0020f---', null ], '干', [], [] ] ], ]
+    #.......................................................................................................
+    ### Two sub-factorial renderings of 千 as 亻一 and 丿十: ###
     input.write [ '亻', 'guide/kwic/v3/sortcode', [ [ [ '0774f---', null ], '亻', [], [] ] ], ]
     input.write [ '一', 'guide/kwic/v3/sortcode', [ [ [ '0000f---', null ], '一', [], [] ] ], ]
     input.write [ '丿', 'guide/kwic/v3/sortcode', [ [ [ '0645f---', null ], '丿', [], [] ] ], ]
     input.write [ '十', 'guide/kwic/v3/sortcode', [ [ [ '0104f---', null ], '十', [], [] ] ], ]
-    input.write [ [ 'ref', '千', 0, ], 'guide/kwic/v3/sortcode', [
-      [ [ '0774f---', '0000f---', null, ], [ '亻', [],        [ '一', ] ], ]
-      [ [ '0000f---', null, '0774f---', ], [ '一', [ '亻', ], []        ], ]
+    input.write [ [ '千', 'guide/lineup/uchr', '亻一', ], 'guide/kwic/v3/sortcode', [
+      [ [ '0774f---', '0000f---', null, ], [ '亻', [ '一', ], []        ], ]
+      [ [ '0000f---', null, '0774f---', ], [ '一', [],        [ '亻', ] ], ]
       ] ]
-    input.write [ [ 'ref', '千', 1, ], 'guide/kwic/v3/sortcode', [
-      [ [ '0645f---', '0104f---', null, ], [ '丿', [],        [ '十', ] ], ]
-      [ [ '0104f---', null, '0645f---', ], [ '十', [ '丿', ], []        ], ]
+    input.write [ [ '千', 'guide/lineup/uchr', '丿十', ], 'guide/kwic/v3/sortcode', [
+      [ [ '0645f---', '0104f---', null, ], [ '丿', [ '十', ], []        ], ]
+      [ [ '0104f---', null, '0645f---', ], [ '十', [],        [ '丿', ] ], ]
       ] ]
+    #.......................................................................................................
     input.end()
-
-
 
   #.........................................................................................................
   show = ( handler ) ->
@@ -1722,55 +1764,56 @@ clear_leveldb = ( leveldb, handler ) ->
 unless module.parent?
   # debug '0980', JSON.stringify ( Object.keys @ ), null, '  '
   include = [
-    # "write without error (1)",
-    # "write without error (2)",
-    # "read without error",
-    # "read keys without error (1)",
-    # "read keys without error (2)",
-    # "read keys without error (3)",
-    # "read keys without error (4)",
-    # "create_facetstream throws with wrong arguments",
-    # "read POS facets",
-    # "read POS phrases (1)",
-    # "read POS phrases (2)",
-    # "read SPO phrases",
-    # "sorting (1)",
-    # "sorting (2)",
-    # "H2 codec `encode` throws on anything but a list",
-    # "sort texts with H2 codec (1)",
-    # "sort texts with H2 codec (2)",
-    # "sort numbers with H2 codec (1)",
-    # "sort mixed values with H2 codec",
-    # "sort lists of mixed values with H2 codec",
-    # "sort routes with values (1)",
-    # "sort routes with values (2)",
-    # "read sample data",
-    # "read and write keys with lists",
-    # "encode keys with list elements",
-    # "read and write phrases with unanalyzed lists",
-    # "read partial POS phrases",
-    # "read single phrases (1)",
-    # "read single phrases (2)",
-    # "read single phrases (3)",
-    # "read single phrases (4)",
-    # "writing phrases with non-unique keys fails",
-    # "reminders",
-    # "invalid key not accepted (1)",
-    # "invalid key not accepted (2)",
-    # "catching errors (2)",
-    # "catching errors (1)",
-    # "building PODs from SPO phrases",
-    # "read phrases in lockstep",
-    # "has_any yields existence of key",
-    # "$write rejects duplicate S/P pairs",
-    # "codec accepts long keys",
-    # "write private types (1)",
-    # "write private types (2)",
-    # "write private types (3)",
-    # "bloom filter serialization without writes",
-    "use non-string subjects in phrases"
+    # "write without error (1)"
+    # "write without error (2)"
+    # "read without error"
+    # "read keys without error (1)"
+    # "read keys without error (2)"
+    # "read keys without error (3)"
+    # "read keys without error (4)"
+    # "create_facetstream throws with wrong arguments"
+    # "read POS facets"
+    # "read POS phrases (1)"
+    # "read POS phrases (2)"
+    # "read SPO phrases"
+    # "sorting (1)"
+    # "sorting (2)"
+    # "H2 codec `encode` throws on anything but a list"
+    # "sort texts with H2 codec (1)"
+    # "sort texts with H2 codec (2)"
+    # "sort numbers with H2 codec (1)"
+    # "sort mixed values with H2 codec"
+    # "sort lists of mixed values with H2 codec"
+    # "sort routes with values (1)"
+    # "sort routes with values (2)"
+    # "read sample data"
+    # "read and write keys with lists"
+    # "encode keys with list elements"
+    # "read and write phrases with unanalyzed lists"
+    # "read partial POS phrases"
+    # "read single phrases (1)"
+    # "read single phrases (2)"
+    # "read single phrases (3)"
+    # "read single phrases (4)"
+    # "writing phrases with non-unique keys fails"
+    # "reminders"
+    # "invalid key not accepted (1)"
+    # "invalid key not accepted (2)"
+    # "catching errors (2)"
+    # "catching errors (1)"
+    # "building PODs from SPO phrases"
+    # "read phrases in lockstep"
+    # "has_any yields existence of key"
+    # "$write rejects duplicate S/P pairs"
+    # "codec accepts long keys"
+    # "write private types (1)"
+    # "write private types (2)"
+    # "write private types (3)"
+    # "bloom filter serialization without writes"
+    # "use non-string subjects in phrases"
+    "ensure `Buffer.compare` gives same sorting as LevelDB"
     ]
-  @_prune()
+  # @_prune()
   @_main()
   # @[ "XXX" ] null, -> help "(done)"
   # @[ "YYY" ] null, -> help "(done)"
