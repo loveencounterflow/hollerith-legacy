@@ -1811,7 +1811,11 @@ unless module.parent?
     # "write private types (3)"
     # "bloom filter serialization without writes"
     # "use non-string subjects in phrases"
-    "ensure `Buffer.compare` gives same sorting as LevelDB"
+    '$write rejects duplicate S/P pairs'
+    'codec accepts long keys'
+    'write private types (1)'
+    'use non-string subjects in phrases'
+    # "ensure `Buffer.compare` gives same sorting as LevelDB"
     ]
   # @_prune()
   @_main()

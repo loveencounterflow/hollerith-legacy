@@ -4,17 +4,17 @@
   "description": "Next version of hollerith, the Binary Phrase DB",
   "main": "lib/main.js",
   "dependencies": {
-    "async": "^1.5.0",
-    "cnd": "^1.0.9",
+    "async": "^1.5.2",
+    "cnd": "^3.0.4",
     "coffeenode-docopt": "^0.1.1",
     "coffeenode-suspend": "^0.1.11",
     "hollerith-codec": "^1.2.0",
     "kwic": "^1.0.7",
     "level": "^1.4.0",
-    "leveldown": "^1.4.3",
-    "lodash": "^3.10.1",
+    "leveldown": "^1.4.6",
+    "lodash": "^4.13.1",
     "mkdirp": "^0.5.1",
-    "pipedreams": "^3.0.4",
+    "pipedreams": "^3.0.8",
     "segfault-handler": "^1.0.0"
   },
   "devDependencies": {
@@ -22,10 +22,10 @@
     "coffeelint-variable-scope": "0.0.3",
     "coffeenode-chr": "^1.0.2",
     "coffeenode-passphrase": "^0.1.7",
-    "gulp": "^3.9.0",
-    "gulp-coffee": "^2.3.1",
+    "gulp": "^3.9.1",
+    "gulp-coffee": "^2.3.2",
     "gulp-sourcemaps": "^1.6.0",
-    "guy-test": "^1.1.2"
+    "guy-test": "^1.1.3"
   },
   "scripts": {
     "test": "gulp --harmony build && node --harmony lib/tests.js"
