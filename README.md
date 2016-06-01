@@ -1027,6 +1027,9 @@ end up with three phrases to capture that 千 is similar to 于干, 于 is simil
 [ [ '干', ], 'shape/similarity', [ '千', '于', ], ]
 ```
 
+The above 3 + 4 = 7 phrases expand to 7 (SPO) + 10 (POS) = 17 net phrases in the DB,
+a dump of which is shown here in the actual lexicographic order:
+
 ```coffee
 #        Predicate           Object(s)            Subject
 [ 'pos', 'reading/py/base',  'gan',               [ '干' ], 0, ]
@@ -1048,6 +1051,16 @@ end up with three phrases to capture that 千 is similar to 于干, 于 is simil
 [ 'spo', [ '干' ],           'reading/py/base',    [ 'gan',     ], ]
 [ 'spo', [ '干' ],           'shape/similarity',   [ '千','于',  ], ]
 ```
+
+Note how we can already iterate over phrases that start out as `[ 'pos', 'reading/py/base', ...`
+to obtain just the ordering we want for a Pinyin-based dictionary.
+
+> **Note** that the reason for *gan*, *qian*, *ren*, *yu* to appear in the
+> correct alphabetic order is ultimately rooted in the fact that the inventors
+> of US ASCII chose to encode these letters in the way they did; when you throw
+> in the accented letters needed to write tonal Pinyin (or any language with
+> letters outside of `[a-z]`), that property is, in general, lost.
+
 
 
 ```coffee
