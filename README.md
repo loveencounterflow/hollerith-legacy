@@ -1027,43 +1027,56 @@ end up with three phrases to capture that 千 is similar to 于干, 于 is simil
 [ [ '干', ], 'shape/similarity', [ '千', '于', ], ]
 ```
 
-The above 3 + 4 = 7 phrases expand to 7 (SPO) + 10 (POS) = 17 net phrases in the DB,
-a dump of which is shown here in the actual lexicographic order:
+The above 3 + 4 = 7 net (SPO) phrases expand to 7 (SPO) + 10 (POS) = 17 gross
+(SPO and POS) phrases in the DB, a dump of which is shown here in the actual
+lexicographic order:
 
 ```coffee
 #        Predicate           Object(s)            Subject
-[ 'pos', 'reading/py/base',  'gan',               [ '干' ], 0, ]
-[ 'pos', 'reading/py/base',  'qian',              [ '千' ], 0, ]
-[ 'pos', 'reading/py/base',  'ren',               [ '人' ], 0, ]
-[ 'pos', 'reading/py/base',  'yu',                [ '于' ], 0, ]
-[ 'pos', 'shape/similarity', '于',                 [ '千' ], 0, ]
-[ 'pos', 'shape/similarity', '于',                 [ '干' ], 1, ]
-[ 'pos', 'shape/similarity', '千',                 [ '于' ], 1, ]
-[ 'pos', 'shape/similarity', '千',                 [ '干' ], 0, ]
-[ 'pos', 'shape/similarity', '干',                 [ '于' ], 0, ]
-[ 'pos', 'shape/similarity', '干',                 [ '千' ], 1, ]
+[ 'pos', 'reading/py/base',  'gan',               [ '干', ], 0, ]
+[ 'pos', 'reading/py/base',  'qian',              [ '千', ], 0, ]
+[ 'pos', 'reading/py/base',  'ren',               [ '人', ], 0, ]
+[ 'pos', 'reading/py/base',  'yu',                [ '于', ], 0, ]
+[ 'pos', 'shape/similarity', '于',                 [ '千', ], 0, ]
+[ 'pos', 'shape/similarity', '于',                 [ '干', ], 1, ]
+[ 'pos', 'shape/similarity', '千',                 [ '于', ], 1, ]
+[ 'pos', 'shape/similarity', '千',                 [ '干', ], 0, ]
+[ 'pos', 'shape/similarity', '干',                 [ '于', ], 0, ]
+[ 'pos', 'shape/similarity', '干',                 [ '千', ], 1, ]
 #        Subject             Predicate             Object(s)
-[ 'spo', [ '于' ],           'reading/py/base',    [ 'yu',      ], ]
-[ 'spo', [ '于' ],           'shape/similarity',   [ '干','千',  ], ]
-[ 'spo', [ '人' ],           'reading/py/base',    [ 'ren',     ], ]
-[ 'spo', [ '千' ],           'reading/py/base',    [ 'qian',    ], ]
-[ 'spo', [ '千' ],           'shape/similarity',   [ '于','干',  ], ]
-[ 'spo', [ '干' ],           'reading/py/base',    [ 'gan',     ], ]
-[ 'spo', [ '干' ],           'shape/similarity',   [ '千','于',  ], ]
+[ 'spo', [ '于', ],          'reading/py/base',    [ 'yu',      ], ]
+[ 'spo', [ '于', ],          'shape/similarity',   [ '干','千',  ], ]
+[ 'spo', [ '人', ],          'reading/py/base',    [ 'ren',     ], ]
+[ 'spo', [ '千', ],          'reading/py/base',    [ 'qian',    ], ]
+[ 'spo', [ '千', ],          'shape/similarity',   [ '于','干',  ], ]
+[ 'spo', [ '干', ],          'reading/py/base',    [ 'gan',     ], ]
+[ 'spo', [ '干', ],          'shape/similarity',   [ '千','于',  ], ]
 ```
 
-Note how we can already iterate over phrases that start out as `[ 'pos', 'reading/py/base', ...`
-to obtain just the ordering we want for a Pinyin-based dictionary.
+At this point we can already iterate over phrases that start with `[ 'pos',
+'reading/py/base', ...` to obtain just the ordering we want for a Pinyin-based
+dictionary.
 
 > **Note** that the reason for *gan*, *qian*, *ren*, *yu* to appear in the
 > correct alphabetic order is ultimately rooted in the fact that the inventors
 > of US ASCII chose to encode these letters in the way they did; when you throw
-> in the accented letters needed to write tonal Pinyin (or any language with
-> letters outside of `[a-z]`), that property is, in general, lost.
+> in the accented letters needed to write tonal Pinyin (or words from any
+> language with letters outside of `[a-z]`), that property is, in general, lost:
+> You'ld have to roll your own collation method in that case.
 
+Now if we wanted to build a dictionary with characters ordered by Pinyin that
+cross-references similar characters, one approach would be to iterate over those
+phrases that start with `[ 'pos', 'reading/py/base', ...`, retrieve the subject
+character from each phrase, and retrieve the phrase (if any) that has the prefix
+`[ 'spo', [ glyph, ], 'shape/similarity', ...`.
 
-
-
+Doing intermittent requests is possible, but it also necessitates interrupting
+the main stream (no pun) of entries with (potentially lots of) intermittent
+retrievals, one for each character and each of the maybe many tidbits of data we
+have in store for it. Building index allows us to do that data aggregation part
+upfront and have the ready-made data in the right place upfront; the database
+will grow bigger, but it will be much easier to walk over entries that are
+to appear in the resulting product.
 
 ```coffee
 #.......................................................................................................
