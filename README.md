@@ -1040,12 +1040,12 @@ end up with three phrases to capture that 千 is similar to 于干, 于 is simil
 [ 'pos', 'shape/similarity', '干',                 [ '于' ], 0, ]
 [ 'pos', 'shape/similarity', '干',                 [ '千' ], 1, ]
 #        Subject             Predicate             Object(s)
-[ 'spo', [ '于' ],           'reading/py/base',    [ 'yu',     ], ]
+[ 'spo', [ '于' ],           'reading/py/base',    [ 'yu',      ], ]
 [ 'spo', [ '于' ],           'shape/similarity',   [ '干','千',  ], ]
-[ 'spo', [ '人' ],           'reading/py/base',    [ 'ren',    ], ]
-[ 'spo', [ '千' ],           'reading/py/base',    [ 'qian',   ], ]
+[ 'spo', [ '人' ],           'reading/py/base',    [ 'ren',     ], ]
+[ 'spo', [ '千' ],           'reading/py/base',    [ 'qian',    ], ]
 [ 'spo', [ '千' ],           'shape/similarity',   [ '于','干',  ], ]
-[ 'spo', [ '干' ],           'reading/py/base',    [ 'gan',    ], ]
+[ 'spo', [ '干' ],           'reading/py/base',    [ 'gan',     ], ]
 [ 'spo', [ '干' ],           'shape/similarity',   [ '千','于',  ], ]
 ```
 
