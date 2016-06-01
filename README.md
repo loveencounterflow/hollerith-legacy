@@ -1000,18 +1000,50 @@ Tspo∇Tå½¢∇Tstrokecount∇              ┊ 7
 
 ## Secondary Indexes
 
+There is a somewhat surprising, maybe puzzling, but nonetheless rather simple
+way to build indexes with Hollerith, using nothing but what the Hollerith Codec
+brings to the table anyway—lists of values.
+
+Let's say you had two kinds of data about Chinese characters: what they're read like
+(using a simplified, non-tonal Pinyin transcription), and what other characters a
+given character looks similar two. We can capture this knowledge in two sets
+of phrases; the first captures the pronunciations *qian* for 千, *yu* for
+于, and *gan* for 干; for good measure, I've thrown in another data point for 人:
+
 ```coffee
- @_walk_permutations S, ( error, glyph_and_permutations ) =>
-   throw error if error?
-   return unless glyph_and_permutations?
-   [ glyph, permutations, ] = glyph_and_permutations
-   if glyph is last_glyph
-     sbj_idx += +1
-   else
-     last_glyph  = glyph
-     sbj_idx     = 0
-   send [ [ glyph, 'guide/lineup/uchr', sbj_idx, ], 'guide/kwic/v3/sortcode', permutations, ]
-`` `
+# Subject    Predicate          Object(s)
+[ [ '千', ], 'reading/py/base', [ 'qian', ], ]
+[ [ '于', ], 'reading/py/base', [ 'yu',   ], ]
+[ [ '干', ], 'reading/py/base', [ 'gan',  ], ]
+[ [ '人', ], 'reading/py/base', [ 'ren',  ], ]
+```
+
+In these phrases, the object is a list of values because each character may have a
+number of readings (two or three being not uncommon); I've chosen to use a sub-list
+for the subject, too, for reasons that will become clear momentarily.
+
+In the second set of phrases, we record our sentiment that 千, 于 and 干 happen to
+look alike (but unlike 人). Of course, a given character always 'looks like' itself,
+and if we don't want to pollute the DB with that kind of non-fact, we'll end up
+with three phrases to capture that 千 is similar to 于干,
+于 is similar to 干千, and 干 is similar to 千于:
+
+```coffee
+#.......................................................................................................
+### Three phrases to register '千 looks similar to both 于 and 干': ###
+[ [ '千', ], 'shape/similarity', [ '于', '干', ], ]
+[ [ '于', ], 'shape/similarity', [ '干', '千', ], ]
+[ [ '干', ], 'shape/similarity', [ '千', '于', ], ]
+#.......................................................................................................
+### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
+### (1) these will lead from reading to similarity, as in
+  `["pos","reading/py/base","gan",["干","shape/similarity",["千","于"]],0]`, meaning these phrases
+  are suitable for building a dictionary organzed by Pinyin readings with cross-references
+  to similar characters: ###
+[ [ '千', 'shape/similarity', [ '于', '干', ], 0, ], 'reading/py/base', 'qian', ]
+[ [ '于', 'shape/similarity', [ '千', '干', ], 0, ], 'reading/py/base', 'yu',   ]
+[ [ '干', 'shape/similarity', [ '千', '于', ], 0, ], 'reading/py/base', 'gan',  ]
+```
 
 # XXXXXXX
 
