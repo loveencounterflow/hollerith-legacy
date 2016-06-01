@@ -1,4 +1,5 @@
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
+![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
@@ -36,7 +37,7 @@
 
 # hollerith
 
-[![Build Status](https://travis-ci.org/loveencounterflow/hollerith2.png)](https://travis-ci.org/loveencounterflow/hollerith2)
+[![Build Status](https://travis-ci.org/loveencounterflow/hollerith2.png)](https://travis-ci.org/loveencounterflow/hollerith)
 
 > Use LevelDB like 1960s punched cards
 
@@ -44,11 +45,8 @@
 write and read to and from  -->
 
 ```
-npm install --save hollerith2
+npm install --save hollerith
 ```
-
-(In the near future, this will change to `npm install --save hollerith`, `hollerith2` being the
-release candidate for the next major version of `hollerith`.)
 
 # Theory
 
