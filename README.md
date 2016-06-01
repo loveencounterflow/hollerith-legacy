@@ -1,23 +1,4 @@
 ![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
-![](https://github.com/loveencounterflow/hollerith/raw/master/art/hollerith-logo-v2.png)
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
@@ -47,9 +28,10 @@
     - [@create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->](#@create_phrasestream---db-lo_hint--null-hi_hint--null---)
     - [@create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->](#@create_facetstream---db-lo_hint--null-hi_hint--null---)
     - [@read_sub = ( db, settings, read ) ->](#@read_sub---db-settings-read---)
-- [XXXXXXX](#xxxxxxx)
+  - [Secondary Indexes](#secondary-indexes)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 
 
 # hollerith
@@ -1044,6 +1026,20 @@ for how to use `PIPEDREAMS.run` and what to watch out for, especially on why we 
 ### @create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
 ### @read_sub = ( db, settings, read ) ->
 
+## Secondary Indexes
+
+```coffee
+ @_walk_permutations S, ( error, glyph_and_permutations ) =>
+   throw error if error?
+   return unless glyph_and_permutations?
+   [ glyph, permutations, ] = glyph_and_permutations
+   if glyph is last_glyph
+     sbj_idx += +1
+   else
+     last_glyph  = glyph
+     sbj_idx     = 0
+   send [ [ glyph, 'guide/lineup/uchr', sbj_idx, ], 'guide/kwic/v3/sortcode', permutations, ]
+`` `
 
 # XXXXXXX
 
