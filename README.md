@@ -991,14 +991,6 @@ Tspo∇Tå½¢∇Tstrokecount∇              ┊ 7
 ```
 
 ## Indexing Data
-## Deleting Data
-## Reading Data
-
-### @create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->
-### @create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
-### @read_sub = ( db, settings, read ) ->
-
-## Secondary Indexes
 
 There is a somewhat surprising, maybe puzzling, but nonetheless rather simple
 way to build indexes with Hollerith, using nothing but what the Hollerith Codec
@@ -1023,17 +1015,42 @@ number of readings (two or three being not uncommon); I've chosen to use a sub-l
 for the subject, too, for reasons that will become clear momentarily.
 
 In the second set of phrases, we record our sentiment that 千, 于 and 干 happen to
-look alike (but unlike 人). Of course, a given character always 'looks like' itself,
-and if we don't want to pollute the DB with that kind of non-fact, we'll end up
-with three phrases to capture that 千 is similar to 于干,
-于 is similar to 干千, and 干 is similar to 千于:
+look alike (but unlike 人). Of course, a given character always 'looks like'
+itself; if we don't want to pollute the DB with that kind of triviality, we'll
+end up with three phrases to capture that 千 is similar to 于干, 于 is similar to
+干千, and 干 is similar to 千于:
 
 ```coffee
-#.......................................................................................................
-### Three phrases to register '千 looks similar to both 于 and 干': ###
+# Subject    Predicate          Object(s)
 [ [ '千', ], 'shape/similarity', [ '于', '干', ], ]
 [ [ '于', ], 'shape/similarity', [ '干', '千', ], ]
 [ [ '干', ], 'shape/similarity', [ '千', '于', ], ]
+```
+
+```coffee
+#        Predicate           Object(s)            Subject
+[ 'pos', 'reading/py/base',  'gan',               [ '干' ], 0, ]
+[ 'pos', 'reading/py/base',  'qian',              [ '千' ], 0, ]
+[ 'pos', 'reading/py/base',  'ren',               [ '人' ], 0, ]
+[ 'pos', 'reading/py/base',  'yu',                [ '于' ], 0, ]
+[ 'pos', 'shape/similarity', '于',                 [ '千' ], 0, ]
+[ 'pos', 'shape/similarity', '于',                 [ '干' ], 1, ]
+[ 'pos', 'shape/similarity', '千',                 [ '于' ], 1, ]
+[ 'pos', 'shape/similarity', '千',                 [ '干' ], 0, ]
+[ 'pos', 'shape/similarity', '干',                 [ '于' ], 0, ]
+[ 'pos', 'shape/similarity', '干',                 [ '千' ], 1, ]
+#        Subject             Predicate             Object(s)
+[ 'spo', [ '于' ],           'reading/py/base',    [ 'yu',     ], ]
+[ 'spo', [ '于' ],           'shape/similarity',   [ '干','千',  ], ]
+[ 'spo', [ '人' ],           'reading/py/base',    [ 'ren',    ], ]
+[ 'spo', [ '千' ],           'reading/py/base',    [ 'qian',   ], ]
+[ 'spo', [ '千' ],           'shape/similarity',   [ '于','干',  ], ]
+[ 'spo', [ '干' ],           'reading/py/base',    [ 'gan',    ], ]
+[ 'spo', [ '干' ],           'shape/similarity',   [ '千','于',  ], ]
+```
+
+
+```coffee
 #.......................................................................................................
 ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
 ### (1) these will lead from reading to similarity, as in
@@ -1044,6 +1061,15 @@ with three phrases to capture that 千 is similar to 于干,
 [ [ '于', 'shape/similarity', [ '千', '干', ], 0, ], 'reading/py/base', 'yu',   ]
 [ [ '干', 'shape/similarity', [ '千', '于', ], 0, ], 'reading/py/base', 'gan',  ]
 ```
+
+
+## Deleting Data
+## Reading Data
+
+### @create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->
+### @create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
+### @read_sub = ( db, settings, read ) ->
+
 
 # XXXXXXX
 
