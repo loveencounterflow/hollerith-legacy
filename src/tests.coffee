@@ -1697,7 +1697,7 @@ clear_leveldb = ( leveldb, handler ) ->
   done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "use non-string subjects in phrases" ] = ( T, done ) ->
+@[ "use non-string subjects in phrases (1)" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
     input = D.create_throughstream()
@@ -1725,17 +1725,177 @@ clear_leveldb = ( leveldb, handler ) ->
     input.write [ '一', 'guide/kwic/v3/sortcode', [ [ [ '0000f---', null ], '一', [], [] ] ], ]
     input.write [ '丿', 'guide/kwic/v3/sortcode', [ [ [ '0645f---', null ], '丿', [], [] ] ], ]
     input.write [ '十', 'guide/kwic/v3/sortcode', [ [ [ '0104f---', null ], '十', [], [] ] ], ]
-    input.write [ [ '千', 'guide/lineup/uchr', '亻一', ], 'guide/kwic/v3/sortcode', [
-      [ [ '0774f---', '0000f---', null, ], [ '亻', [ '一', ], []        ], ]
-      [ [ '0000f---', null, '0774f---', ], [ '一', [],        [ '亻', ] ], ]
+    input.write [
+      [ '千', 'guide/lineup/uchr', '亻一', ], 'guide/kwic/v3/sortcode', [
+        [ [ '0774f---', '0000f---', null, ], [ '亻', [ '一', ], []        ], ]
+        [ [ '0000f---', null, '0774f---', ], [ '一', [],        [ '亻', ] ], ]
       ] ]
-    input.write [ [ '千', 'guide/lineup/uchr', '丿十', ], 'guide/kwic/v3/sortcode', [
-      [ [ '0645f---', '0104f---', null, ], [ '丿', [ '十', ], []        ], ]
-      [ [ '0104f---', null, '0645f---', ], [ '十', [],        [ '丿', ] ], ]
+    input.write [
+      [ '千', 'guide/lineup/uchr', '丿十', ], 'guide/kwic/v3/sortcode', [
+        [ [ '0645f---', '0104f---', null, ], [ '丿', [ '十', ], []        ], ]
+        [ [ '0104f---', null, '0645f---', ], [ '十', [],        [ '丿', ] ], ]
       ] ]
     #.......................................................................................................
     input.end()
+  #.........................................................................................................
+  show = ( handler ) ->
+    input = HOLLERITH.create_phrasestream db
+    input
+      .pipe D.$observe ( phrase ) =>
+        info JSON.stringify phrase
+      .pipe D.$on_end ->
+        handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    # yield feed_test_data db, probes_idx, resume
+    yield write_data resume
+    yield show resume
+    done()
 
+#-----------------------------------------------------------------------------------------------------------
+@[ "use non-string subjects in phrases (2)" ] = ( T, done ) ->
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    input = D.create_throughstream()
+    #.......................................................................................................
+    input
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end ->
+        handler()
+    #.......................................................................................................
+    input.write [ '千', 'reading/py/base', [ 'qian', ], ]
+    input.write [ '于', 'reading/py/base', [ 'yu',   ], ]
+    input.write [ '干', 'reading/py/base', [ 'gan',  ], ]
+    #.......................................................................................................
+    ### Three phrases to register '千 looks similar to both 于 and 干': ###
+    input.write [ '千', 'shape/similarity', [ '于', '干', ], ]
+    input.write [ '于', 'shape/similarity', [ '干', '千', ], ]
+    input.write [ '干', 'shape/similarity', [ '千', '于', ], ]
+    ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
+    input.write [ [ '千', 'shape/similarity', [ '于', '干', ], 0, ], 'reading/py/base', [ 'qian', ], ]
+    input.write [ [ '于', 'shape/similarity', [ '千', '干', ], 0, ], 'reading/py/base', [ 'yu',   ], ]
+    input.write [ [ '干', 'shape/similarity', [ '千', '于', ], 0, ], 'reading/py/base', [ 'gan',  ], ]
+    #.......................................................................................................
+    input.write [ [ '千', 'reading/py/base',  [ 'qian', ],    0, ], 'shape/similarity', [ '于', '干', ], ]
+    input.write [ [ '于', 'reading/py/base',  [ 'yu',   ],    0, ], 'shape/similarity', [ '千', '干', ], ]
+    input.write [ [ '干', 'reading/py/base',  [ 'gan',  ],    0, ], 'shape/similarity', [ '千', '于', ], ]
+    #.......................................................................................................
+    input.end()
+  #.........................................................................................................
+  show = ( handler ) ->
+    input = HOLLERITH.create_phrasestream db
+    input
+      .pipe D.$observe ( phrase ) =>
+        info JSON.stringify phrase
+      .pipe D.$on_end ->
+        handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    # yield feed_test_data db, probes_idx, resume
+    yield write_data resume
+    yield show resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "use non-string subjects in phrases (3)" ] = ( T, done ) ->
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    input = D.create_throughstream()
+    #.......................................................................................................
+    input
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end ->
+        handler()
+    #.......................................................................................................
+    ### Readings for 3 glyphs: ###
+    input.write [ [ '千', ], 'reading/py/base', [ 'qian', ], ]
+    input.write [ [ '于', ], 'reading/py/base', [ 'yu',   ], ]
+    input.write [ [ '干', ], 'reading/py/base', [ 'gan',  ], ]
+    #.......................................................................................................
+    ### Three phrases to register '千 looks similar to both 于 and 干': ###
+    input.write [ [ '千', ], 'shape/similarity', [ '于', '干', ], ]
+    input.write [ [ '于', ], 'shape/similarity', [ '干', '千', ], ]
+    input.write [ [ '干', ], 'shape/similarity', [ '千', '于', ], ]
+    #.......................................................................................................
+    ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
+    ### (1) these will lead from reading to similarity, as in
+      `["pos","reading/py/base","gan",["干","shape/similarity",["千","于"]],0]`, meaning these phrases
+      are suitable for building a dictionary organzed by Pinyin readings with cross-references
+      to similar characters: ###
+    input.write [ [ '千', 'shape/similarity', [ '于', '干', ], ], 'reading/py/base', [ 'qian', ], ]
+    input.write [ [ '于', 'shape/similarity', [ '千', '干', ], ], 'reading/py/base', [ 'yu',   ], ]
+    input.write [ [ '干', 'shape/similarity', [ '千', '于', ], ], 'reading/py/base', [ 'gan',  ], ]
+    #.......................................................................................................
+    ### (2) these will lead from similarity to reading, as in
+      `["pos","shape/similarity","于",["千","reading/py/base",["qian"]],0]` ###
+    input.write [ [ '千', 'reading/py/base',  [ 'qian', ],    ], 'shape/similarity', [ '于', '干', ], ]
+    input.write [ [ '于', 'reading/py/base',  [ 'yu',   ],    ], 'shape/similarity', [ '千', '干', ], ]
+    input.write [ [ '干', 'reading/py/base',  [ 'gan',  ],    ], 'shape/similarity', [ '千', '于', ], ]
+    #.......................................................................................................
+    input.end()
+  #.........................................................................................................
+  show = ( handler ) ->
+    input = HOLLERITH.create_phrasestream db
+    input
+      .pipe D.$observe ( phrase ) =>
+        info JSON.stringify phrase
+      .pipe D.$on_end ->
+        handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    # yield feed_test_data db, probes_idx, resume
+    yield write_data resume
+    yield show resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "use non-string subjects in phrases (4)" ] = ( T, done ) ->
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    input = D.create_throughstream()
+    #.......................................................................................................
+    input
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end ->
+        handler()
+    #.......................................................................................................
+    ### Readings for 3 glyphs: ###
+    input.write [ [ '千', ], 'reading/py/base', [ 'qian', ], ]
+    input.write [ [ '于', ], 'reading/py/base', [ 'yu',   ], ]
+    input.write [ [ '干', ], 'reading/py/base', [ 'gan',  ], ]
+    #.......................................................................................................
+    ### Three phrases to register '千 looks similar to both 于 and 干': ###
+    input.write [ [ '千', ], 'shape/similarity', [ '于', '干', ], ]
+    input.write [ [ '于', ], 'shape/similarity', [ '干', '千', ], ]
+    input.write [ [ '干', ], 'shape/similarity', [ '千', '于', ], ]
+    #.......................................................................................................
+    ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
+    ### (1) these will lead from reading to similarity, as in
+      `["pos","reading/py/base","gan",["干","shape/similarity",["千","于"]],0]`, meaning these phrases
+      are suitable for building a dictionary organzed by Pinyin readings with cross-references
+      to similar characters: ###
+    input.write [ [ '千', 'shape/similarity', [ '于', '干', ], 0, ], 'reading/py/base', 'qian', ]
+    input.write [ [ '于', 'shape/similarity', [ '千', '干', ], 0, ], 'reading/py/base', 'yu',   ]
+    input.write [ [ '干', 'shape/similarity', [ '千', '于', ], 0, ], 'reading/py/base', 'gan',  ]
+    #.......................................................................................................
+    # ### (2) these will lead from similarity to reading, as in
+    #   `["pos","shape/similarity","于",["千","reading/py/base",["qian"]],0]`. These phrases carry the same
+    #   information as the corresponding ones in `use non-string subjects in phrases (3)`, above,
+    #   but here the referenced similarity phrases have singular objects; consequently, subject / predicate
+    #   pairs may be repeated, which is why introducing an index is mandatory. As such, the index
+    #   need not be a number or for meaningful series—it only needs to be unique within the respective
+    #   group: ###
+    # input.write [ [ '千', 'reading/py/base',  [ 'qian', ], 0, ], 'shape/similarity', '于', ]
+    # input.write [ [ '千', 'reading/py/base',  [ 'qian', ], 1, ], 'shape/similarity', '干', ]
+    # input.write [ [ '于', 'reading/py/base',  [ 'yu',   ], 0, ], 'shape/similarity', '千', ]
+    # input.write [ [ '于', 'reading/py/base',  [ 'yu',   ], 1, ], 'shape/similarity', '干', ]
+    # input.write [ [ '干', 'reading/py/base',  [ 'gan',  ], 0, ], 'shape/similarity', '千', ]
+    # input.write [ [ '干', 'reading/py/base',  [ 'gan',  ], 1, ], 'shape/similarity', '于', ]
+    #.......................................................................................................
+    input.end()
   #.........................................................................................................
   show = ( handler ) ->
     input = HOLLERITH.create_phrasestream db
@@ -1811,13 +1971,16 @@ unless module.parent?
     # "write private types (3)"
     # "bloom filter serialization without writes"
     # "use non-string subjects in phrases"
-    '$write rejects duplicate S/P pairs'
-    'codec accepts long keys'
-    'write private types (1)'
-    'use non-string subjects in phrases'
+    # '$write rejects duplicate S/P pairs'
+    # 'codec accepts long keys'
+    # 'write private types (1)'
+    # 'use non-string subjects in phrases (1)'
+    'use non-string subjects in phrases (2)'
+    'use non-string subjects in phrases (3)'
+    'use non-string subjects in phrases (4)'
     # "ensure `Buffer.compare` gives same sorting as LevelDB"
     ]
-  # @_prune()
+  @_prune()
   @_main()
   # @[ "XXX" ] null, -> help "(done)"
   # @[ "YYY" ] null, -> help "(done)"
