@@ -1099,7 +1099,8 @@ And here's how to do that, in four simple steps:
 [ [ '于',      'shape/similarity', [ '干', '千', ], ] ]
 ```
 
-**③** ...and (optionally) singularize the object so you get one phrase per object value:
+**③** ...and (optionally) 'singularize' the object in case it is a list. This
+is interesting if you want to have those entries to appear in a specific order:
 
 ```coffee
 [ [ '于',      'shape/similarity', '干', ] ]
@@ -1114,6 +1115,29 @@ dumping POS (Predicate—Object—Subject) phrases:
 # Sub-Subject  Sub-Predicate       Sub-Object
 [ [ '于',      'shape/similarity', '干', ],    'reading/py/base', 'yu', ]
 [ [ '于',      'shape/similarity', '千', ],    'reading/py/base', 'yu', ]
+```
+
+Here's a complete dump of our small database so far:
+
+```coffee
+  [ 'pos', 'reading/py/base', 'gan',  [ '干',                           ], 0, ]
+  [ 'pos', 'reading/py/base', 'gan',  [ '干', 'shape/similarity', '于', ],    ]
+  [ 'pos', 'reading/py/base', 'gan',  [ '干', 'shape/similarity', '千', ],    ]
+  [ 'pos', 'reading/py/base', 'qian', [ '千',                           ], 0, ]
+  [ 'pos', 'reading/py/base', 'qian', [ '千', 'shape/similarity', '于', ],    ]
+  [ 'pos', 'reading/py/base', 'qian', [ '千', 'shape/similarity', '干', ],    ]
+  [ 'pos', 'reading/py/base', 'yu',   [ '于',                           ], 0, ]
+  [ 'pos', 'reading/py/base', 'yu',   [ '于', 'shape/similarity', '千', ],    ]
+  [ 'pos', 'reading/py/base', 'yu',   [ '于', 'shape/similarity', '干', ],    ]
+# [ 'spo', [ '于',                            ], 'reading/py/base', [ 'yu',   ], ]
+# [ 'spo', [ '于', 'shape/similarity',  '千', ], 'reading/py/base',   'yu',   ]
+# [ 'spo', [ '于', 'shape/similarity',  '干', ], 'reading/py/base',   'yu',   ]
+# [ 'spo', [ '千',                            ], 'reading/py/base', [ 'qian', ], ]
+# [ 'spo', [ '千', 'shape/similarity',  '于', ], 'reading/py/base',   'qian', ]
+# [ 'spo', [ '千', 'shape/similarity',  '干', ], 'reading/py/base',   'qian', ]
+# [ 'spo', [ '干',                            ], 'reading/py/base', [ 'gan',  ], ]
+# [ 'spo', [ '干', 'shape/similarity',  '于', ], 'reading/py/base',    'gan',  ]
+# [ 'spo', [ '干', 'shape/similarity',  '千', ], 'reading/py/base',    'gan',  ]
 ```
 
 

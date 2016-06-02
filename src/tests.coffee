@@ -1865,7 +1865,7 @@ clear_leveldb = ( leveldb, handler ) ->
     ### Readings for 3 glyphs: ###
     input.write [ [ '千', ], 'reading/py/base', [ 'qian', ], ]
     input.write [ [ '于', ], 'reading/py/base', [ 'yu',   ], ]
-    input.write [ [ '干', ], 'reading/py/base', [ 'gan',  ], ]
+    input.write [ [ '干', ], 'reading/py/base', [ 'gan', 'foo', ], ]
     input.write [ [ '人', ], 'reading/py/base', [ 'ren',  ], ]
     #.......................................................................................................
     ### Three phrases to register '千 looks similar to both 于 and 干': ###
@@ -1887,6 +1887,8 @@ clear_leveldb = ( leveldb, handler ) ->
     input.write [ [ '于', 'shape/similarity', '干', ], 'reading/py/base', 'yu',   ]
     input.write [ [ '干', 'shape/similarity', '千', ], 'reading/py/base', 'gan',  ]
     input.write [ [ '干', 'shape/similarity', '于', ], 'reading/py/base', 'gan',  ]
+    input.write [ [ '干', 'shape/similarity', '千', 1, ], 'reading/py/base', 'foo',  ]
+    input.write [ [ '干', 'shape/similarity', '于', 2, ], 'reading/py/base', 'foo',  ]
     #.......................................................................................................
     # ### (2) these will lead from similarity to reading, as in
     #   `["pos","shape/similarity","于",["千","reading/py/base",["qian"]],0]`. These phrases carry the same
@@ -2089,10 +2091,10 @@ unless module.parent?
     # 'codec accepts long keys'
     # 'write private types (1)'
     # 'use non-string subjects in phrases (1)'
-    'use non-string subjects in phrases (2)'
-    'use non-string subjects in phrases (3)'
+    # 'use non-string subjects in phrases (2)'
+    # 'use non-string subjects in phrases (3)'
     'use non-string subjects in phrases (4)'
-    "Pinyin Unicode Sorting"
+    # "Pinyin Unicode Sorting"
     # "ensure `Buffer.compare` gives same sorting as LevelDB"
     ]
   @_prune()
