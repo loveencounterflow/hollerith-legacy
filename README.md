@@ -1075,22 +1075,38 @@ character from each phrase, and retrieve the phrase (if any) that has the prefix
 
 Doing intermittent requests is possible, but it also necessitates interrupting
 the main stream (no pun) of entries with (potentially lots of) intermittent
-retrievals, one for each character and each of the maybe many tidbits of data we
-have in store for it. Building index allows us to do that data aggregation part
-upfront and have the ready-made data in the right place upfront; the database
-will grow bigger, but it will be much easier to walk over entries that are
+retrievals, one for each character and each of the maybe many tidbits of data
+we have in store for it. Building index allows us to do that data aggregation
+part upfront and have the precooked data in all the right places read for
+consumption. That way, the database will grow bigger (and maybe contain more
+duplicate data), but it will also be much easier to walk over entries that are
 to appear in the resulting product.
 
-```coffee
-#.......................................................................................................
 ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
 ### (1) these will lead from reading to similarity, as in
   `["pos","reading/py/base","gan",["干","shape/similarity",["千","于"]],0]`, meaning these phrases
   are suitable for building a dictionary organzed by Pinyin readings with cross-references
   to similar characters: ###
-[ [ '千', 'shape/similarity', [ '于', '干', ], 0, ], 'reading/py/base', 'qian', ]
-[ [ '于', 'shape/similarity', [ '千', '干', ], 0, ], 'reading/py/base', 'yu',   ]
-[ [ '干', 'shape/similarity', [ '千', '于', ], 0, ], 'reading/py/base', 'gan',  ]
+
+```coffee
+# ① The original phrase; subject has been made a list already:
+# Subject      Predicate           Object
+[ [ '于', ],   'shape/similarity', [ '干', '千', ] ]
+
+# ② Move predicate and object into the subject...
+# Subject
+# Sub-Subject  Sub-Predicate       Sub-Object
+[ [ '于',      'shape/similarity', [ '干', '千', ], ] ]
+
+# ③ ...and (optionally) singularize the object so you get one phrase per object value:
+[ [ '于',      'shape/similarity', '干', ] ]
+[ [ '于',      'shape/similarity', '千', ] ]
+
+# ④ 
+# Subject                                     Predicate           Object
+# Sub-Subject  Sub-Predicate       Sub-Object
+[ [ '于',      'shape/similarity', '干', ],    'reading/py/base', 'yu', ]
+[ [ '于',      'shape/similarity', '千', ],    'reading/py/base', 'yu', ]
 ```
 
 
