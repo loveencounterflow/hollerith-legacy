@@ -1062,7 +1062,7 @@ dictionary.
 > of US ASCII chose to encode these letters in the way they did; when you throw
 > in the accented letters needed to write tonal Pinyin (or words from any
 > language with letters outside of `[a-z]`), that property is, in general, lost:
-> You'ld have to roll your own collation method in that case.
+> aeiouàáèéìíòóùúüāēěīōūǎǐǒǔǖǘǚǜ
 
 Now if we wanted to build a dictionary with characters ordered by Pinyin that
 cross-references similar characters, one approach would be to iterate over those

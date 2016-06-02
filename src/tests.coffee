@@ -1899,8 +1899,114 @@ clear_leveldb = ( leveldb, handler ) ->
     input.end()
   #.........................................................................................................
   show = ( handler ) ->
-    input = HOLLERITH.create_phrasestream db
+    query = { prefix: [ 'pos', ], star: '*', }
+    input = HOLLERITH.create_phrasestream db, query
     input
+      .pipe D.$observe ( phrase ) =>
+        info JSON.stringify phrase
+      .pipe D.$on_end ->
+        handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    # yield feed_test_data db, probes_idx, resume
+    yield write_data resume
+    yield show resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "Pinyin Unicode Sorting" ] = ( T, done ) ->
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    input = D.create_throughstream()
+    #.......................................................................................................
+    input
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end ->
+        handler()
+    #.......................................................................................................
+    input.write [ '01', 'reading', 'ā', ]
+    # input.write [ '02', 'reading', 'ɑ̄', ]
+    input.write [ '03', 'reading', 'ē', ]
+    input.write [ '04', 'reading', 'ī', ]
+    input.write [ '05', 'reading', 'ō', ]
+    input.write [ '06', 'reading', 'ū', ]
+    input.write [ '07', 'reading', 'ǖ', ]
+    # input.write [ '08', 'reading', 'Ā', ]
+    # input.write [ '09', 'reading', 'Ē', ]
+    # input.write [ '10', 'reading', 'Ī', ]
+    # input.write [ '11', 'reading', 'Ō', ]
+    # input.write [ '12', 'reading', 'Ū', ]
+    # input.write [ '13', 'reading', 'Ǖ', ]
+    input.write [ '14', 'reading', 'á', ]
+    # input.write [ '15', 'reading', 'ɑ́', ]
+    input.write [ '16', 'reading', 'é', ]
+    input.write [ '17', 'reading', 'í', ]
+    input.write [ '18', 'reading', 'ó', ]
+    input.write [ '19', 'reading', 'ú', ]
+    input.write [ '20', 'reading', 'ǘ', ]
+    # input.write [ '21', 'reading', 'Á', ]
+    # input.write [ '22', 'reading', 'É', ]
+    # input.write [ '23', 'reading', 'Í', ]
+    # input.write [ '24', 'reading', 'Ó', ]
+    # input.write [ '25', 'reading', 'Ú', ]
+    # input.write [ '26', 'reading', 'Ǘ', ]
+    input.write [ '27', 'reading', 'ǎ', ]
+    # input.write [ '28', 'reading', 'ɑ̌', ]
+    input.write [ '29', 'reading', 'ě', ]
+    input.write [ '30', 'reading', 'ǐ', ]
+    input.write [ '31', 'reading', 'ǒ', ]
+    input.write [ '32', 'reading', 'ǔ', ]
+    input.write [ '33', 'reading', 'ǚ', ]
+    # input.write [ '34', 'reading', 'Ǎ', ]
+    # input.write [ '35', 'reading', 'Ě', ]
+    # input.write [ '36', 'reading', 'Ǐ', ]
+    # input.write [ '37', 'reading', 'Ǒ', ]
+    # input.write [ '38', 'reading', 'Ǔ', ]
+    # input.write [ '39', 'reading', 'Ǚ', ]
+    input.write [ '40', 'reading', 'à', ]
+    # input.write [ '41', 'reading', 'ɑ̀', ]
+    input.write [ '42', 'reading', 'è', ]
+    input.write [ '43', 'reading', 'ì', ]
+    input.write [ '44', 'reading', 'ò', ]
+    input.write [ '45', 'reading', 'ù', ]
+    input.write [ '46', 'reading', 'ǜ', ]
+    # input.write [ '47', 'reading', 'À', ]
+    # input.write [ '48', 'reading', 'È', ]
+    # input.write [ '49', 'reading', 'Ì', ]
+    # input.write [ '50', 'reading', 'Ò', ]
+    # input.write [ '51', 'reading', 'Ù', ]
+    # input.write [ '52', 'reading', 'Ǜ', ]
+    input.write [ '53', 'reading', 'a', ]
+    # input.write [ '54', 'reading', 'ɑ', ]
+    input.write [ '55', 'reading', 'e', ]
+    input.write [ '56', 'reading', 'i', ]
+    input.write [ '57', 'reading', 'o', ]
+    input.write [ '58', 'reading', 'u', ]
+    input.write [ '59', 'reading', 'ü', ]
+    # input.write [ '60', 'reading', 'A', ]
+    # input.write [ '61', 'reading', 'Ɑ', ]
+    # input.write [ '62', 'reading', 'E', ]
+    # input.write [ '63', 'reading', 'I', ]
+    # input.write [ '64', 'reading', 'O', ]
+    # input.write [ '65', 'reading', 'U', ]
+    # input.write [ '66', 'reading', 'Ü', ]
+    #.......................................................................................................
+    input.end()
+  #.........................................................................................................
+  show = ( handler ) ->
+    query = { prefix: [ 'pos', ], star: '*', }
+    input = HOLLERITH.create_phrasestream db, query
+    input
+      .pipe do =>
+        collector = []
+        return $ ( phrase, send, end ) =>
+          if phrase?
+            [ _, _, letter, _, ] = phrase
+            collector.push letter
+          if end?
+            urge collector.join ''
+            end()
       .pipe D.$observe ( phrase ) =>
         info JSON.stringify phrase
       .pipe D.$on_end ->
@@ -1979,6 +2085,7 @@ unless module.parent?
     'use non-string subjects in phrases (2)'
     'use non-string subjects in phrases (3)'
     'use non-string subjects in phrases (4)'
+    "Pinyin Unicode Sorting"
     # "ensure `Buffer.compare` gives same sorting as LevelDB"
     ]
   @_prune()
