@@ -1082,14 +1082,10 @@ consumption. That way, the database will grow bigger (and maybe contain more
 duplicate data), but it will also be much easier to walk over entries that are
 to appear in the resulting product.
 
-### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
-### (1) these will lead from reading to similarity, as in
-  `["pos","reading/py/base","gan",["干","shape/similarity",["千","于"]],0]`, meaning these phrases
-  are suitable for building a dictionary organzed by Pinyin readings with cross-references
-  to similar characters: ###
+And here's how to do that, in four simple steps:
 
 ```coffee
-# ① The original phrase; subject has been made a list already:
+# ① The original phrase (call it OP); subject has been made a list already:
 # Subject      Predicate           Object
 [ [ '于', ],   'shape/similarity', [ '干', '千', ] ]
 
@@ -1102,7 +1098,8 @@ to appear in the resulting product.
 [ [ '于',      'shape/similarity', '干', ] ]
 [ [ '于',      'shape/similarity', '千', ] ]
 
-# ④ 
+# ④ Now add the predicate and object that you want the OP to appear below when
+# listing POS phrases: 
 # Subject                                     Predicate           Object
 # Sub-Subject  Sub-Predicate       Sub-Object
 [ [ '于',      'shape/similarity', '干', ],    'reading/py/base', 'yu', ]
