@@ -1084,22 +1084,32 @@ to appear in the resulting product.
 
 And here's how to do that, in four simple steps:
 
+**①** The original phrase (call it OP); subject has been made a list already:
+
 ```coffee
-# ① The original phrase (call it OP); subject has been made a list already:
 # Subject      Predicate           Object
 [ [ '于', ],   'shape/similarity', [ '干', '千', ] ]
+```
 
-# ② Move predicate and object into the subject...
+**②** Move predicate and object into the subject...
+
+```coffee
 # Subject
 # Sub-Subject  Sub-Predicate       Sub-Object
 [ [ '于',      'shape/similarity', [ '干', '千', ], ] ]
+```
 
-# ③ ...and (optionally) singularize the object so you get one phrase per object value:
+**③** ...and (optionally) singularize the object so you get one phrase per object value:
+
+```coffee
 [ [ '于',      'shape/similarity', '干', ] ]
 [ [ '于',      'shape/similarity', '千', ] ]
+```
 
-# ④ Now add the predicate and object that you want the OP to appear below when
-# listing POS phrases: 
+**④** Now add the predicate and object that you want the OP to appear below when
+dumping POS (Predicate—Object—Subject) phrases: 
+
+```coffee
 # Subject                                     Predicate           Object
 # Sub-Subject  Sub-Predicate       Sub-Object
 [ [ '于',      'shape/similarity', '干', ],    'reading/py/base', 'yu', ]
