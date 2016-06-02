@@ -1062,8 +1062,10 @@ dictionary.
 > of US ASCII chose to encode these letters in the way they did; when you throw
 > in the accented letters needed to write tonal Pinyin (or words from any
 > language with letters outside of `[a-z]`), that property is, in general, lost:
-> aeiouàáèéìíòóùúüāēěīōūǎǐǒǔǖǘǚǜ
-> 
+> the accented letters needed for Pinyin sort lexicographically as 
+> `aeiouàáèéìíòóùúüāēěīōūǎǐǒǔǖǘǚǜ`, which is probably not what you want.
+> Coming to think of it, it *might* be a good idea to implement locale- or
+> use-case specific encodings for strings to Hollerith. 
 
 Now if we wanted to build a dictionary with characters ordered by Pinyin that
 cross-references similar characters, one approach would be to iterate over those
