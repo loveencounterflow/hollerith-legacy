@@ -2091,7 +2091,7 @@ unless module.parent?
     # 'codec accepts long keys'
     # 'write private types (1)'
     # 'use non-string subjects in phrases (1)'
-    # 'use non-string subjects in phrases (2)'
+    'use non-string subjects in phrases (2)'
     # 'use non-string subjects in phrases (3)'
     'use non-string subjects in phrases (4)'
     # "Pinyin Unicode Sorting"

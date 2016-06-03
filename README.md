@@ -1117,7 +1117,13 @@ dumping POS (Predicate—Object—Subject) phrases:
 [ [ '于',      'shape/similarity', '千', ],    'reading/py/base', 'yu', ]
 ```
 
-Here's a complete dump of our small database so far:
+Here's a complete dump of our small database so far; the SPO phrases are greyed
+out to highlight the part where the action is going on: When we iterate over
+all phrases that start with the prefix `[ 'pos', 'reading/py/base', ...`, we'll 
+get to see the three head entries for our three characters *gan* 干, *qian* 千,
+*yu* 于, in the order of their readings; in between each character and the 
+beginning of the next head entry are sandwiched secondary entries with additional
+data: 
 
 ```coffee
   [ 'pos', 'reading/py/base', 'gan',  [ '干',                           ], 0, ]
@@ -1140,6 +1146,16 @@ Here's a complete dump of our small database so far:
 # [ 'spo', [ '干', 'shape/similarity',  '千', ], 'reading/py/base',    'gan',  ]
 ```
 
+We can also now appreciate why it was a good idea to turn the subjects of our
+main entry phrases into single-element lists: the 
+[H2C codec](#the-hollerith2-codec-h2c) orders by type first, then by values,
+and all lists are sorted before any strings. Therefore, plain phrase 
+`[ 's', 'p', 'o', ]` will come only *after* any index phrases 
+`[ [ 's', 'sp', 'so', ], 'p', 'o', ]`, which is not what we want.
+
+> As a side-effect, subjects-as-lists open up a straightforward avenue to putting
+> type information into the subject. We can now be more specific and write, say, 
+> `[ 'character', '干', ]` for the subject
 
 ## Deleting Data
 ## Reading Data
