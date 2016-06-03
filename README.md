@@ -1147,11 +1147,11 @@ data:
 ```
 
 We can also now appreciate why it was a good idea to turn the subjects of our
-main entry phrases into single-element lists: the 
-[H2C codec](#the-hollerith2-codec-h2c) orders by type first, then by values,
-and all lists are sorted before any strings. Therefore, plain phrases 
-`[ 's', 'p', 'o', ]` will come only *after* any index phrases 
-`[ [ 's', 'sp', 'so', ], 'p', 'o', ]`, which is not what we want.
+main entry phrases into single-element lists: the  [H2C codec](#the-hollerith2
+-codec-h2c) orders by type first, then by values, and all lists are sorted
+before any strings. Therefore, plain phrases  with strings as subjects like `[
+'s', 'p', 'o', ]` will come only *after* any index phrases  `[ [ 's', 'sp',
+'so', ], 'p', 'o', ]`, which is not what we want.
 
 > As a side-effect, subjects-as-lists open up a straightforward avenue to putting
 > type information into the subject. We can now be more specific and write, say, 
