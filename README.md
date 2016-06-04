@@ -1082,7 +1082,7 @@ consumption. That way, the database will grow bigger (and maybe contain more
 duplicate data), but it will also be much easier to walk over entries that are
 to appear in the resulting product.
 
-And here's how to do that, in four simple steps:
+And here's how to do that, in four easy steps (there's a fifth one, for which see below):
 
 **①** The original phrase (call it OP); subject has been made a list already:
 
@@ -1164,6 +1164,21 @@ before any strings. Therefore, plain phrases  with strings as subjects like `[
 > `o = [ op, oo, ]` 
  -->
 
+We are, alas, not quite yet ready at this point. Our DB contains three
+characters with one reading  each. We've chosen to use lists of strings to
+record readings for a reason, because there are many characters that have a
+number of readings that have to be chosen according to context; for example, 説
+is normally read *shuo* 'to say', but 説服 'to convince' is (often) read
+*shuifu*. I didn't think of this when I started to piece together this
+example, so let's just add a bogus reading `'foo'` to one of our sample
+characters and see what happens. This is the data we start with:
+
+```coffee
+# Subject    Predicate          Object(s)
+[ [ '干', ], 'reading/py/base',  [ 'gan', 'foo', ], ]
+[ [ '干', ], 'shape/similarity', [ '千',  '于',   ], ]
+```
+
 
 ## Deleting Data
 ## Reading Data
@@ -1173,11 +1188,32 @@ before any strings. Therefore, plain phrases  with strings as subjects like `[
 ### @read_sub = ( db, settings, read ) ->
 
 
-# XXXXXXX
 
+## v3
+
+* Both SPO and POS phrases will be stored in the LevelDB key; the LevelDB value
+  is not used, turning a Hollerith DB into a 'keys-only' store.
+
+* Phrase structure will be a bit more specific; we encourage the use of typed subjects
+  and objects, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`.
+
+* Since entire phrases like `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`
+  will be stored in the key, retrieving what reading a given glyph has cannot
+  be done by using the LevelDB `get` operation; instead, `get` is implmented internally
+  by iterating over a prefix stream that contains all keys that match 
+  ``[ [ 'glyph', '月', ], 'reading', ...`.
+
+* With phrases as keys, it becomes possible to store any number of facts about
+  a given subject / predicate pair as long as objects are distinct, without having
+  to use an index. Without an index, object values will be retrieved in lexicographic 
+  order; if repeated objects may occur or objects are intended to appear in a 
+  specific order other than lexicographic, an explicit index between predicate
+  and object or between object type and object value may be inserted.
+
+
+<!-- 
 
 ```
-
 so|glyph:字|gloss:letter, character, word|o:0
 ·········●●●··································
 ●●●●●●●●·●··●●●●●●·●●●●●●··●●●●●●●●●··●●●●●●··
@@ -1187,9 +1223,10 @@ so|glyph:字|gloss:letter, character, word|o:0
 ·●●●●····●●●●●●●···●●●●●·●·······●●·●·●●·●●●··
 ●●·●····●··●·●·●●●●·····●··●··●·●··●··●●●··●●·
 ●●·●·●···●●●·●·●●●··●··●···●·●·●●·●···●●···●··
+```
 
 
-
+```
 phrasetype  | subject         | object                  | index
             | theme : topic   | predicate : complement  | idx [ , idx ... ]
 pt          | sk    : sv      | ok        : ov          | idx [ , idx ... ]
@@ -1198,49 +1235,4 @@ pt          | sk    : sv      | ok        : ov          | idx [ , idx ... ]
                                             adjunct
 
 ```
-
-
-```
-
-so|glyph:丁|factor/strokeclass/wbf:"12"|
-so|glyph:丁|factor/shapeclass/wbf:"12"|
-
-os|factor/strokeclass/wbf:"32"|
-os|guide/lineup/length:5|
-os|guide/lineup/uchr:"八刀宀貝"|
-os|rank/cjt:000000|
-
-
-os|guide/lineup/length:5|"𧷟"|
-                      so|"𧷟"|guide/lineup/uchr:"八刀宀貝"|
-                      so|"𧷟"|guide/uchr/has:"八"|0
-                                          so|"八"|factor/shapeclass/wbf:34 |
-                      so|"𧷟"|guide/uchr/has:"刀"|1
-                                          so|"刀"|factor/shapeclass/wbf:5(12)3|
-                      so|"𧷟"|guide/uchr/has:"宀"|2
-                                          so|"宀"|factor/shapeclass/wbf:44|
-                      so|"𧷟"|guide/uchr/has:""|3
-                                          so|""|factor/shapeclass/wbf:"12"|
-                      so|"𧷟"|guide/uchr/has:"貝"|4
-                                          so|"貝"|factor/shapeclass/wbf:"25(12)"|
-
-
-os|guide/lineup/length:5|"𧷟"|
-                       so|"𧷟"|rank/cjt:5432|
-
-                       so|"𧷟"|guide/lineup/uchr/full:"八刀宀貝"|
-
-
-(pos|guide/lineup/length:5)-"𧷟"
-											 [spo|"𧷟"|rank/cjt]=5432
-											 ...
-											 [spo|"𧷟"|guide/uchr/has]=["八","刀","宀","","貝"]
-											 ...
-	                      										 [spo|"八"|factor/strokeclass/wbf]="34"
-	                      										     [spo|"刀"|factor/strokeclass/wbf]="53"
-	                      										          [spo|"宀"|factor/strokeclass/wbf]=...
-
-
-
-
-```
+ -->

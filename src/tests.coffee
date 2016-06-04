@@ -683,11 +683,11 @@ clear_leveldb = ( leveldb, handler ) ->
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "H2 codec `encode` throws on anything but a list" ] = ( T, done ) ->
-  T.throws "expected a list, got a text",         ( -> CODEC.encode 'unaccaptable' )
-  T.throws "expected a list, got a number",       ( -> CODEC.encode 42 )
-  T.throws "expected a list, got a boolean",      ( -> CODEC.encode true )
-  T.throws "expected a list, got a boolean",      ( -> CODEC.encode false )
-  T.throws "expected a list, got a undefined",    ( -> CODEC.encode() )
+  T.throws "expected a list, got a text",               ( -> CODEC.encode 'unaccaptable' )
+  T.throws "expected a list, got a number",             ( -> CODEC.encode 42 )
+  T.throws "expected a list, got a boolean",            ( -> CODEC.encode true )
+  T.throws "expected a list, got a boolean",            ( -> CODEC.encode false )
+  T.throws /^expected a list, got a (?:js)?undefined$/, ( -> CODEC.encode() )
   done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -1969,10 +1969,10 @@ clear_leveldb = ( leveldb, handler ) ->
         handler()
     #.......................................................................................................
     ### Readings for 3 glyphs: ###
-    input.write [ [ '千', ], 'reading/py/base', [ 'qian', ], ]
-    input.write [ [ '于', ], 'reading/py/base', [ 'yu',   ], ]
-    input.write [ [ '干', ], 'reading/py/base', [ 'gan', 'foo', ], ]
-    input.write [ [ '人', ], 'reading/py/base', [ 'ren',  ], ]
+    input.write [ [ '千', ], 'reading/py/base', [ 'qian',      ], ]
+    input.write [ [ '于', ], 'reading/py/base', [ 'yu', 'foo', ], ]
+    input.write [ [ '干', ], 'reading/py/base', [ 'gan',       ], ]
+    input.write [ [ '人', ], 'reading/py/base', [ 'ren',       ], ]
     #.......................................................................................................
     ### Three phrases to register '千 looks similar to both 于 and 干': ###
     # input.write [ [ '千', ], 'shape/similarity', [ '于', '干', ], ]
@@ -1993,8 +1993,8 @@ clear_leveldb = ( leveldb, handler ) ->
     input.write [ [ '于', 'shape/similarity', '干', ], 'reading/py/base', 'yu',   ]
     input.write [ [ '干', 'shape/similarity', '千', ], 'reading/py/base', 'gan',  ]
     input.write [ [ '干', 'shape/similarity', '于', ], 'reading/py/base', 'gan',  ]
-    input.write [ [ '干', 'shape/similarity', '千', 1, ], 'reading/py/base', 'foo',  ]
-    input.write [ [ '干', 'shape/similarity', '于', 2, ], 'reading/py/base', 'foo',  ]
+    input.write [ [ '于', 'shape/similarity', '千', 1, ], 'reading/py/base', 'foo',  ]
+    input.write [ [ '于', 'shape/similarity', '干', 2, ], 'reading/py/base', 'foo',  ]
     #.......................................................................................................
     # ### (2) these will lead from similarity to reading, as in
     #   `["pos","shape/similarity","于",["千","reading/py/base",["qian"]],0]`. These phrases carry the same
@@ -2040,8 +2040,8 @@ clear_leveldb = ( leveldb, handler ) ->
         handler()
     #.......................................................................................................
     input.write [ [ 'glyph', '千', 1,   ], 'reading', [ [ 'py',    'qian',  ],                        ], ]
-    input.write [ [ 'glyph', '于', 2,   ], 'reading', [ [ 'py',    'yu',    ],                        ], ]
-    input.write [ [ 'glyph', '干', 3,   ], 'reading', [ [ 'py',    'gan',   ], [ 'py',    'foo',   ], [ 'hi', 'ほ·(す|し)', ], [ 'hi', 'ぼ·し', ], [ 'hi', 'ひ·る', ] ], ]
+    input.write [ [ 'glyph', '于', 2,   ], 'reading', [ [ 'py',    'yu',    ], [ 'py',    'foo',   ], ], ]
+    input.write [ [ 'glyph', '干', 3,   ], 'reading', [ [ 'py',    'gan',   ], [ 'hi', 'ほ·(す|し)', ], [ 'hi', 'ぼ·し', ], [ 'hi', 'ひ·る', ] ], ]
     input.write [ [ 'glyph', '人', 5,   ], 'reading', [ [ 'py',    'ren',   ],                        ], ]
     input.write [ [ 'glyph', '仁', 5,   ], 'reading', [ [ 'py',    'ren',   ],                        ], ]
     # input.write [ [ 'py', 'qian',  6,  ],   [ 'reading', '<', ], [ [ 'glyph', '千',    ], ], ]
@@ -2149,7 +2149,7 @@ unless module.parent?
     # 'use non-string subjects in phrases (1)'
     # 'use non-string subjects in phrases (2)'
     # 'use non-string subjects in phrases (3)'
-    # 'use non-string subjects in phrases (4)'
+    'use non-string subjects in phrases (4)'
     'use non-string subjects in phrases (5)'
     # "Pinyin Unicode Sorting"
     # "ensure `Buffer.compare` gives same sorting as LevelDB"
