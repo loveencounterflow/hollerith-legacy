@@ -2040,10 +2040,14 @@ clear_leveldb = ( leveldb, handler ) ->
     link = ( from_phrase, to_phrase ) =>
       [ from_sbj, from_prd, from_obj, ] = from_phrase
       [   to_sbj,   to_prd,   to_obj, ] =   to_phrase
-      from_sbj  = from_sbj[ 0 ] if ( CND.isa_list from_sbj ) and from_sbj.length is 1
-      to_sbj    =   to_sbj[ 0 ] if ( CND.isa_list   to_sbj ) and   to_sbj.length is 1
+      # from_sbj  = from_sbj[ 0 ] if ( CND.isa_list from_sbj ) and from_sbj.length is 1
+      # to_sbj    =   to_sbj[ 0 ] if ( CND.isa_list   to_sbj ) and   to_sbj.length is 1
+      to_sbj_is_list                    = CND.isa_list to_sbj
       unless from_is_plural or to_is_plural
-        R = [ [ [ to_sbj, to_prd, to_obj, ], from_prd, from_obj, ], ]
+        if to_sbj_is_list
+          R = [ [ [ to_sbj..., to_prd, to_obj, ], from_prd, from_obj, ], ]
+        else
+          R = [ [ [ to_sbj,    to_prd, to_obj, ], from_prd, from_obj, ], ]
       else if from_is_plural
         idx = -1
         R   = []
@@ -2051,7 +2055,10 @@ clear_leveldb = ( leveldb, handler ) ->
           for from_sub_obj in from_obj
             for to_sub_obj in to_obj
               idx += +1
-              R.push [ [ to_sbj, to_prd, idx, to_sub_obj, ], from_prd, from_sub_obj, ]
+              if to_sbj_is_list
+                R.push [ [ to_sbj..., to_prd, idx, to_sub_obj, ], from_prd, from_sub_obj, ]
+              else
+                R.push [ [ to_sbj,    to_prd, idx, to_sub_obj, ], from_prd, from_sub_obj, ]
       return R
     #.......................................................................................................
     return $ ( phrase, send ) =>
@@ -2082,8 +2089,10 @@ clear_leveldb = ( leveldb, handler ) ->
     input = D.create_throughstream()
     #.......................................................................................................
     input
-      .pipe $index 'reading', 'similarity',  { from: 'plural', to: 'plural', }
-      .pipe $index 'reading', 'strokeorder', { from: 'plural', to: 'plural', }
+      .pipe $index 'reading', 'similarity',     { from: 'plural',   to: 'plural',   }
+      .pipe $index 'reading', 'strokeorder',    { from: 'plural',   to: 'singular', }
+      .pipe $index 'strokeorder', 'reading',    { from: 'singular', to: 'plural',   }
+      .pipe $index 'strokeorder', 'similarity', { from: 'singular', to: 'plural',   }
       .pipe HOLLERITH.$write db
       .pipe D.$on_end ->
         handler()
@@ -2096,11 +2105,11 @@ clear_leveldb = ( leveldb, handler ) ->
     input.write [ [ '千', ], 'similarity',  [ '于', '干',           ], ]
     input.write [ [ '于', ], 'similarity',  [ '干', '千',           ], ]
     input.write [ [ '干', ], 'similarity',  [ '千', '于',           ], ]
-    input.write [ [ '千', ], 'strokeorder', [ '312',                ], ]
-    input.write [ [ '于', ], 'strokeorder', [ '112',                ], ]
-    input.write [ [ '干', ], 'strokeorder', [ '112',                ], ]
-    input.write [ [ '人', ], 'strokeorder', [ '34',                 ], ]
-    input.write [ [ '仁', ], 'strokeorder', [ '3211',               ], ]
+    input.write [ [ '千', ], 'strokeorder', '312',                     ]
+    input.write [ [ '于', ], 'strokeorder', '112',                     ]
+    input.write [ [ '干', ], 'strokeorder', '112',                     ]
+    input.write [ [ '人', ], 'strokeorder', '34',                      ]
+    input.write [ [ '仁', ], 'strokeorder', '3211',                    ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
