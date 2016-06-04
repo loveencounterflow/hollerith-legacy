@@ -1189,7 +1189,7 @@ characters and see what happens. This is the data we start with:
 
 
 
-## v3
+## Plans for Version 3
 
 * Both SPO and POS phrases will be stored in the LevelDB key; the LevelDB value
   is not used, turning a Hollerith DB into a 'keys-only' store.
@@ -1203,7 +1203,7 @@ characters and see what happens. This is the data we start with:
   by iterating over a prefix stream that contains all keys that match 
   ``[ [ 'glyph', '月', ], 'reading', ...`.
 
-* With phrase-as-keys, it becomes possible to store any number of facts about
+* With phrases-as-keys, it becomes possible to store any number of facts about
   a given subject / predicate pair as long as objects are distinct, without having
   to use an index. Without an index, object values will be retrieved in lexicographic 
   order; to implement repeated objects and / or a 
