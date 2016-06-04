@@ -2029,42 +2029,78 @@ clear_leveldb = ( leveldb, handler ) ->
     done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "use non-string subjects in phrases (5)" ] = ( T, done ) ->
+@[ "indexing" ] = ( T, done ) ->
+  #.........................................................................................................
+  $index = ( from_predicate, to_predicate, settings = {} ) =>
+    from_is_plural  = settings[ 'from' ] is 'plural'
+    to_is_plural    = settings[ 'to'   ] is 'plural'
+    from_cache      = {}
+    to_cache        = {}
+    #.......................................................................................................
+    link = ( from_phrase, to_phrase ) =>
+      [ from_sbj, from_prd, from_obj, ] = from_phrase
+      [   to_sbj,   to_prd,   to_obj, ] =   to_phrase
+      from_sbj  = from_sbj[ 0 ] if ( CND.isa_list from_sbj ) and from_sbj.length is 1
+      to_sbj    =   to_sbj[ 0 ] if ( CND.isa_list   to_sbj ) and   to_sbj.length is 1
+      unless from_is_plural or to_is_plural
+        R = [ [ [ to_sbj, to_prd, to_obj, ], from_prd, from_obj, ], ]
+      else if from_is_plural
+        idx = -1
+        R   = []
+        if to_is_plural
+          for from_sub_obj in from_obj
+            for to_sub_obj in to_obj
+              idx += +1
+              R.push [ [ to_sbj, to_prd, idx, to_sub_obj, ], from_prd, from_sub_obj, ]
+      return R
+    #.......................................................................................................
+    return $ ( phrase, send ) =>
+      send phrase
+      [ sbj, prd, obj, ] = phrase
+      #.....................................................................................................
+      switch prd
+        #...................................................................................................
+        when from_predicate
+          sbj_txt = JSON.stringify sbj
+          if ( to_phrase = to_cache[ sbj_txt ] )?
+            delete to_cache[ sbj_txt ]
+            send index_phrase for index_phrase in link phrase, to_phrase
+          else
+            from_cache[ sbj_txt ] = phrase
+        #...................................................................................................
+        when to_predicate
+          sbj_txt = JSON.stringify sbj
+          if ( from_phrase = from_cache[ sbj_txt ] )?
+            delete from_cache[ sbj_txt ]
+            send index_phrase for index_phrase in link from_phrase, phrase
+          else
+            to_cache[ sbj_txt ] = phrase
+      #.....................................................................................................
+      return null
   #.........................................................................................................
   write_data = ( handler ) ->
     input = D.create_throughstream()
     #.......................................................................................................
     input
+      .pipe $index 'reading', 'similarity',  { from: 'plural', to: 'plural', }
+      .pipe $index 'reading', 'strokeorder', { from: 'plural', to: 'plural', }
       .pipe HOLLERITH.$write db
       .pipe D.$on_end ->
         handler()
     #.......................................................................................................
-    input.write [ [ 'glyph', '千', 1,   ], 'reading', [ [ 'py',    'qian',  ],                        ], ]
-    input.write [ [ 'glyph', '于', 2,   ], 'reading', [ [ 'py',    'yu',    ], [ 'py',    'foo',   ], ], ]
-    input.write [ [ 'glyph', '干', 3,   ], 'reading', [ [ 'py',    'gan',   ], [ 'hi', 'ほ·(す|し)', ], [ 'hi', 'ぼ·し', ], [ 'hi', 'ひ·る', ] ], ]
-    input.write [ [ 'glyph', '人', 5,   ], 'reading', [ [ 'py',    'ren',   ],                        ], ]
-    input.write [ [ 'glyph', '仁', 5,   ], 'reading', [ [ 'py',    'ren',   ],                        ], ]
-    # input.write [ [ 'py', 'qian',  6,  ],   [ 'reading', '<', ], [ [ 'glyph', '千',    ], ], ]
-    # input.write [ [ 'py', 'yu',    7,  ],   [ 'reading', '<', ], [ [ 'glyph', '于',    ], ], ]
-    # input.write [ [ 'py', 'gan',   8,  ],   [ 'reading', '<', ], [ [ 'glyph', '干',    ], ], ]
-    # input.write [ [ 'py', 'foo',   9,  ],   [ 'reading', '<', ], [ [ 'glyph', '干',    ], ], ]
-    # input.write [ [ 'py', 'ren',   10, ],   [ 'reading', '<', ], [ [ 'glyph', '人',    ], ], ]
-    # input.write [ [ 'py', 'ren',   11, ],   [ 'reading', '<', ], [ [ 'glyph', '仁',    ], ], ]
-    #.......................................................................................................
-    # input.write [ [ 'glyph', '千', ], 'reading', [ [ 'py', 'qian',   ],                      ], ]
-    # input.write [ [ 'glyph', '于', ], 'reading', [ [ 'py', 'yu',     ],                      ], ]
-    # input.write [ [ 'glyph', '干', ], 'reading', [ [ 'py', 'gan',    ], [ 'py', 'foo',    ], ], ]
-    # input.write [ [ 'glyph', '人', ], 'reading', [ [ 'py', 'ren',    ],                      ], ]
-    # #.......................................................................................................
-    # input.write [ [ 'glyph', '千', ], '->', [ 'reading', [ 'qian',         ], ], ]
-    # input.write [ [ 'glyph', '于', ], '->', [ 'reading', [ 'yu',           ], ], ]
-    # input.write [ [ 'glyph', '干', ], '->', [ 'reading', [ 'gan', 'foo',   ], ], ]
-    # input.write [ [ 'glyph', '人', ], '->', [ 'reading', [ 'ren',          ], ], ]
-    # #.......................................................................................................
-    ### Three phrases to register '千 looks similar to both 于 and 干': ###
-    # input.write [ [ '千', ], 'shape/similarity', [ '于', '干', ], ]
-    # input.write [ [ '于', ], 'shape/similarity', [ '干', '千', ], ]
-    # input.write [ [ '干', ], 'shape/similarity', [ '千', '于', ], ]
+    input.write [ [ '千', ], 'reading',     [ 'qian',               ], ]
+    input.write [ [ '于', ], 'reading',     [ 'yu', 'foo', 'bar',   ], ]
+    input.write [ [ '干', ], 'reading',     [ 'gan', 'ほす',        ], ]
+    input.write [ [ '人', ], 'reading',     [ 'ren',                ], ]
+    input.write [ [ '仁', ], 'reading',     [ 'ren',                ], ]
+    input.write [ [ '千', ], 'similarity',  [ '于', '干',           ], ]
+    input.write [ [ '于', ], 'similarity',  [ '干', '千',           ], ]
+    input.write [ [ '干', ], 'similarity',  [ '千', '于',           ], ]
+    input.write [ [ '千', ], 'strokeorder', [ '312',                ], ]
+    input.write [ [ '于', ], 'strokeorder', [ '112',                ], ]
+    input.write [ [ '干', ], 'strokeorder', [ '112',                ], ]
+    input.write [ [ '人', ], 'strokeorder', [ '34',                 ], ]
+    input.write [ [ '仁', ], 'strokeorder', [ '3211',               ], ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
@@ -2149,8 +2185,8 @@ unless module.parent?
     # 'use non-string subjects in phrases (1)'
     # 'use non-string subjects in phrases (2)'
     # 'use non-string subjects in phrases (3)'
-    'use non-string subjects in phrases (4)'
-    'use non-string subjects in phrases (5)'
+    # 'use non-string subjects in phrases (4)'
+    'indexing'
     # "Pinyin Unicode Sorting"
     # "ensure `Buffer.compare` gives same sorting as LevelDB"
     ]
