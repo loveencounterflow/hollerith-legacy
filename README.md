@@ -1203,13 +1203,20 @@ characters and see what happens. This is the data we start with:
   by iterating over a prefix stream that contains all keys that match 
   ``[ [ 'glyph', '月', ], 'reading', ...`.
 
-* With phrases as keys, it becomes possible to store any number of facts about
+* With phrase-as-keys, it becomes possible to store any number of facts about
   a given subject / predicate pair as long as objects are distinct, without having
   to use an index. Without an index, object values will be retrieved in lexicographic 
-  order; if repeated objects may occur or objects are intended to appear in a 
-  specific order other than lexicographic, an explicit index between predicate
-  and object or between object type and object value may be inserted.
+  order; to implement repeated objects and / or a 
+  specific ordering other than lexicographic, an explicit index between predicate
+  and object or between object type and object value may be inserted:
 
+```coffee
+[ [ 'glyph', '重', ], 'reading', 0, [ 'zh:py/bare', 'zhong', ] ]
+[ [ 'glyph', '重', ], 'reading', 1, [ 'zh:py/bare', 'chong', ] ]
+
+[ [ 'glyph', '重', ], 'reading', [ 'zh:py/bare', 0, 'zhong', ] ]
+[ [ 'glyph', '重', ], 'reading', [ 'zh:py/bare', 1, 'chong', ] ]
+````
 
 <!-- 
 
