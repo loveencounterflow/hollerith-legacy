@@ -2037,28 +2037,44 @@ clear_leveldb = ( leveldb, handler ) ->
     from_cache      = {}
     to_cache        = {}
     #.......................................................................................................
+    new_index_phrase = ( tsbj, tprd, tobj, fprd, fobj, tsbj_is_list, idx = null ) =>
+      if idx?
+        return [ [ tsbj..., tprd, idx, tobj, ], fprd, fobj, ] if tsbj_is_list
+        return [ [ tsbj,    tprd, idx, tobj, ], fprd, fobj, ]
+      else
+        return [ [ tsbj..., tprd,      tobj, ], fprd, fobj, ] if tsbj_is_list
+        return [ [ tsbj,    tprd,      tobj, ], fprd, fobj, ]
+    #.......................................................................................................
     link = ( from_phrase, to_phrase ) =>
-      [ from_sbj, from_prd, from_obj, ] = from_phrase
-      [   to_sbj,   to_prd,   to_obj, ] =   to_phrase
-      # from_sbj  = from_sbj[ 0 ] if ( CND.isa_list from_sbj ) and from_sbj.length is 1
-      # to_sbj    =   to_sbj[ 0 ] if ( CND.isa_list   to_sbj ) and   to_sbj.length is 1
-      to_sbj_is_list                    = CND.isa_list to_sbj
+      [ fsbj, fprd, fobj, ] = from_phrase
+      [ tsbj, tprd, tobj, ] =   to_phrase
+      tsbj_is_list          = CND.isa_list tsbj
+      #.....................................................................................................
       unless from_is_plural or to_is_plural
-        if to_sbj_is_list
-          R = [ [ [ to_sbj..., to_prd, to_obj, ], from_prd, from_obj, ], ]
-        else
-          R = [ [ [ to_sbj,    to_prd, to_obj, ], from_prd, from_obj, ], ]
-      else if from_is_plural
-        idx = -1
-        R   = []
+        # fs ts
+        return [ new_index_phrase tsbj, tprd, tobj, fprd, fobj, tsbj_is_list ]
+      #.....................................................................................................
+      idx = -1
+      R   = []
+      if from_is_plural
+        # fp tp
         if to_is_plural
-          for from_sub_obj in from_obj
-            for to_sub_obj in to_obj
+          for sub_fobj in fobj
+            for sub_tobj in tobj
               idx += +1
-              if to_sbj_is_list
-                R.push [ [ to_sbj..., to_prd, idx, to_sub_obj, ], from_prd, from_sub_obj, ]
-              else
-                R.push [ [ to_sbj,    to_prd, idx, to_sub_obj, ], from_prd, from_sub_obj, ]
+              R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
+        else
+        # fp ts
+          debug '5029', tobj
+          for sub_fobj in fobj
+            idx += +1
+            R.push new_index_phrase tsbj, tprd, tobj, fprd, sub_fobj, tsbj_is_list, idx
+      else
+        # fs tp
+        for sub_tobj in tobj
+          idx += +1
+          R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, fobj, tsbj_is_list, idx
+      #.....................................................................................................
       return R
     #.......................................................................................................
     return $ ( phrase, send ) =>
@@ -2089,27 +2105,69 @@ clear_leveldb = ( leveldb, handler ) ->
     input = D.create_throughstream()
     #.......................................................................................................
     input
-      .pipe $index 'reading', 'similarity',     { from: 'plural',   to: 'plural',   }
-      .pipe $index 'reading', 'strokeorder',    { from: 'plural',   to: 'singular', }
-      .pipe $index 'strokeorder', 'reading',    { from: 'singular', to: 'plural',   }
-      .pipe $index 'strokeorder', 'similarity', { from: 'singular', to: 'plural',   }
+      # .pipe $index 'reading', 'similarity',     { from: 'plural',   to: 'plural',   }
+      # .pipe $index 'reading', 'variant',        { from: 'plural',   to: 'plural',   }
+      # .pipe $index 'reading', 'strokeorder',    { from: 'plural',   to: 'singular', }
+      # .pipe $index 'strokeorder', 'reading',    { from: 'singular', to: 'plural',   }
+      .pipe $index 'strokeorder', 'variant',    { from: 'singular', to: 'plural',   }
+      # .pipe $index 'strokeorder', 'similarity', { from: 'singular', to: 'plural',   }
       .pipe HOLLERITH.$write db
       .pipe D.$on_end ->
         handler()
     #.......................................................................................................
-    input.write [ [ '千', ], 'reading',     [ 'qian',               ], ]
-    input.write [ [ '于', ], 'reading',     [ 'yu', 'foo', 'bar',   ], ]
-    input.write [ [ '干', ], 'reading',     [ 'gan', 'ほす',        ], ]
-    input.write [ [ '人', ], 'reading',     [ 'ren',                ], ]
-    input.write [ [ '仁', ], 'reading',     [ 'ren',                ], ]
-    input.write [ [ '千', ], 'similarity',  [ '于', '干',           ], ]
-    input.write [ [ '于', ], 'similarity',  [ '干', '千',           ], ]
-    input.write [ [ '干', ], 'similarity',  [ '千', '于',           ], ]
-    input.write [ [ '千', ], 'strokeorder', '312',                     ]
-    input.write [ [ '于', ], 'strokeorder', '112',                     ]
-    input.write [ [ '干', ], 'strokeorder', '112',                     ]
-    input.write [ [ '人', ], 'strokeorder', '34',                      ]
-    input.write [ [ '仁', ], 'strokeorder', '3211',                    ]
+    input.write [ [ '千', ], 'variant',     [ '仟', '韆', ], ]
+    input.write [ [ '千', ], 'usagecode',   'CJKTHM', ]
+    input.write [ [ '千', ], 'strokeorder', '312',                       ]
+    input.write [ [ '仟', ], 'strokeorder', '32312',                     ]
+    input.write [ [ '韆', ], 'strokeorder', '122125112125221134515454',  ]
+    input.write [ [ '仟', ], 'usagecode',   'CJKTHm', ]
+    input.write [ [ '韆', ], 'usagecode',   'KTHm',   ]
+    #.......................................................................................................
+    input.write [ ["千","variant",0,"仟",'usagecode','CJKTHm'],"strokeorder","312"]
+    input.write [ ["千","variant",1,"韆",'usagecode','KTHm'],"strokeorder","312"]
+    # #.......................................................................................................
+    # input.write [ [ '千', ], 'variant',     [ '仟', '韆', ], ]
+    # input.write [ [ '于', ], 'variant',     [ '於', '亐', ], ]
+    # input.write [ [ '干', ], 'variant',     [ '乾', '幹', '榦', '亁', '乹', ], ]
+    # input.write [ [ '人', ], 'variant',     [ '亻', '𠔽', ], ]
+    # input.write [ [ '仁', ], 'variant',     [ '忈', ], ]
+    # #.......................................................................................................
+    # input.write [ [ '千', ], 'usagecode',   'CJKTHM', ]
+    # input.write [ [ '于', ], 'usagecode',   'CJKTHM', ]
+    # input.write [ [ '干', ], 'usagecode',   'CJKTHM', ]
+    # input.write [ [ '人', ], 'usagecode',   'CJKTHM', ]
+    # input.write [ [ '仁', ], 'usagecode',   'CJKTHM', ]
+    # input.write [ [ '仟', ], 'usagecode',   'CJKTHm', ]
+    # input.write [ [ '韆', ], 'usagecode',   'KTHm',   ]
+    # input.write [ [ '於', ], 'usagecode',   'cJKTHM', ]
+    # input.write [ [ '亐', ], 'usagecode',   'K',      ]
+    # input.write [ [ '乾', ], 'usagecode',   'CJKTHM', ]
+    # input.write [ [ '幹', ], 'usagecode',   'JKTHM',  ]
+    # input.write [ [ '榦', ], 'usagecode',   'THm',    ]
+    # input.write [ [ '亻', ], 'usagecode',   'p',      ]
+    # #.......................................................................................................
+    # input.write [ [ '千', ], 'reading',     [ 'qian',               ], ]
+    # input.write [ [ '于', ], 'reading',     [ 'yu', 'foo', 'bar',   ], ]
+    # input.write [ [ '干', ], 'reading',     [ 'gan', 'ほす',        ], ]
+    # input.write [ [ '人', ], 'reading',     [ 'ren',                ], ]
+    # input.write [ [ '仁', ], 'reading',     [ 'ren',                ], ]
+    # input.write [ [ '千', ], 'similarity',  [ '于', '干',           ], ]
+    # input.write [ [ '于', ], 'similarity',  [ '干', '千',           ], ]
+    # input.write [ [ '干', ], 'similarity',  [ '千', '于',           ], ]
+    # #.......................................................................................................
+    # input.write [ [ '千', ], 'strokeorder', '312',                       ]
+    # input.write [ [ '于', ], 'strokeorder', '112',                       ]
+    # input.write [ [ '干', ], 'strokeorder', '112',                       ]
+    # input.write [ [ '人', ], 'strokeorder', '34',                        ]
+    # input.write [ [ '仁', ], 'strokeorder', '3211',                      ]
+    # input.write [ [ '仟', ], 'strokeorder', '32312',                     ]
+    # input.write [ [ '韆', ], 'strokeorder', '122125112125221134515454',  ]
+    # input.write [ [ '於', ], 'strokeorder', '41353444',                  ]
+    # input.write [ [ '亐', ], 'strokeorder', '115',                       ]
+    # input.write [ [ '乾', ], 'strokeorder', '12251112315',               ]
+    # input.write [ [ '幹', ], 'strokeorder', '1225111231112',             ]
+    # input.write [ [ '榦', ], 'strokeorder', '12251112341234',            ]
+    # input.write [ [ '亻', ], 'strokeorder', '32',                        ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................

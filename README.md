@@ -1216,7 +1216,9 @@ characters and see what happens. This is the data we start with:
 
 [ [ 'glyph', '重', ], 'reading', [ 'zh:py/bare', 0, 'zhong', ] ]
 [ [ 'glyph', '重', ], 'reading', [ 'zh:py/bare', 1, 'chong', ] ]
-````
+```
+
+* Indexing phrases will not be stored in SPO form anymore.
 
 <!-- 
 
