@@ -2029,7 +2029,7 @@ clear_leveldb = ( leveldb, handler ) ->
     done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "indexing" ] = ( T, done ) ->
+@[ "binary indexing" ] = ( T, done ) ->
   #.........................................................................................................
   $index = ( from_predicate, to_predicate, settings = {} ) =>
     from_is_plural  = settings[ 'from' ] is 'plural'
@@ -2037,13 +2037,9 @@ clear_leveldb = ( leveldb, handler ) ->
     from_cache      = {}
     to_cache        = {}
     #.......................................................................................................
-    new_index_phrase = ( tsbj, tprd, tobj, fprd, fobj, tsbj_is_list, idx = null ) =>
-      if idx?
-        return [ [ tsbj..., tprd, idx, tobj, ], fprd, fobj, ] if tsbj_is_list
-        return [ [ tsbj,    tprd, idx, tobj, ], fprd, fobj, ]
-      else
-        return [ [ tsbj..., tprd,      tobj, ], fprd, fobj, ] if tsbj_is_list
-        return [ [ tsbj,    tprd,      tobj, ], fprd, fobj, ]
+    new_index_phrase = ( tsbj, tprd, tobj, fprd, fobj, tsbj_is_list, idx = 0 ) =>
+      return [ [ tsbj..., tprd, idx, tobj, ], fprd, fobj, ] if tsbj_is_list
+      return [ [ tsbj,    tprd, idx, tobj, ], fprd, fobj, ]
     #.......................................................................................................
     link = ( from_phrase, to_phrase ) =>
       [ fsbj, fprd, fobj, ] = from_phrase
@@ -2065,7 +2061,6 @@ clear_leveldb = ( leveldb, handler ) ->
               R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
         else
         # fp ts
-          debug '5029', tobj
           for sub_fobj in fobj
             idx += +1
             R.push new_index_phrase tsbj, tprd, tobj, fprd, sub_fobj, tsbj_is_list, idx
@@ -2105,27 +2100,34 @@ clear_leveldb = ( leveldb, handler ) ->
     input = D.create_throughstream()
     #.......................................................................................................
     input
-      # .pipe $index 'reading', 'similarity',     { from: 'plural',   to: 'plural',   }
-      # .pipe $index 'reading', 'variant',        { from: 'plural',   to: 'plural',   }
-      # .pipe $index 'reading', 'strokeorder',    { from: 'plural',   to: 'singular', }
-      # .pipe $index 'strokeorder', 'reading',    { from: 'singular', to: 'plural',   }
-      .pipe $index 'strokeorder', 'variant',    { from: 'singular', to: 'plural',   }
+      .pipe $index 'reading',     'variant',      { from: 'plural',   to: 'plural',   }
+      .pipe $index 'reading',     'similarity',   { from: 'plural',   to: 'plural',   }
+      .pipe $index 'reading',     'strokeorder',  { from: 'plural',   to: 'singular', }
+      .pipe $index 'strokeorder', 'reading',      { from: 'singular', to: 'plural',   }
+      .pipe $index 'strokeorder', 'usagecode',    { from: 'singular', to: 'singular', }
+      # .pipe $index 'strokeorder', 'variant',    { from: 'singular', to: 'plural',   }
       # .pipe $index 'strokeorder', 'similarity', { from: 'singular', to: 'plural',   }
       .pipe HOLLERITH.$write db
       .pipe D.$on_end ->
         handler()
     #.......................................................................................................
-    input.write [ [ '千', ], 'variant',     [ '仟', '韆', ], ]
-    input.write [ [ '千', ], 'usagecode',   'CJKTHM', ]
+    input.write [ [ '千', ], 'variant',     [ '仟', '韆',              ], ]
+    input.write [ [ '千', ], 'similarity',  [ '于', '干',              ], ]
+    input.write [ [ '千', ], 'usagecode',   'CJKTHM',                    ]
     input.write [ [ '千', ], 'strokeorder', '312',                       ]
+    input.write [ [ '千', ], 'reading',     [ 'qian', 'foo', 'bar',   ], ]
     input.write [ [ '仟', ], 'strokeorder', '32312',                     ]
+    input.write [ [ '仟', ], 'usagecode',   'CJKTHm',                    ]
+    input.write [ [ '仟', ], 'reading',     [ 'qian',                 ], ]
     input.write [ [ '韆', ], 'strokeorder', '122125112125221134515454',  ]
-    input.write [ [ '仟', ], 'usagecode',   'CJKTHm', ]
-    input.write [ [ '韆', ], 'usagecode',   'KTHm',   ]
+    input.write [ [ '韆', ], 'usagecode',   'KTHm',                      ]
+    input.write [ [ '韆', ], 'reading',     [ 'qian',                 ], ]
     #.......................................................................................................
-    input.write [ ["千","variant",0,"仟",'usagecode','CJKTHm'],"strokeorder","312"]
-    input.write [ ["千","variant",1,"韆",'usagecode','KTHm'],"strokeorder","312"]
-    # #.......................................................................................................
+    # input.write [ ["千","variant",0,"仟"],"strokeorder","312"]
+    # input.write [ ["千","variant",1,"韆"],"strokeorder","312"]
+    # input.write [ ["千","variant",0,"仟",'usagecode','CJKTHm'],"strokeorder","312"]
+    # input.write [ ["千","variant",1,"韆",'usagecode','KTHm'],"strokeorder","312"]
+    #.......................................................................................................
     # input.write [ [ '千', ], 'variant',     [ '仟', '韆', ], ]
     # input.write [ [ '于', ], 'variant',     [ '於', '亐', ], ]
     # input.write [ [ '干', ], 'variant',     [ '乾', '幹', '榦', '亁', '乹', ], ]
@@ -2168,6 +2170,183 @@ clear_leveldb = ( leveldb, handler ) ->
     # input.write [ [ '幹', ], 'strokeorder', '1225111231112',             ]
     # input.write [ [ '榦', ], 'strokeorder', '12251112341234',            ]
     # input.write [ [ '亻', ], 'strokeorder', '32',                        ]
+    #.......................................................................................................
+    input.end()
+  #.........................................................................................................
+  matchers = [
+    ["pos","reading","bar",["千"],2]
+    ["pos","reading","bar",["千","similarity",4,"于"]]
+    ["pos","reading","bar",["千","similarity",5,"干"]]
+    ["pos","reading","bar",["千","strokeorder",2,"312"]]
+    ["pos","reading","bar",["千","variant",4,"仟"]]
+    ["pos","reading","bar",["千","variant",5,"韆"]]
+    ["pos","reading","foo",["千"],1]
+    ["pos","reading","foo",["千","similarity",2,"于"]]
+    ["pos","reading","foo",["千","similarity",3,"干"]]
+    ["pos","reading","foo",["千","strokeorder",1,"312"]]
+    ["pos","reading","foo",["千","variant",2,"仟"]]
+    ["pos","reading","foo",["千","variant",3,"韆"]]
+    ["pos","reading","qian",["仟"],0]
+    ["pos","reading","qian",["仟","strokeorder",0,"32312"]]
+    ["pos","reading","qian",["千"],0]
+    ["pos","reading","qian",["千","similarity",0,"于"]]
+    ["pos","reading","qian",["千","similarity",1,"干"]]
+    ["pos","reading","qian",["千","strokeorder",0,"312"]]
+    ["pos","reading","qian",["千","variant",0,"仟"]]
+    ["pos","reading","qian",["千","variant",1,"韆"]]
+    ["pos","reading","qian",["韆"],0]
+    ["pos","reading","qian",["韆","strokeorder",0,"122125112125221134515454"]]
+    ["pos","similarity","于",["千"],0]
+    ["pos","similarity","干",["千"],1]
+    ["pos","strokeorder","122125112125221134515454",["韆"]]
+    ["pos","strokeorder","122125112125221134515454",["韆","reading",0,"qian"]]
+    ["pos","strokeorder","122125112125221134515454",["韆","usagecode",0,"KTHm"]]
+    ["pos","strokeorder","312",["千"]]
+    ["pos","strokeorder","312",["千","reading",0,"qian"]]
+    ["pos","strokeorder","312",["千","reading",1,"foo"]]
+    ["pos","strokeorder","312",["千","reading",2,"bar"]]
+    ["pos","strokeorder","312",["千","usagecode",0,"CJKTHM"]]
+    ["pos","strokeorder","32312",["仟"]]
+    ["pos","strokeorder","32312",["仟","reading",0,"qian"]]
+    ["pos","strokeorder","32312",["仟","usagecode",0,"CJKTHm"]]
+    ["pos","usagecode","CJKTHM",["千"]]
+    ["pos","usagecode","CJKTHm",["仟"]]
+    ["pos","usagecode","KTHm",["韆"]]
+    ["pos","variant","仟",["千"],0]
+    ["pos","variant","韆",["千"],1]
+    ]
+  #.........................................................................................................
+  show = ( handler ) ->
+    query = { prefix: [ 'pos', ], star: '*', }
+    # query = { prefix: [ 'pos', 'strokeorder', '312', ], star: '*', }
+    input = HOLLERITH.create_phrasestream db, query
+    input
+      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
+      #.....................................................................................................
+      .pipe do =>
+        idx = -1
+        return D.$observe ( phrase ) =>
+          idx += +1
+          T.eq phrase, matchers[ idx ]
+      #.....................................................................................................
+      .pipe D.$on_end -> handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    yield write_data resume
+    yield show resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "_n-ary indexing" ] = ( T, done ) ->
+  #.........................................................................................................
+  $index = ( descriptions ) =>
+    predicates      = []
+    arities         = []
+    phrases         = []
+    phrase_counts   = {}
+    #.......................................................................................................
+    for predicate, arity of descriptions
+      unless arity in [ 'singular', 'plural', ]
+        throw new Error "expected 'singular' or 'plural' for arity, got #{rpr arity}"
+      predicates.push   predicate
+      phrases.push      null
+      arities.push      arity
+    #.......................................................................................................
+    if predicates.length < 2
+      throw new Error "expected at least two predicate descriptions, got #{predicates.length}"
+    #.......................................................................................................
+    new_index_phrase = ( tsbj, tprd, tobj, fprd, fobj, tsbj_is_list, idx = 0 ) =>
+      return [ [ tsbj..., tprd, idx, tobj, ], fprd, fobj, ] if tsbj_is_list
+      return [ [ tsbj,    tprd, idx, tobj, ], fprd, fobj, ]
+    #.......................................................................................................
+    link = ( from_phrase, to_phrase ) =>
+      [ fsbj, fprd, fobj, ] = from_phrase
+      [ tsbj, tprd, tobj, ] =   to_phrase
+      tsbj_is_list          = CND.isa_list tsbj
+      #.....................................................................................................
+      unless from_is_plural or to_is_plural
+        # fs ts
+        return [ new_index_phrase tsbj, tprd, tobj, fprd, fobj, tsbj_is_list ]
+      #.....................................................................................................
+      idx = -1
+      R   = []
+      if from_is_plural
+        # fp tp
+        if to_is_plural
+          for sub_fobj in fobj
+            for sub_tobj in tobj
+              idx += +1
+              R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
+        else
+        # fp ts
+          debug '5029', tobj
+          for sub_fobj in fobj
+            idx += +1
+            R.push new_index_phrase tsbj, tprd, tobj, fprd, sub_fobj, tsbj_is_list, idx
+      else
+        # fs tp
+        for sub_tobj in tobj
+          idx += +1
+          R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, fobj, tsbj_is_list, idx
+      #.....................................................................................................
+      return R
+    #.......................................................................................................
+    return $ ( phrase, send ) =>
+      send phrase
+      [ sbj, prd, obj, ] = phrase
+      return unless ( prd_idx = predicates.indexOf prd ) >= 0
+      phrases[ prd_idx ] = phrase
+      phrase_count      += +1
+      return null if phrase_count < predicates.length
+      #.....................................................................................................
+      urge '3040', phrases
+      # phrases = ( if  )
+      # switch prd
+      #   #...................................................................................................
+      #   when from_predicate
+      #     sbj_txt = JSON.stringify sbj
+      #     if ( to_phrase = to_cache[ sbj_txt ] )?
+      #       delete to_cache[ sbj_txt ]
+      #       send index_phrase for index_phrase in link phrase, to_phrase
+      #     else
+      #       from_cache[ sbj_txt ] = phrase
+      #   #...................................................................................................
+      #   when to_predicate
+      #     sbj_txt = JSON.stringify sbj
+      #     if ( from_phrase = from_cache[ sbj_txt ] )?
+      #       delete from_cache[ sbj_txt ]
+      #       send index_phrase for index_phrase in link from_phrase, phrase
+      #     else
+      #       to_cache[ sbj_txt ] = phrase
+      #   #...................................................................................................
+      #   return null
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    input = D.create_throughstream()
+    #.......................................................................................................
+    input
+      .pipe $index 'reading': 'plural', 'similarity': 'plural'
+      # .pipe $index 'reading', 'variant',        { from: 'plural',   to: 'plural',   }
+      # .pipe $index 'reading', 'strokeorder',    { from: 'plural',   to: 'singular', }
+      # .pipe $index 'strokeorder', 'reading',    { from: 'singular', to: 'plural',   }
+      # .pipe $index 'strokeorder', 'variant',    { from: 'singular', to: 'plural',   }
+      # .pipe $index 'strokeorder', 'similarity', { from: 'singular', to: 'plural',   }
+      .pipe HOLLERITH.$write db
+      .pipe D.$on_end ->
+        handler()
+    #.......................................................................................................
+    input.write [ [ '千', ], 'variant',     [ '仟', '韆',              ], ]
+    input.write [ [ '千', ], 'similarity',  [ '于', '干',              ], ]
+    input.write [ [ '千', ], 'usagecode',   'CJKTHM',                    ]
+    input.write [ [ '千', ], 'strokeorder', '312',                       ]
+    input.write [ [ '千', ], 'reading',     [ 'qian', 'foo', 'bar',   ], ]
+    input.write [ [ '仟', ], 'strokeorder', '32312',                     ]
+    input.write [ [ '仟', ], 'usagecode',   'CJKTHm',                    ]
+    input.write [ [ '仟', ], 'reading',     [ 'qian',                 ], ]
+    input.write [ [ '韆', ], 'strokeorder', '122125112125221134515454',  ]
+    input.write [ [ '韆', ], 'usagecode',   'KTHm',                      ]
+    input.write [ [ '韆', ], 'reading',     [ 'qian',                 ], ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
@@ -2253,11 +2432,12 @@ unless module.parent?
     # 'use non-string subjects in phrases (2)'
     # 'use non-string subjects in phrases (3)'
     # 'use non-string subjects in phrases (4)'
-    'indexing'
+    'binary indexing'
+    # 'n-ary indexing'
     # "Pinyin Unicode Sorting"
     # "ensure `Buffer.compare` gives same sorting as LevelDB"
     ]
-  @_prune()
+  # @_prune()
   @_main()
   # @[ "XXX" ] null, -> help "(done)"
   # @[ "YYY" ] null, -> help "(done)"
