@@ -6,29 +6,23 @@
   "dependencies": {
     "async": "^1.5.2",
     "cnd": "^3.0.4",
-    "coffeenode-docopt": "^0.1.1",
     "coffeenode-suspend": "^0.1.11",
-    "hollerith-codec": "^1.0.24",
-    "kwic": "^1.0.7",
+    "hollerith-codec": "^1.2.3",
+    "kwic": "^1.0.17",
     "level": "^1.4.0",
     "leveldown": "^1.4.6",
-    "lodash": "^4.13.1",
     "mkdirp": "^0.5.1",
-    "pipedreams": "^3.0.1",
-    "segfault-handler": "^1.0.0"
+    "pipedreams": "^3.0.1"
   },
   "devDependencies": {
-    "coffee-script": "^1.10.0",
-    "coffeelint-variable-scope": "0.0.3",
     "coffeenode-chr": "^1.0.2",
-    "coffeenode-passphrase": "^0.1.7",
-    "gulp": "^3.9.1",
-    "gulp-coffee": "^2.3.2",
-    "gulp-sourcemaps": "^1.6.0",
     "guy-test": "^1.1.2"
   },
   "scripts": {
-    "test": "gulp build && node lib/tests.js"
+    "build": "coffee --map -o lib -c src",
+    "push": "git add . && git commit -m'update' && git push -u origin master",
+    "pub": "npm run build && npm run push && npm version patch && npm publish",
+    "test": "npm run build && node lib/tests.js"
   },
   "repository": {
     "type": "git",

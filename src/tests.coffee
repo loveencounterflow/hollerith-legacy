@@ -1,14 +1,6 @@
 
 
 
-
-############################################################################################################
-### https://github.com/ddopson/node-segfault-handler ###
-SegfaultHandler = require 'segfault-handler'
-SegfaultHandler.registerHandler()
-# SegfaultHandler.causeSegfault()
-
-
 ############################################################################################################
 njs_path                  = require 'path'
 # njs_fs                    = require 'fs'
@@ -2567,7 +2559,7 @@ unless module.parent?
     # "Pinyin Unicode Sorting"
     # "ensure `Buffer.compare` gives same sorting as LevelDB"
     ]
-  @_prune()
+  # @_prune()
   @_main()
   # @[ "XXX" ] null, -> help "(done)"
   # @[ "YYY" ] null, -> help "(done)"

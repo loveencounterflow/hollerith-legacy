@@ -19,19 +19,7 @@ help                      = CND.get_logger 'help',      badge
 urge                      = CND.get_logger 'urge',      badge
 echo                      = CND.echo.bind CND
 #...........................................................................................................
-suspend                   = require 'coffeenode-suspend'
-step                      = suspend.step
-after                     = suspend.after
-eventually                = suspend.eventually
-immediately               = suspend.immediately
-repeat_immediately        = suspend.repeat_immediately
-every                     = suspend.every
-#...........................................................................................................
-# BYTEWISE                  = require 'bytewise'
-# through                   = require 'through2'
-# LevelBatch                = require 'level-batch-stream'
-# BatchStream               = require 'batch-stream'
-# parallel                  = require 'concurrent-writable'
+step                      = ( require 'coffeenode-suspend' ).step
 D                         = require 'pipedreams'
 $                         = D.remit.bind D
 $async                    = D.remit_async.bind D
@@ -40,8 +28,6 @@ CHR                       = require 'coffeenode-chr'
 KWIC                      = require 'kwic'
 #...........................................................................................................
 new_db                    = require 'level'
-# new_levelgraph            = require 'levelgraph'
-# db                        = new_levelgraph '/tmp/levelgraph'
 HOLLERITH                 = require './main'
 ƒ                         = CND.format_number.bind CND
 #...........................................................................................................

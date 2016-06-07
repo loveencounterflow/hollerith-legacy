@@ -32,11 +32,7 @@ $async                    = D.remit_async.bind D
 _new_level_db             = require 'level'
 leveldown                 = require 'leveldown'
 #...........................................................................................................
-suspend                   = require 'coffeenode-suspend'
-step                      = suspend.step
-later                     = suspend.immediately
-#...........................................................................................................
-@_LODASH                  = require 'lodash'
+step                      = ( require 'coffeenode-suspend' ).step
 
 
 #-----------------------------------------------------------------------------------------------------------

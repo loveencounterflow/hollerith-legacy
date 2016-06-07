@@ -19,17 +19,10 @@ help                      = CND.get_logger 'help',      badge
 urge                      = CND.get_logger 'urge',      badge
 echo                      = CND.echo.bind CND
 #...........................................................................................................
-# bytewise                  = require 'bytewise'
-# through                   = require 'through2'
-# LevelBatch                = require 'level-batch-stream'
-# BatchStream               = require 'batch-stream'
-# parallel                  = require 'concurrent-writable'
 D                         = require 'pipedreams'
 $                         = D.remit.bind D
 #...........................................................................................................
 new_db                    = require 'level'
-# new_levelgraph            = require 'levelgraph'
-# db                        = new_levelgraph '/tmp/levelgraph'
 HOLLERITH                 = require './main'
 ƒ                         = CND.format_number.bind CND
 
@@ -211,6 +204,7 @@ HOLLERITH                 = require './main'
 unless module.parent?
 
   #---------------------------------------------------------------------------------------------------------
+  throw new Error """### TODO replace `coffeenode-docopt` with `commander` ###"""
   docopt    = ( require 'coffeenode-docopt' ).docopt
   version   = ( require '../package.json' )[ 'version' ]
   filename  = ( require 'path' ).basename __filename
