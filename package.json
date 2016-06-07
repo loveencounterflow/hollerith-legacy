@@ -12,11 +12,12 @@
     "level": "^1.4.0",
     "leveldown": "^1.4.6",
     "mkdirp": "^0.5.1",
-    "pipedreams": "^3.0.1"
+    "ncr": "^1.0.0",
+    "pipedreams": "^3.0.9"
   },
   "devDependencies": {
     "coffeenode-chr": "^1.0.2",
-    "guy-test": "^1.1.2"
+    "guy-test": "^1.2.1"
   },
   "scripts": {
     "build": "coffee --map -o lib -c src",
