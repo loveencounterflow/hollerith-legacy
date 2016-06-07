@@ -28,7 +28,7 @@
     "guy-test": "^1.1.2"
   },
   "scripts": {
-    "test": "gulp --harmony build && node --harmony lib/tests.js"
+    "test": "gulp build && node lib/tests.js"
   },
   "repository": {
     "type": "git",

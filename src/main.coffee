@@ -335,6 +335,81 @@ later                     = suspend.immediately
 
 
 #===========================================================================================================
+# HIGHER-ORDER INDEXING
+#-----------------------------------------------------------------------------------------------------------
+@$index = ( descriptions ) =>
+  ### TAINT For the time being, we only support secondary indexes, and the implementation is not at all
+  written in a generic fashion. A future version will likely support tertiary indexes, but that will
+  necessitate waiting for the end of the write stream and re-reading all the records. ###
+  predicates      = []
+  predicate_count = 0
+  arities         = []
+  phrases         = []
+  phrase_counts   = {}
+  #.........................................................................................................
+  for predicate, arity of descriptions
+    predicate_count += +1
+    unless arity in [ 'singular', 'plural', ]
+      throw new Error "expected 'singular' or 'plural' for arity, got #{rpr arity}"
+    predicates.push   predicate
+    phrases.push      {}
+    arities.push      arity
+  #.........................................................................................................
+  if predicate_count.length < 2
+    throw new Error "expected at least two predicate descriptions, got #{predicates.length}"
+  if predicate_count.length > 2
+    throw new Error "indexes with more than 2 steps not supported yet"
+  #.........................................................................................................
+  new_index_phrase = ( tsbj, tprd, tobj, fprd, fobj, tsbj_is_list, idx = 0 ) =>
+    return [ [ tsbj..., tprd, idx, tobj, ], fprd, fobj, ] if tsbj_is_list
+    return [ [ tsbj,    tprd, idx, tobj, ], fprd, fobj, ]
+  #.........................................................................................................
+  link = ( phrases ) =>
+    throw new Error "indexes with anything but 2 steps not supported yet" if phrases.length != 2
+    [ from_phrase, to_phrase, ] = phrases
+    [ fsbj, fprd, fobj, ]       = from_phrase
+    [ tsbj, tprd, tobj, ]       =   to_phrase
+    tsbj_is_list                = CND.isa_list tsbj
+    from_is_plural              = arities[ 0 ] is 'plural'
+    to_is_plural                = arities[ 1 ] is 'plural'
+    #.......................................................................................................
+    unless from_is_plural or to_is_plural
+      return [ new_index_phrase tsbj, tprd, tobj, fprd, fobj, tsbj_is_list ]
+    #.......................................................................................................
+    idx = -1
+    R   = []
+    if from_is_plural
+      if to_is_plural
+        for sub_fobj in fobj
+          for sub_tobj in tobj
+            idx += +1
+            R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
+      else
+        for sub_fobj in fobj
+          idx += +1
+          R.push new_index_phrase tsbj, tprd, tobj, fprd, sub_fobj, tsbj_is_list, idx
+    else
+      for sub_tobj in tobj
+        idx += +1
+        R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, fobj, tsbj_is_list, idx
+    #.......................................................................................................
+    return R
+  #.........................................................................................................
+  return $ ( phrase, send ) =>
+    send phrase
+    [ sbj, prd, obj, ] = phrase
+    return unless ( prd_idx = predicates.indexOf prd ) >= 0
+    sbj_txt                       = JSON.stringify sbj
+    phrase_target                 = phrases[ sbj_txt]?= []
+    phrase_target[ prd_idx ]      = phrase
+    phrase_counts[ sbj_txt ]      = ( phrase_counts[ sbj_txt ] ? 0 ) + 1
+    return null if phrase_counts[ sbj_txt ] < predicate_count
+    #.......................................................................................................
+    send index_phrase for index_phrase in link phrases[ sbj_txt ]
+    return null
+
+
+#===========================================================================================================
 # READING
 #-----------------------------------------------------------------------------------------------------------
 @create_phrasestream = ( db, query ) ->
