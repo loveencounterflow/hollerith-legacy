@@ -231,7 +231,7 @@ unless module.parent?
       S = {
         command:  'dump'
         mode:     'keys'
-        colors:   if process.stdout.isTTY then true else false
+        colors:   true # if process.stdout.isTTY then true else false
         limit
         json
         route
