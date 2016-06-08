@@ -204,6 +204,62 @@ HOLLERITH                 = require './main'
 unless module.parent?
 
   #---------------------------------------------------------------------------------------------------------
+  app       = require 'commander'
+  app_name  = process.argv[ 1 ]
+  app.version ( require '../package.json' )[ 'version' ]
+  is_tty    = process.stdout.isTTY
+  DUMP      = @
+
+  #---------------------------------------------------------------------------------------------------------
+  get_boolean = ( input, fallback = false ) ->
+    return fallback unless input?
+    return input
+
+  #---------------------------------------------------------------------------------------------------------
+  app
+    .command      "dump [db_route] [prefix]"
+    .description  "dump values in DB"
+    .option       "--limit [n]",  "limit output to n entries"
+    .option       "--json",       "format values as JSON"
+    #.......................................................................................................
+    .action ( route, prefix, options ) ->
+      #.....................................................................................................
+      limit     = options[ 'limit' ] ? null
+      limit     = parseInt limit, 10 if limit?
+      json      = options[ 'json' ] ? no
+      #.....................................................................................................
+      S = {
+        command:  'dump'
+        mode:     'keys'
+        colors:   if process.stdout.isTTY then true else false
+        limit
+        json
+        route
+        prefix
+        }
+      #.....................................................................................................
+      help S
+      #.....................................................................................................
+      dump_settings =
+        limit:            Infinity
+        mode:             'keys'
+        colors:           if process.stdout.isTTY then true else false
+        chrs:             3
+      #.....................................................................................................
+      db = HOLLERITH.new_db S[ 'route' ], create: no
+      help "using LevelDB at #{S[ 'route' ]}"
+      DUMP.dump db, S
+      return null
+
+  #---------------------------------------------------------------------------------------------------------
+  app.parse process.argv
+
+  unless app.args?.length > 0
+    warn "missing arguments"
+    app.help()
+
+->
+  #---------------------------------------------------------------------------------------------------------
   throw new Error """### TODO replace `coffeenode-docopt` with `commander` ###"""
   docopt    = ( require 'coffeenode-docopt' ).docopt
   version   = ( require '../package.json' )[ 'version' ]

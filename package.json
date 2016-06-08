@@ -7,6 +7,7 @@
     "async": "^1.5.2",
     "cnd": "^3.0.4",
     "coffeenode-suspend": "^0.1.11",
+    "commander": "^2.9.0",
     "hollerith-codec": "^1.2.3",
     "kwic": "^1.0.17",
     "level": "^1.4.0",
