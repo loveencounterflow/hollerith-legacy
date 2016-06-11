@@ -1190,12 +1190,9 @@ characters and see what happens. This is the data we start with:
 
 ## Plans for v4
 
-* Both SPO and POS phrases will be stored in the LevelDB key; the LevelDB value
-  is not used, turning a Hollerith DB into a 'keys-only' store.
-
-* Phrase structure will be optionally a bit more specific; we encourage the use of typed subjects
-  and objects, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`. This is,
-  however, purely optional, but see the next point.
+* Both SPO and POS phrases are stored entirely in the LevelDB `key`; the LevelDB `value`
+  field is not used (or rather, it is set to a constant default value). Thus, 
+  Hollerith DBs are implemented as 'keys-only' store.
 
 * All subjects, even those of non-index phrases, must need be stored as lists, so
   for example the v2 phrase `[ '重', 'reading', [ 'zhong', 'chong', ] ]`
@@ -1204,6 +1201,10 @@ characters and see what happens. This is the data we start with:
   a given predicate / object pair, you will still have to enter one phrase for
   each subject concerned. This step is necessary to keep POS phrase ordering 
   when using secondary indexes, as these use 'sub-phrases' as subjects.
+
+* Since all subjects are now lists, it is a small step to use typed subjects
+  and objects, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`. This is,
+  however, purely optional.
 
 * With phrases-as-keys, it becomes possible to store any number of facts about
   a given subject / predicate pair as long as objects are distinct, without having
