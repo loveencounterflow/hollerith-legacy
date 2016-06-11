@@ -442,8 +442,8 @@ step                      = ( require 'coffeenode-suspend' ).step
 
 #-----------------------------------------------------------------------------------------------------------
 @_create_phrasestream = ( db, query, handler ) ->
-  input = @create_facetstream db, query
-  R = input.pipe @$as_phrase db
+  input = @create_longphrasestream db, query
+  R = input.pipe @$longphrase_as_phrase db
   if handler?
     R = R
       .pipe D.$collect()
@@ -454,7 +454,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@create_facetstream = ( db, query ) ->
+@create_longphrasestream = ( db, query ) ->
   ###
   * If none of `lo`, `hi` or 'prefix' are given, the stream will iterate over all entries.
   * If both `lo` and `hi` are given, a query with lower and upper, inclusive boundaries (in LevelDB these
@@ -501,10 +501,10 @@ step                      = ( require 'coffeenode-suspend' ).step
         throw new Error "illegal hint arity #{rpr arity}"
   #.........................................................................................................
   # debug '©KaWp7', lo_hint, hi_hint
-  return @_create_facetstream db, lo_hint, hi_hint
+  return @_create_longphrasestream db, lo_hint, hi_hint
 
 #-----------------------------------------------------------------------------------------------------------
-@_create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
+@_create_longphrasestream = ( db, lo_hint = null, hi_hint = null ) ->
   ### TAINT `lo_hint` and `hi_hint` should be called `first` and `second` ###
   #.........................................................................................................
   if hi_hint? and not lo_hint?
@@ -526,10 +526,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   R = db[ '%self' ].createKeyStream query
   #.........................................................................................................
   ### TAINT decoding transfrom should be made public ###
-  R = R.pipe $ ( key, send ) =>
-    unless @_is_meta db, key
-      send @_decode_key db, key
-      # send [ ( @_decode_key db, key ), ( @_decode_value db, value ), ]
+  R = R.pipe $ ( key, send ) => send @_decode_key db, key unless @_is_meta db, key
   #.........................................................................................................
   R[ '%meta' ] = {}
   R[ '%meta' ][ 'query' ] = query
@@ -550,7 +547,7 @@ step                      = ( require 'coffeenode-suspend' ).step
 
 #-----------------------------------------------------------------------------------------------------------
 @has_any = ( db, query, handler ) ->
-  input   = @create_facetstream db, query
+  input   = @create_longphrasestream db, query
   active  = yes
   #.........................................................................................................
   input
@@ -580,18 +577,32 @@ step                      = ( require 'coffeenode-suspend' ).step
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@as_phrase = ( db, key ) ->
+@longphrase_as_phrase = ( db, longphrase ) ->
   try
-    switch phrasetype = key[ 0 ]
+    [ phrasetype, tail..., ]  = longphrase
+    sbj = prd = obj = idx     = null
+    switch phrasetype
       when 'spo'
-        throw new Error "illegal SPO key (length #{length})"  unless ( length = key.length ) is 3
+        unless ( length = longphrase.length ) is 4
+          throw new Error "illegal SPO phrase (length #{length})"
+        [ sbj, prd, obj, ] = tail
       when 'pos'
-        throw new Error "illegal POS key (length #{length})"  unless 4 <= ( length = key.length ) <= 5
+        switch longphrase_length = longphrase.length
+          when 4
+            [ prd, obj, sbj, ] = tail
+          when 5
+            [ prd, obj, sbj, idx, ] = tail
+          else
+            throw new Error "illegal POS phrase (length #{longphrase_length})"
       else
         throw new Error "unknown phrasetype #{rpr phrasetype}"
-    return key
+    switch sbj_length = sbj.length
+      when 1 then sbj = sbj[ 0 ]
+      when 0 then throw new Error "subject can't be empty; read phrase #{rpr longphrase}"
+    return [ sbj, prd, obj, idx, ] if idx?
+    return [ sbj, prd, obj,      ]
   catch error
-    warn "detected problem with key #{rpr key}"
+    warn "detected problem with phrase #{rpr longphrase}"
     throw error
 
 #-----------------------------------------------------------------------------------------------------------
@@ -605,7 +616,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   throw new Error "unknown phrasetype #{rpr phrasetype}"
 
 #-----------------------------------------------------------------------------------------------------------
-@$as_phrase = ( db ) -> $ ( key, send ) => send @as_phrase db, key
+@$longphrase_as_phrase = ( db ) -> $ ( key, send ) => send @longphrase_as_phrase db, key
 
 #-----------------------------------------------------------------------------------------------------------
 @key_from_url = ( db, url ) ->
