@@ -1190,19 +1190,20 @@ characters and see what happens. This is the data we start with:
 
 ## Plans for v4
 
-exp
-
 * Both SPO and POS phrases will be stored in the LevelDB key; the LevelDB value
   is not used, turning a Hollerith DB into a 'keys-only' store.
 
-* Phrase structure will be a bit more specific; we encourage the use of typed subjects
-  and objects, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`.
+* Phrase structure will be optionally a bit more specific; we encourage the use of typed subjects
+  and objects, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`. This is,
+  however, purely optional, but see the next point.
 
-* Since entire phrases like `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`
-  will be stored in the key, retrieving what reading a given glyph has cannot
-  be done by using the LevelDB `get` operation; instead, `get` is implmented internally
-  by iterating over a prefix stream that contains all keys that match 
-  ``[ [ 'glyph', '月', ], 'reading', ...`.
+* All subjects, even those of non-index phrases, must need be stored as lists, so
+  for example the v2 phrase `[ '重', 'reading', [ 'zhong', 'chong', ] ]`
+  becomes, in v4: `[ [ '重', ], 'reading', [ 'zhong', 'chong', ] ]`. The semantics
+  remain unchanged; if you want to store the fact that a number of subjects shares
+  a given predicate / object pair, you will still have to enter one phrase for
+  each subject concerned. This step is necessary to keep POS phrase ordering 
+  when using secondary indexes, as these use 'sub-phrases' as subjects.
 
 * With phrases-as-keys, it becomes possible to store any number of facts about
   a given subject / predicate pair as long as objects are distinct, without having
@@ -1218,6 +1219,12 @@ exp
 [ [ 'glyph', '重', ], 'reading', [ 'zh:py/bare', 0, 'zhong', ] ]
 [ [ 'glyph', '重', ], 'reading', [ 'zh:py/bare', 1, 'chong', ] ]
 ```
+
+* Since entire phrases like `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`
+  will be stored in the key, retrieving what reading a given glyph has cannot
+  be done by using the LevelDB `get` operation; instead, `get` is implmented internally
+  by iterating over a prefix stream that contains all keys that match 
+  ``[ [ 'glyph', '月', ], 'reading', ...`.
 
 * Indexing phrases will not be stored in SPO form anymore.
 
