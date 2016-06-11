@@ -38,7 +38,7 @@ step                      = ( require 'coffeenode-suspend' ).step
 #-----------------------------------------------------------------------------------------------------------
 @phrasetypes      = [ 'pos', 'spo', ]
 @_misfit          = Symbol 'misfit'
-@_zero_value_bfr  = new Buffer 'null'
+@_zero_value_bfr  = new Buffer '\x00'
 # warn "mind inconsistencies in HOLLERITH2/main @_zero_enc etc"
 # @_zero            = true # ?????????????????????????????
 # @_zero_enc        = _codec_encode [ @_zero,    ]
@@ -170,7 +170,7 @@ step                      = ( require 'coffeenode-suspend' ).step
 # WRITING
 #-----------------------------------------------------------------------------------------------------------
 @$write = ( db, settings ) ->
-  ### TAINT currently loading and saving bloom filter each time a pipeline with `$write` is run ###
+  # ### TAINT currently loading and saving bloom filter each time a pipeline with `$write` is run ###
   #.........................................................................................................
   settings         ?= {}
   ### Superficial experiments show that a much bigger batch size than 1'000 does not tend to improve
@@ -186,27 +186,19 @@ step                      = ( require 'coffeenode-suspend' ).step
   #.........................................................................................................
   $index = => $ ( spo, send ) =>
     [ sbj, prd, obj, ] = spo
-    send [ [ 'spo', sbj, prd, ], obj, ]
+    send [ 'spo', sbj, prd, obj, ]
     #.......................................................................................................
     unless ( ( obj_type = CND.type_of obj ) is 'pod' ) or ( prd in loner_predicates )
       #.....................................................................................................
       if ( obj_type is 'list' ) and not ( prd in solid_predicates )
         for obj_element, obj_idx in obj
-          send [ [ 'pos', prd, obj_element, sbj, obj_idx, ], ]
+          send [ 'pos', prd, obj_element, sbj, obj_idx, ]
       #.....................................................................................................
       else
-        send [ [ 'pos', prd, obj, sbj, ], ]
+        send [ 'pos', prd, obj, sbj, ]
   #.........................................................................................................
-  $encode = => $ ( facet, send ) =>
-    [ key, value, ] = facet
-    phrasetype      = key[ 0 ]
-    key_bfr         = @_encode_key db, key
-    value_bfr       = if value? then @_encode_value db, value else @_zero_value_bfr
-    send [ phrasetype, key_bfr, value_bfr, ]
-  #.........................................................................................................
-  $as_batch_entry = => $ ( facet_bfr_plus, send ) =>
-    [ phrasetype, key_bfr, value_bfr, ] = facet_bfr_plus
-    send type: 'put', key: key_bfr, value: value_bfr
+  $encode = => $ ( longphrase, send ) =>
+    send type: 'put', key: ( @_encode_key db, longphrase ), value: @_zero_value_bfr
   #.........................................................................................................
   $write = => $ ( batch, send ) =>
     substrate.batch batch
@@ -214,20 +206,20 @@ step                      = ( require 'coffeenode-suspend' ).step
     send batch
   #.........................................................................................................
   if ensure_unique
-    { batch_written, $ensure_unique_sp, $load_bloom, $save_bloom, } = @_get_bloom_methods db
+    throw new Error "`unique` setting currently not supported"
+    # { batch_written, $ensure_unique_sp, $load_bloom, $save_bloom, } = @_get_bloom_methods db
   else
     batch_written = ->
   #.........................................................................................................
   pipeline = []
-  pipeline.push $load_bloom()         if ensure_unique
+  # pipeline.push $load_bloom()         if ensure_unique
   pipeline.push @$validate_spo()
-  pipeline.push $ensure_unique_sp()   if ensure_unique
+  # pipeline.push $ensure_unique_sp()   if ensure_unique
   pipeline.push $index()
   pipeline.push $encode()
-  pipeline.push $as_batch_entry()
   pipeline.push D.$batch batch_size
   pipeline.push $write()
-  pipeline.push $save_bloom()         if ensure_unique
+  # pipeline.push $save_bloom()         if ensure_unique
   #.........................................................................................................
   R = R.pipe D.combine pipeline...
   return R
@@ -251,6 +243,7 @@ step                      = ( require 'coffeenode-suspend' ).step
       # throw error
     send spo
 
+### TAINT under revision
 #-----------------------------------------------------------------------------------------------------------
 @_get_bloom_methods = ( db ) ->
   #---------------------------------------------------------------------------------------------------------
@@ -328,7 +321,7 @@ step                      = ( require 'coffeenode-suspend' ).step
           whisper "no data written, no Bloom filter to save"
   #---------------------------------------------------------------------------------------------------------
   return { batch_written, $ensure_unique_sp, $load_bloom, $save_bloom, }
-
+###
 
 #===========================================================================================================
 # HIGHER-ORDER INDEXING

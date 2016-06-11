@@ -1190,9 +1190,15 @@ characters and see what happens. This is the data we start with:
 
 ## Plans for v4
 
-* Both SPO and POS phrases are stored entirely in the LevelDB `key`; the LevelDB `value`
-  field is not used (or rather, it is set to a constant default value). Thus, 
-  Hollerith DBs are implemented as 'keys-only' store.
+* Both SPO and POS phrases are now stored entirely in the LevelDB `key`; the 
+  LevelDB `value` field is not used (or rather, it is set to a constant 
+  default value). IOW, Hollerith DBs are implemented as 'keys-only' store.
+
+* Since entire phrases like `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`
+  will be stored in the key, retrieving what reading a given glyph has cannot
+  be done by using the LevelDB `get` operation; instead, `get` is implmented internally
+  by iterating over a prefix stream that contains all keys that match 
+  ``[ [ 'glyph', '月', ], 'reading', ...`.
 
 * All subjects, even those of non-index phrases, must need be stored as lists, so
   for example the v2 phrase `[ '重', 'reading', [ 'zhong', 'chong', ] ]`
@@ -1220,12 +1226,6 @@ characters and see what happens. This is the data we start with:
 [ [ 'glyph', '重', ], 'reading', [ 'zh:py/bare', 0, 'zhong', ] ]
 [ [ 'glyph', '重', ], 'reading', [ 'zh:py/bare', 1, 'chong', ] ]
 ```
-
-* Since entire phrases like `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`
-  will be stored in the key, retrieving what reading a given glyph has cannot
-  be done by using the LevelDB `get` operation; instead, `get` is implmented internally
-  by iterating over a prefix stream that contains all keys that match 
-  ``[ [ 'glyph', '月', ], 'reading', ...`.
 
 * Indexing phrases will not be stored in SPO form anymore.
 
