@@ -2559,6 +2559,48 @@ clear_leveldb = ( leveldb, handler ) ->
     done()
 
 #-----------------------------------------------------------------------------------------------------------
+@[ "(v4) store non-list subject as single-element list" ] = ( T, done ) ->
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    input = D.create_throughstream()
+    #.......................................................................................................
+    input
+      .pipe HOLLERITH.$write db, unique: no
+      .pipe D.$on_end => handler()
+    #.......................................................................................................
+    input.write [ '千', 'variant',     [ '仟', '韆',              ], ]
+    input.end()
+  #.........................................................................................................
+  value_matchers = [
+    [ 0x54, 0x70, 0x6f, 0x73, 0x00, 0x54, 0x76, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x00, 0x54, 0xe4, 0xbb, 0x9f, 0x00, 0x45, 0x54, 0xe5, 0x8d, 0x83, 0x00, 0x00, 0x4c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,],
+    [ 0x54, 0x70, 0x6f, 0x73, 0x00, 0x54, 0x76, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x00, 0x54, 0xe9, 0x9f, 0x86, 0x00, 0x45, 0x54, 0xe5, 0x8d, 0x83, 0x00, 0x00, 0x4c, 0x3f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,],
+    [ 0x54, 0x73, 0x70, 0x6f, 0x00, 0x45, 0x54, 0xe5, 0x8d, 0x83, 0x00, 0x00, 0x54, 0x76, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x00, 0x45, 0x54, 0xe4, 0xbb, 0x9f, 0x00, 0x54, 0xe9, 0x9f, 0x86, 0x00, 0x00,],
+    ]
+  #.........................................................................................................
+  show = ( handler ) ->
+    query = { prefix: [], star: '*', }
+    input = db[ '%self' ].createReadStream()
+    input
+      .pipe D.$observe ( record ) => info rpr record
+      #.....................................................................................................
+      .pipe do =>
+        idx       = -1
+        zero_bfr  = new Buffer [ 0x00, ]
+        return D.$observe ( record ) =>
+          idx += +1
+          { key, value, } = record
+          T.eq key,   new Buffer value_matchers[ idx ]
+          T.eq value, zero_bfr
+      #.....................................................................................................
+      .pipe D.$on_end -> handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    yield write_data resume
+    yield show resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
 @_prune = ->
   for name, value of @
     continue if name.startsWith '_'
@@ -2617,20 +2659,21 @@ unless module.parent?
     # "write private types (3)"
     # "bloom filter serialization without writes"
     # "use non-string subjects in phrases"
-    # '$write rejects duplicate S/P pairs'
-    # 'codec accepts long keys'
-    # 'write private types (1)'
-    # 'use non-string subjects in phrases (1)'
-    # 'use non-string subjects in phrases (2)'
-    # 'use non-string subjects in phrases (3)'
-    # 'use non-string subjects in phrases (4)'
-    # 'binary indexing'
-    # 'n-ary indexing (1)'
-    # 'n-ary indexing (2)'
+    # "$write rejects duplicate S/P pairs"
+    # "codec accepts long keys"
+    # "write private types (1)"
+    # "use non-string subjects in phrases (1)"
+    # "use non-string subjects in phrases (2)"
+    # "use non-string subjects in phrases (3)"
+    # "use non-string subjects in phrases (4)"
+    # "binary indexing"
+    # "n-ary indexing (1)"
+    # "n-ary indexing (2)"
     # "Pinyin Unicode Sorting"
     # "ensure `Buffer.compare` gives same sorting as LevelDB"
-    '(v4) values are `0x00` buffers'
-    '(v4) store SPO, POS both as keys only'
+    "(v4) values are `0x00` buffers"
+    "(v4) store SPO, POS both as keys only"
+    "(v4) store non-list subject as single-element list"
     ]
   @_prune()
   @_main()
