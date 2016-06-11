@@ -185,7 +185,8 @@ step                      = ( require 'coffeenode-suspend' ).step
   batch_written     = null
   #.........................................................................................................
   $index = => $ ( spo, send ) =>
-    [ sbj, prd, obj, ] = spo
+    [ sbj, prd, obj, ]  = spo
+    sbj                 = [ sbj, ] unless CND.isa_list sbj
     send [ 'spo', sbj, prd, obj, ]
     #.......................................................................................................
     unless ( ( obj_type = CND.type_of obj ) is 'pod' ) or ( prd in loner_predicates )
