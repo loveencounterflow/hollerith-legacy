@@ -145,33 +145,53 @@ HOLLERITH                 = require './main'
 #-----------------------------------------------------------------------------------------------------------
 @dump = ( db, settings ) ->
   { mode, prefix, } = settings
-  switch mode
-    when 'keys'
-      if prefix?
-        ### TAINT use library method ###
-        if prefix[ prefix.length - 1 ] is '*'
-          star      = '*'
-          star_rpr  = '*'
-          prefix = prefix[ ... prefix.length - 1 ]
-        else
-          star      = null
-          star_rpr  = ''
-        key = prefix.split /\||:/
-        query = HOLLERITH._query_from_prefix db, key, star
-        urge "prefix: #{rpr prefix} #{star_rpr}"
-        urge "key:    #{rpr key} #{star_rpr}"
-        # urge " #{query[ 'gte' ]}"
-        # urge " #{query[ 'lte' ]}"
-        input = db[ '%self' ].createReadStream query
-      else
-        input = db[ '%self' ].createReadStream()
-      worker  = @_$dump_facets db, input, settings
-    # when 'prefixes'
-    #   input   = db[ '%self' ].createKeyStream()
-    #   worker  = @_$dump_prefixes db, input, settings
-    else throw new Error "unknown mode #{rpr mode}"
+  prefix            = prefix.split /\||:/
+  star              = null
+  if prefix[ prefix.length - 1 ] is '*'
+    prefix.pop()
+    star = '*'
+  query             = if star? then { prefix, star, } else { prefix, }
+  input             = HOLLERITH.create_phrasestream db, query
+  urge "prefix: #{rpr prefix}"
+  #...........................................................................................................
   input
-    .pipe worker
+    .pipe D.$count ( count ) => help "read #{count} keys"
+    .pipe D.$observe ( data ) =>
+      echo JSON.stringify data
+  #...........................................................................................................
+  return null
+
+
+# #-----------------------------------------------------------------------------------------------------------
+# @dump = ( db, settings ) ->
+#   { mode, prefix, } = settings
+#   switch mode
+#     when 'keys'
+#       if prefix?
+#         ### TAINT use library method ###
+#         if prefix[ prefix.length - 1 ] is '*'
+#           star      = '*'
+#           star_rpr  = '*'
+#           prefix = prefix[ ... prefix.length - 1 ]
+#         else
+#           star      = null
+#           star_rpr  = ''
+#         key = prefix.split /\||:/
+#         query = HOLLERITH._query_from_prefix db, key, star
+#         urge "prefix: #{rpr prefix} #{star_rpr}"
+#         urge "key:    #{rpr key} #{star_rpr}"
+#         # urge " #{query[ 'gte' ]}"
+#         # urge " #{query[ 'lte' ]}"
+#         input = db[ '%self' ].createReadStream query
+#       else
+#         input = db[ '%self' ].createReadStream()
+#       worker  = @_$dump_facets db, input, settings
+#     # when 'prefixes'
+#     #   input   = db[ '%self' ].createKeyStream()
+#     #   worker  = @_$dump_prefixes db, input, settings
+#     else throw new Error "unknown mode #{rpr mode}"
+#   input
+#     .pipe worker
 
 
 #===========================================================================================================
@@ -231,7 +251,7 @@ unless module.parent?
       S = {
         command:  'dump'
         mode:     'keys'
-        colors:   true # if process.stdout.isTTY then true else false
+        colors:   if process.stdout.isTTY then true else false
         limit
         json
         route
@@ -258,111 +278,82 @@ unless module.parent?
     warn "missing arguments"
     app.help()
 
-->
-  #---------------------------------------------------------------------------------------------------------
-  throw new Error """### TODO replace `coffeenode-docopt` with `commander` ###"""
-  docopt    = ( require 'coffeenode-docopt' ).docopt
-  version   = ( require '../package.json' )[ 'version' ]
-  filename  = ( require 'path' ).basename __filename
-         # #{filename} pos [--sample] [<prefix>]
-  usage     = """
-  Usage: #{filename} <db-route> [--limit=N]
-         #{filename} <db-route> ( [<prefix>] | keys [<prefix>] | prefixes [<chrs>] ) [--limit=N]
+# ->
+#   #---------------------------------------------------------------------------------------------------------
+#   throw new Error """### TODO replace `coffeenode-docopt` with `commander` ###"""
+#   docopt    = ( require 'coffeenode-docopt' ).docopt
+#   version   = ( require '../package.json' )[ 'version' ]
+#   filename  = ( require 'path' ).basename __filename
+#          # #{filename} pos [--sample] [<prefix>]
+#   usage     = """
+#   Usage: #{filename} <db-route> [--limit=N]
+#          #{filename} <db-route> ( [<prefix>] | keys [<prefix>] | prefixes [<chrs>] ) [--limit=N]
 
-  Options:
-    -l, --limit
-    -h, --help
-    -v, --version
-  """
-  ###
-         #{filename} pos [--sample]
-         #{filename} so [--db] [--limit] [--stdout] [<prefix>]
-         #{filename} os [--db] [--limit] [--stdout] [<prefix>]
-         #{filename} x
-         #{filename} y
-         #{filename} q <query0> [+|-] <query1>
-         #{filename} sql
-         #{filename} count
-  ###
-  cli_options = docopt usage, version: version, help: ( left, collected ) ->
-    urge left
-    help collected
-    help '\n' + usage
-    process.exit()
-  #.........................................................................................................
-  dump_settings =
-    limit:            Infinity
-    mode:             'keys'
-    colors:           if process.stdout.isTTY then true else false
-    chrs:             3
-  #.........................................................................................................
-  dump_settings[ 'route'    ] = cli_options[ '<db-route>' ]
-  dump_settings[ 'limit'    ] = ( parseInt limit, 10 ) if ( limit = cli_options[ '--limit' ] )
-  dump_settings[ 'mode'     ] = 'prefixes' if cli_options[ 'prefixes' ]
-  dump_settings[ 'chrs'     ] = ( parseInt  chrs, 10 ) if (  chrs = cli_options[  '<chrs>' ] )
-  dump_settings[ 'prefix'   ] = prefix if ( prefix = cli_options[ '<prefix>' ] )?
-  #---------------------------------------------------------------------------------------------------------
-  db = HOLLERITH.new_db dump_settings[ 'route' ], create: no
-  # debug '©bEIeE', cli_options
-  # help '©bEIeE', dump_settings
-  help "using LevelDB at #{dump_settings[ 'route' ]}"
-  @dump db, dump_settings
+#   Options:
+#     -l, --limit
+#     -h, --help
+#     -v, --version
+#   """
+#   ###
+#          #{filename} pos [--sample]
+#          #{filename} so [--db] [--limit] [--stdout] [<prefix>]
+#          #{filename} os [--db] [--limit] [--stdout] [<prefix>]
+#          #{filename} x
+#          #{filename} y
+#          #{filename} q <query0> [+|-] <query1>
+#          #{filename} sql
+#          #{filename} count
+#   ###
+#   cli_options = docopt usage, version: version, help: ( left, collected ) ->
+#     urge left
+#     help collected
+#     help '\n' + usage
+#     process.exit()
+#   #.........................................................................................................
+#   dump_settings =
+#     limit:            Infinity
+#     mode:             'keys'
+#     colors:           if process.stdout.isTTY then true else false
+#     chrs:             3
+#   #.........................................................................................................
+#   dump_settings[ 'route'    ] = cli_options[ '<db-route>' ]
+#   dump_settings[ 'limit'    ] = ( parseInt limit, 10 ) if ( limit = cli_options[ '--limit' ] )
+#   dump_settings[ 'mode'     ] = 'prefixes' if cli_options[ 'prefixes' ]
+#   dump_settings[ 'chrs'     ] = ( parseInt  chrs, 10 ) if (  chrs = cli_options[  '<chrs>' ] )
+#   dump_settings[ 'prefix'   ] = prefix if ( prefix = cli_options[ '<prefix>' ] )?
+#   #---------------------------------------------------------------------------------------------------------
+#   db = HOLLERITH.new_db dump_settings[ 'route' ], create: no
+#   # debug '©bEIeE', cli_options
+#   # help '©bEIeE', dump_settings
+#   help "using LevelDB at #{dump_settings[ 'route' ]}"
+#   @dump db, dump_settings
 
-  # debug '©lJ8nb', HOLLERITH._encode null, 1
-  # debug '©lJ8nb', HOLLERITH._encode null, [ 1, ]
-  # debug '©lJ8nb', HOLLERITH._encode null, [ 1, undefined, ]
-  # log()
-  # debug '©lJ8nb', HOLLERITH._encode null, '1'
-  # debug '©lJ8nb', HOLLERITH._encode null, [ '1', ]
-  # debug '©lJ8nb', HOLLERITH._query_from_prefix null, 1
-  # debug '©lJ8nb', HOLLERITH._query_from_prefix null, [ 1, ]
-  # debug '©lJ8nb', HOLLERITH._query_from_prefix null, '1'
-  # debug '©lJ8nb', HOLLERITH._query_from_prefix null, [ '1', ]
-  # debug '©lJ8nb', HOLLERITH._encode null, '\x00'
-  # debug '©lJ8nb', HOLLERITH._encode null, '\x01'
-  # debug '©lJ8nb', HOLLERITH._encode null, '\x02'
-  # log()
+#   # debug '©lJ8nb', HOLLERITH._encode null, 1
+#   # debug '©lJ8nb', HOLLERITH._encode null, [ 1, ]
+#   # debug '©lJ8nb', HOLLERITH._encode null, [ 1, undefined, ]
+#   # log()
+#   # debug '©lJ8nb', HOLLERITH._encode null, '1'
+#   # debug '©lJ8nb', HOLLERITH._encode null, [ '1', ]
+#   # debug '©lJ8nb', HOLLERITH._query_from_prefix null, 1
+#   # debug '©lJ8nb', HOLLERITH._query_from_prefix null, [ 1, ]
+#   # debug '©lJ8nb', HOLLERITH._query_from_prefix null, '1'
+#   # debug '©lJ8nb', HOLLERITH._query_from_prefix null, [ '1', ]
+#   # debug '©lJ8nb', HOLLERITH._encode null, '\x00'
+#   # debug '©lJ8nb', HOLLERITH._encode null, '\x01'
+#   # debug '©lJ8nb', HOLLERITH._encode null, '\x02'
+#   # log()
 
-  # for cid in [ 0x00 .. 0xff ]
-  #   debug '©lJ8nb', ( '0x' + ( if cid <= 0xf then '0' else '' ) + cid.toString 16 ), HOLLERITH._encode null, [ String.fromCodePoint cid, ]
-  # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, +Infinity
-  # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, -Infinity
-  # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, null
-  # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, undefined
-  # CND.listen_to_keys ( P... ) ->
-  #   debug '©WOmlj', P
-  # process.stdin.resume()
+#   # for cid in [ 0x00 .. 0xff ]
+#   #   debug '©lJ8nb', ( '0x' + ( if cid <= 0xf then '0' else '' ) + cid.toString 16 ), HOLLERITH._encode null, [ String.fromCodePoint cid, ]
+#   # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, +Infinity
+#   # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, -Infinity
+#   # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, null
+#   # debug '©vfkkx', HOLLERITH._decode_key null, HOLLERITH.encode null, undefined
+#   # CND.listen_to_keys ( P... ) ->
+#   #   debug '©WOmlj', P
+#   # process.stdin.resume()
 
-  # for text in [ 'abc', '中國皇帝', 'a𪜄b', ]
-  #   for n in [ 0 .. 5 ]
-  #     debug '©DLOTs', n, rpr @_first_chrs_of text, n
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#   # for text in [ 'abc', '中國皇帝', 'a𪜄b', ]
+#   #   for n in [ 0 .. 5 ]
+#   #     debug '©DLOTs', n, rpr @_first_chrs_of text, n
 
