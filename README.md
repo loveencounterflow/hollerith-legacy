@@ -1189,7 +1189,7 @@ characters and see what happens. This is the data we start with:
 
 
 
-## Plans for Version 3
+## Plans for v4
 
 * Both SPO and POS phrases will be stored in the LevelDB key; the LevelDB value
   is not used, turning a Hollerith DB into a 'keys-only' store.
