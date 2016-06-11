@@ -523,13 +523,13 @@ step                      = ( require 'coffeenode-suspend' ).step
     # hi_hint_bfr = if hi_hint? then ( @_query_from_prefix db, hi_hint )[ 'lte' ] else CODEC[ 'keys' ][ 'hi' ]
     query       = { gte: lo_hint_bfr, lte: hi_hint_bfr, }
   #.........................................................................................................
-  ### TAINT Should we test for well-formed entries here? ###
-  R = db[ '%self' ].createReadStream query
+  R = db[ '%self' ].createKeyStream query
   #.........................................................................................................
   ### TAINT decoding transfrom should be made public ###
-  R = R.pipe $ ( { key, value }, send ) =>
+  R = R.pipe $ ( key, send ) =>
     unless @_is_meta db, key
-      send [ ( @_decode_key db, key ), ( @_decode_value db, value ), ]
+      send @_decode_key db, key
+      # send [ ( @_decode_key db, key ), ( @_decode_value db, value ), ]
   #.........................................................................................................
   R[ '%meta' ] = {}
   R[ '%meta' ][ 'query' ] = query
@@ -580,27 +580,20 @@ step                      = ( require 'coffeenode-suspend' ).step
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@_encode_value = ( db, value      ) -> new Buffer ( JSON.stringify value ), 'utf-8'
-@_decode_value = ( db, value_bfr  ) -> JSON.parse value_bfr.toString 'utf-8'
-
-#-----------------------------------------------------------------------------------------------------------
-@as_phrase = ( db, key, value ) ->
+@as_phrase = ( db, key ) ->
   try
     switch phrasetype = key[ 0 ]
       when 'spo'
         throw new Error "illegal SPO key (length #{length})"  unless ( length = key.length ) is 3
-        throw new Error "illegal value (A) #{rpr value}"      if value is undefined
-        return [ phrasetype, key[ 1 ], key[ 2 ], value, ]
       when 'pos'
         throw new Error "illegal POS key (length #{length})"  unless 4 <= ( length = key.length ) <= 5
-        throw new Error "illegal value (B) #{rpr value}"      unless ( value in [ undefined, null, ] )
-        return [ phrasetype, key[ 1 ], key[ 2 ], key[ 3 ], key[ 4 ], ] if key[ 4 ]?
-        return [ phrasetype, key[ 1 ], key[ 2 ], key[ 3 ],           ]
-    throw new Error "unknown phrasetype #{rpr phrasetype}"
+      else
+        throw new Error "unknown phrasetype #{rpr phrasetype}"
+    return key
   catch error
     warn "detected problem with key #{rpr key}"
-    warn "and/or value              #{rpr value}"
     throw error
+
 #-----------------------------------------------------------------------------------------------------------
 @normalize_phrase = ( db, phrase ) ->
   switch phrasetype = phrase[ 0 ]
@@ -612,9 +605,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   throw new Error "unknown phrasetype #{rpr phrasetype}"
 
 #-----------------------------------------------------------------------------------------------------------
-@$as_phrase = ( db ) ->
-  return $ ( data, send ) =>
-    send @as_phrase db, data...
+@$as_phrase = ( db ) -> $ ( key, send ) => send @as_phrase db, key
 
 #-----------------------------------------------------------------------------------------------------------
 @key_from_url = ( db, url ) ->
@@ -641,10 +632,6 @@ step                      = ( require 'coffeenode-suspend' ).step
   colors      = settings?[ 'colors' ] ? no
   I           = if colors then CND.darkgrey '|' else '|'
   E           = if colors then CND.darkgrey ':' else ':'
-  # debug '©HDXXd', key
-  # debug '©HDXXd', value
-  # debug '©iU0gA', @as_phrase db, key, value
-  # debug '©iU0gA', @normalize_phrase db, @as_phrase db, key, value
   [ phrasetype, tail..., ]  = key
   if phrasetype is 'spo'
     [ sbj, prd, ] = tail
