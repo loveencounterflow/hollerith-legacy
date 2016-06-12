@@ -588,12 +588,9 @@ step                      = ( require 'coffeenode-suspend' ).step
         [ sbj, prd, obj, ] = tail
       when 'pos'
         switch longphrase_length = longphrase.length
-          when 4
-            [ prd, obj, sbj, ] = tail
-          when 5
-            [ prd, obj, sbj, idx, ] = tail
-          else
-            throw new Error "illegal POS phrase (length #{longphrase_length})"
+          when 4 then [ prd, obj, sbj,      ] = tail
+          when 5 then [ prd, obj, sbj, idx, ] = tail
+          else throw new Error "illegal POS phrase (length #{longphrase_length})"
       else
         throw new Error "unknown phrasetype #{rpr phrasetype}"
     switch sbj_length = sbj.length
