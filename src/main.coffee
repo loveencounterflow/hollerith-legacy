@@ -185,18 +185,21 @@ step                      = ( require 'coffeenode-suspend' ).step
   batch_written     = null
   #.........................................................................................................
   $index = => $ ( spo, send ) =>
-    [ sbj, prd, obj, ]  = spo
-    sbj                 = [ sbj, ] unless CND.isa_list sbj
-    send [ 'spo', sbj, prd, obj, ]
-    #.......................................................................................................
-    unless ( ( obj_type = CND.type_of obj ) is 'pod' ) or ( prd in loner_predicates )
-      #.....................................................................................................
-      if ( obj_type is 'list' ) and not ( prd in solid_predicates )
-        for obj_element, obj_idx in obj
-          send [ 'pos', prd, obj_element, sbj, obj_idx, ]
-      #.....................................................................................................
-      else
-        send [ 'pos', prd, obj, sbj, ]
+    [ sbj, prd, idx, obj, ]   = spo
+    sbj                       = [ sbj, ]        unless CND.isa_list sbj
+    [ obj, idx, ]             = [ idx, null, ]  unless obj?
+    send [ 'spo', sbj, prd,  idx, obj,      ]
+    send [ 'pos',      prd,  idx, obj, sbj, ]
+    send [ 'pos',      prd, null, obj, sbj, ] unless idx is null
+    # #.......................................................................................................
+    # unless ( ( obj_type = CND.type_of obj ) is 'pod' ) or ( prd in loner_predicates )
+    #   #.....................................................................................................
+    #   if ( obj_type is 'list' ) and not ( prd in solid_predicates )
+    #     for obj_element, obj_idx in obj
+    #       send [ 'pos', prd, obj_element, sbj, obj_idx, ]
+    #   #.....................................................................................................
+    #   else
+    #     send [ 'pos', prd, obj, sbj, ]
   #.........................................................................................................
   $encode = => $ ( longphrase, send ) =>
     send type: 'put', key: ( @_encode_key db, longphrase ), value: @_zero_value_bfr
@@ -229,7 +232,7 @@ step                      = ( require 'coffeenode-suspend' ).step
 @validate_spo = ( spo ) ->
   ### Do a shallow sanity check to see whether `spo` is a triplet. ###
   throw new Error "invalid SPO key, must be list: #{rpr spo}" unless CND.isa_list spo
-  throw new Error "invalid SPO key, must be of length 3: #{rpr spo}" unless spo.length is 3
+  throw new Error "invalid SPO key, must be of length 3: #{rpr spo}" unless 3 <= spo.length <= 4
   return null
 
 #-----------------------------------------------------------------------------------------------------------
@@ -586,27 +589,18 @@ step                      = ( require 'coffeenode-suspend' ).step
 @longphrase_as_phrase = ( db, longphrase ) ->
   try
     [ phrasetype, tail..., ]  = longphrase
-    sbj = prd = obj = idx     = null
+    unless ( tail_length = tail.length ) is 4
+      throw new Error "illegal phrase #{rpr phrase} of length #{tail_length + 1}"
     switch phrasetype
-      when 'spo'
-        unless ( length = longphrase.length ) is 4
-          throw new Error "illegal SPO phrase (length #{length})"
-        [ sbj, prd, obj, ] = tail
-      when 'pos'
-        switch longphrase_length = longphrase.length
-          when 4 then [ prd, obj, sbj,      ] = tail
-          when 5 then [ prd, obj, sbj, idx, ] = tail
-          else throw new Error "illegal POS phrase (length #{longphrase_length})"
-      else
-        throw new Error "unknown phrasetype #{rpr phrasetype}"
+      when 'spo' then [ sbj, prd, idx, obj,      ] = tail
+      when 'pos' then [      prd, idx, obj, sbj, ] = tail
+      else throw new Error "unknown phrasetype #{rpr phrasetype}"
     switch sbj_length = sbj.length
       when 1 then sbj = sbj[ 0 ]
       when 0 then throw new Error "subject can't be empty; read phrase #{rpr longphrase}"
     if phrasetype is 'spo'
-      return [ 'spo', sbj, prd, obj, ]
-    if idx?
-      return [ 'pos', prd, obj, sbj, idx, ]
-    return [ 'pos', prd, obj, sbj, ]
+      return [ 'spo', sbj, prd, idx, obj, ]
+    return [ 'pos', prd, idx, obj, sbj, ]
   catch error
     warn "detected problem with phrase #{rpr longphrase}"
     throw error

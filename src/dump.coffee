@@ -150,9 +150,13 @@ HOLLERITH                 = require './main'
   if prefix[ prefix.length - 1 ] is '*'
     prefix.pop()
     star = '*'
+  if prefix[ 2 ] is '-'
+    prefix[ 2 ] = null
+  else if CND.isa_number ( n = parseInt prefix[ 2 ], 10 )
+    prefix[ 2 ] = n
   query             = if star? then { prefix, star, } else { prefix, }
   input             = HOLLERITH.create_phrasestream db, query
-  urge "prefix: #{rpr prefix}"
+  urge "query: #{rpr query}"
   #...........................................................................................................
   input
     .pipe D.$count ( count ) => help "read #{count} keys"

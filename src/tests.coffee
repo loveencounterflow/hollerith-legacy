@@ -2732,25 +2732,33 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe D.$on_end => handler()
     #.......................................................................................................
     # input.write [ '千', 'variant',     [ '仟', '韆',              ], ]
-    input.write [ '千', 'variant',     '仟', ]
-    input.write [ '千', 'variant',     '韆', ]
-    input.write [ '千', 'similarity',  [ '于', '干',              ], ]
+    # input.write [ '千', 'variant',     '仟', ]
+    # input.write [ '千', 'variant',     '韆', ]
+    # input.write [ '千', 'similarity',  [ '于', '干',              ], ]
+    # input.write [ '千', 'usagecode',   'CJKTHM',                    ]
+    # input.write [ '千', 'strokeorder', '312',                       ]
+    # input.write [ '千', 'reading',     [ 'qian', 'foo', 'bar',   ], ]
+    # input.write [ '仟', 'strokeorder', '32312',                     ]
+    # input.write [ '仟', 'usagecode',   'CJKTHm',                    ]
+    # input.write [ '仟', 'reading',     [ 'qian',                 ], ]
+    # input.write [ '韆', 'strokeorder', '122125112125221134515454',  ]
+    # input.write [ '韆', 'usagecode',   'KTHm',                      ]
+    # input.write [ '韆', 'reading',     [ 'qian',                 ], ]
+    # input.write [ '千', 'reading',     [ 'qian', 'foo', 'bar',   ], ]
     input.write [ '千', 'usagecode',   'CJKTHM',                    ]
-    input.write [ '千', 'strokeorder', '312',                       ]
-    input.write [ '千', 'reading',     [ 'qian', 'foo', 'bar',   ], ]
-    input.write [ '仟', 'strokeorder', '32312',                     ]
-    input.write [ '仟', 'usagecode',   'CJKTHm',                    ]
-    input.write [ '仟', 'reading',     [ 'qian',                 ], ]
-    input.write [ '韆', 'strokeorder', '122125112125221134515454',  ]
     input.write [ '韆', 'usagecode',   'KTHm',                      ]
-    input.write [ '韆', 'reading',     [ 'qian',                 ], ]
+    input.write [ '千', 'reading',  0, 'foo',  ]
+    input.write [ '千', 'reading',  1, 'bar',  ]
+    input.write [ '千', 'reading',  2, 'qian', ]
+    input.write [ '韆', 'reading',  0, 'qian', ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
   matchers = []
   #.........................................................................................................
   show = ( handler ) ->
-    input = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', ], star: '*', }
+    input = HOLLERITH.create_phrasestream db, { prefix: [], star: '*', }
+    # input = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', ], star: '*', }
     #.......................................................................................................
     input
       .pipe D.$observe ( phrase ) => info JSON.stringify phrase
