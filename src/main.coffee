@@ -403,7 +403,13 @@ step                      = ( require 'coffeenode-suspend' ).step
 # READING
 #-----------------------------------------------------------------------------------------------------------
 @create_phrasestream = ( db, query ) ->
-  return @_create_phrasestream db, query
+  R = @_create_phrasestream db, query
+  # if query[ 'spo' ]
+  #   R = R.pipe $ ( phrase, send ) =>
+  #     [ phrasetype, tail..., ] = phrase
+  #     return send tail if phrasetype is 'spo'
+  #     [ prd, obj, sbj, idx, ] = tail
+  return R
 
 #-----------------------------------------------------------------------------------------------------------
 @read_phrases = ( db, query, handler ) ->
@@ -596,8 +602,11 @@ step                      = ( require 'coffeenode-suspend' ).step
     switch sbj_length = sbj.length
       when 1 then sbj = sbj[ 0 ]
       when 0 then throw new Error "subject can't be empty; read phrase #{rpr longphrase}"
-    return [ sbj, prd, obj, idx, ] if idx?
-    return [ sbj, prd, obj,      ]
+    if phrasetype is 'spo'
+      return [ 'spo', sbj, prd, obj, ]
+    if idx?
+      return [ 'pos', prd, obj, sbj, idx, ]
+    return [ 'pos', prd, obj, sbj, ]
   catch error
     warn "detected problem with phrase #{rpr longphrase}"
     throw error

@@ -2640,47 +2640,6 @@ clear_leveldb = ( leveldb, handler ) ->
     done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "(v4) read POS phrases (sbj is a list)" ] = ( T, done ) ->
-  #.........................................................................................................
-  write_data = ( handler ) ->
-    input = D.create_throughstream()
-    #.......................................................................................................
-    input
-      .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end => handler()
-    #.......................................................................................................
-    input.write [ [ 'glyph', '千', ], 'variant',     [ '仟', '韆',              ], ]
-    input.write [ [ 'glyph', '千', ], 'usagecode',   'CJKTHM',                    ]
-    #.......................................................................................................
-    input.end()
-  #.........................................................................................................
-  matchers = [
-    [ 'pos', 'usagecode', 'CJKTHM', [ 'glyph', '千' ] ]
-    [ 'pos', 'variant', '仟', [ 'glyph', '千' ], 0 ]
-    [ 'pos', 'variant', '韆', [ 'glyph', '千' ], 1 ]
-    ]
-  #.........................................................................................................
-  show = ( handler ) ->
-    query = { prefix: [ 'pos', ], star: '*', }
-    input = HOLLERITH.create_phrasestream db, query
-    input
-      .pipe D.$observe ( phrase ) => info rpr phrase # JSON.stringify phrase
-      #.....................................................................................................
-      .pipe do =>
-        idx = -1
-        return D.$observe ( phrase ) =>
-          idx += +1
-          T.eq phrase, matchers[ idx ]
-      #.....................................................................................................
-      .pipe D.$on_end => handler()
-  #.........................................................................................................
-  step ( resume ) =>
-    yield clear_leveldb db[ '%self' ], resume
-    yield write_data resume
-    yield show resume
-    done()
-
-#-----------------------------------------------------------------------------------------------------------
 @[ "(v4) read POS phrases (sbj isn't a list)" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
@@ -2721,8 +2680,97 @@ clear_leveldb = ( leveldb, handler ) ->
     yield show resume
     done()
 
+#-----------------------------------------------------------------------------------------------------------
+@[ "(v4) read POS phrases (sbj is a singleton list)" ] = ( T, done ) ->
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    input = D.create_throughstream()
+    #.......................................................................................................
+    input
+      .pipe HOLLERITH.$write db, unique: no
+      .pipe D.$on_end => handler()
+    #.......................................................................................................
+    input.write [ [ '千', ], 'variant',     [ '仟', '韆',              ], ]
+    input.write [ [ '千', ], 'usagecode',   'CJKTHM',                    ]
+    #.......................................................................................................
+    input.end()
+  #.........................................................................................................
+  matchers = [
+    [ 'pos', 'usagecode', 'CJKTHM', '千' ]
+    [ 'pos', 'variant', '仟', '千', 0 ]
+    [ 'pos', 'variant', '韆', '千', 1 ]
+    ]
+  #.........................................................................................................
+  show = ( handler ) ->
+    query = { prefix: [ 'pos', ], star: '*', }
+    input = HOLLERITH.create_phrasestream db, query
+    input
+      .pipe D.$observe ( phrase ) => info rpr phrase # JSON.stringify phrase
+      #.....................................................................................................
+      .pipe do =>
+        idx = -1
+        return D.$observe ( phrase ) =>
+          idx += +1
+          T.eq phrase, matchers[ idx ]
+      #.....................................................................................................
+      .pipe D.$on_end => handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    yield write_data resume
+    yield show resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "dddddddddddddddddd" ] = ( T, done ) ->
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    input = D.create_throughstream()
+    #.......................................................................................................
+    input
+      .pipe HOLLERITH.$write db, unique: no
+      .pipe D.$on_end => handler()
+    #.......................................................................................................
+    # input.write [ '千', 'variant',     [ '仟', '韆',              ], ]
+    input.write [ '千', 'variant',     '仟', ]
+    input.write [ '千', 'variant',     '韆', ]
+    input.write [ '千', 'similarity',  [ '于', '干',              ], ]
+    input.write [ '千', 'usagecode',   'CJKTHM',                    ]
+    input.write [ '千', 'strokeorder', '312',                       ]
+    input.write [ '千', 'reading',     [ 'qian', 'foo', 'bar',   ], ]
+    input.write [ '仟', 'strokeorder', '32312',                     ]
+    input.write [ '仟', 'usagecode',   'CJKTHm',                    ]
+    input.write [ '仟', 'reading',     [ 'qian',                 ], ]
+    input.write [ '韆', 'strokeorder', '122125112125221134515454',  ]
+    input.write [ '韆', 'usagecode',   'KTHm',                      ]
+    input.write [ '韆', 'reading',     [ 'qian',                 ], ]
+    #.......................................................................................................
+    input.end()
+  #.........................................................................................................
+  matchers = []
+  #.........................................................................................................
+  show = ( handler ) ->
+    input = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', ], star: '*', }
+    #.......................................................................................................
+    input
+      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
+      # .pipe do =>
+      #   idx = -1
+      #   return D.$observe ( phrase ) =>
+      #     idx += +1
+      #     T.eq phrase, matchers[ idx ]
+      #.....................................................................................................
+      .pipe D.$on_end -> handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    yield write_data resume
+    yield show resume
+    done()
 
 
+#===========================================================================================================
+#
 #-----------------------------------------------------------------------------------------------------------
 @_prune = ->
   for name, value of @
@@ -2794,11 +2842,14 @@ unless module.parent?
     # "n-ary indexing (2)"
     # "Pinyin Unicode Sorting"
     # "ensure `Buffer.compare` gives same sorting as LevelDB"
-    "(v4) values are `0x00` buffers"
-    "(v4) store SPO, POS both as keys only"
-    "(v4) store non-list subject as single-element list"
-    "(v4) read POS phrases (sbj is a list)"
-    "(v4) read POS phrases (sbj isn't a list)"
+    # "(v4) values are `0x00` buffers"
+    # "(v4) store SPO, POS both as keys only"
+    # "(v4) store non-list subject as single-element list"
+    # "(v4) read POS phrases (sbj is a list)"
+    # "(v4) read POS phrases (sbj isn't a list)"
+    # "(v4) read POS phrases (sbj is a singleton list)"
+    # "(v4) read normalized phrases"
+    "dddddddddddddddddd"
     ]
   @_prune()
   @_main()
