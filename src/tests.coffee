@@ -1795,7 +1795,7 @@ clear_leveldb = ( leveldb, handler ) ->
     done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "use non-string subjects in phrases (1)" ] = ( T, done ) ->
+@[ "(v4) use non-string subjects in phrases (1)" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
     input = D.create_throughstream()
@@ -2395,34 +2395,34 @@ clear_leveldb = ( leveldb, handler ) ->
 #-----------------------------------------------------------------------------------------------------------
 @[ "n-ary indexing (2)" ] = ( T, done ) ->
   #.........................................................................................................
-  write_data = ( handler ) ->
+  write_data = ( handler ) =>
     input = D.create_throughstream()
     #.......................................................................................................
     input
-      .pipe HOLLERITH.$index 'reading':     'plural',   'similarity':  'plural'
-      .pipe HOLLERITH.$index 'reading':     'plural',   'variant':     'plural'
-      .pipe HOLLERITH.$index 'reading':     'plural',   'strokeorder': 'singular'
-      .pipe HOLLERITH.$index 'strokeorder': 'singular', 'reading':     'plural'
-      .pipe HOLLERITH.$index 'strokeorder': 'singular', 'variant':     'plural'
-      .pipe HOLLERITH.$index 'strokeorder': 'singular', 'similarity':  'plural'
+      # .pipe HOLLERITH.$index 'reading':     'plural',   'similarity':  'plural'
+      # .pipe HOLLERITH.$index 'reading':     'plural',   'variant':     'plural'
+      # .pipe HOLLERITH.$index 'reading':     'plural',   'strokeorder': 'singular'
+      # .pipe HOLLERITH.$index 'strokeorder': 'singular', 'reading':     'plural'
+      # .pipe HOLLERITH.$index 'strokeorder': 'singular', 'variant':     'plural'
+      # .pipe HOLLERITH.$index 'strokeorder': 'singular', 'similarity':  'plural'
       .pipe HOLLERITH.$write db, unique: no
       .pipe D.$on_end => handler()
     #.......................................................................................................
-    input.write [ '千', 'variant',     '仟', ]
-    input.write [ '千', 'variant',     '韆', ]
-    input.write [ '千', 'similarity',  '于', ]
-    input.write [ '千', 'similarity',  '干', ]
+    input.write [ '千', 'variant',     '仟',                         ]
+    input.write [ '千', 'variant',     '韆',                         ]
+    input.write [ '千', 'similarity',  '于',                         ]
+    input.write [ '千', 'similarity',  '干',                         ]
     input.write [ '千', 'usagecode',   'CJKTHM',                    ]
     input.write [ '千', 'strokeorder', '312',                       ]
-    input.write [ '千', 'reading',     'qian', ]
-    input.write [ '千', 'reading',     'foo', ]
-    input.write [ '千', 'reading',     'bar', ]
+    input.write [ '千', 'reading',     'qian',                      ]
+    input.write [ '千', 'reading',     'foo',                       ]
+    input.write [ '千', 'reading',     'bar',                       ]
     input.write [ '仟', 'strokeorder', '32312',                     ]
     input.write [ '仟', 'usagecode',   'CJKTHm',                    ]
-    input.write [ '仟', 'reading',     'qian', ]
+    input.write [ '仟', 'reading',     'qian',                      ]
     input.write [ '韆', 'strokeorder', '122125112125221134515454',  ]
     input.write [ '韆', 'usagecode',   'KTHm',                      ]
-    input.write [ '韆', 'reading',     'qian', ]
+    input.write [ '韆', 'reading',     'qian',                      ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
@@ -2442,11 +2442,13 @@ clear_leveldb = ( leveldb, handler ) ->
           if has_ended
             T.eq idx, matchers.length - 1
             handler()
+          return null
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
     yield write_data resume
-    show done
+    yield show resume
+    done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "(v4) values are `0x00` buffers" ] = ( T, done ) ->
@@ -2900,13 +2902,13 @@ unless module.parent?
     # "$write rejects duplicate S/P pairs"
     # "codec accepts long keys"
     # "write private types (1)"
-    # "use non-string subjects in phrases (1)"
+    "(v4) use non-string subjects in phrases (1)"
     # "use non-string subjects in phrases (2)"
     # "use non-string subjects in phrases (3)"
     # "use non-string subjects in phrases (4)"
     # "binary indexing"
     # "n-ary indexing (1)"
-    "n-ary indexing (2)"
+    # "n-ary indexing (2)"
     # # "Pinyin Unicode Sorting"
     # # "ensure `Buffer.compare` gives same sorting as LevelDB"
     # "(v4) values are `0x00` buffers"
