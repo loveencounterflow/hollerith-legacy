@@ -2526,13 +2526,12 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe HOLLERITH.$write db, unique: no
       .pipe D.$on_end => handler()
     #.......................................................................................................
-    input.write [ [ '千', ], 'variant',     [ '仟', '韆',              ], ]
+    input.write [ '千', 'variant', '仟', ]
     input.end()
   #.........................................................................................................
   value_matchers = [
-    [ 0x54, 0x70, 0x6f, 0x73, 0x00, 0x54, 0x76, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x00, 0x54, 0xe4, 0xbb, 0x9f, 0x00, 0x45, 0x54, 0xe5, 0x8d, 0x83, 0x00, 0x00, 0x4c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,],
-    [ 0x54, 0x70, 0x6f, 0x73, 0x00, 0x54, 0x76, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x00, 0x54, 0xe9, 0x9f, 0x86, 0x00, 0x45, 0x54, 0xe5, 0x8d, 0x83, 0x00, 0x00, 0x4c, 0x3f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,],
-    [ 0x54, 0x73, 0x70, 0x6f, 0x00, 0x45, 0x54, 0xe5, 0x8d, 0x83, 0x00, 0x00, 0x54, 0x76, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x00, 0x45, 0x54, 0xe4, 0xbb, 0x9f, 0x00, 0x54, 0xe9, 0x9f, 0x86, 0x00, 0x00,],
+    [84,112,111,115,0,84,118,97,114,105,97,110,116,0,66,84,228,187,159,0,69,84,229,141,131,0,0]
+    [84,115,112,111,0,69,84,229,141,131,0,0,84,118,97,114,105,97,110,116,0,66,84,228,187,159,0]
     ]
   #.........................................................................................................
   show = ( handler ) ->
@@ -2540,14 +2539,18 @@ clear_leveldb = ( leveldb, handler ) ->
     input = db[ '%self' ].createReadStream()
     input
       # .pipe D.$observe ( record ) => info rpr record
+      .pipe D.$observe ( record ) => info JSON.stringify record
       .pipe do =>
         idx       = -1
         zero_bfr  = new Buffer [ 0x00, ]
-        return D.$observe ( record ) =>
-          idx += +1
-          { key, value, } = record
-          T.eq key,   new Buffer value_matchers[ idx ]
-          T.eq value, zero_bfr
+        return D.$observe ( record, has_ended ) =>
+          if record?
+            idx += +1
+            { key, value, } = record
+            T.eq key,   new Buffer value_matchers[ idx ]
+            T.eq value, zero_bfr
+          if has_ended
+            T.eq idx, value_matchers.length - 1
       #.....................................................................................................
       .pipe D.$on_end -> handler()
   #.........................................................................................................
@@ -2567,28 +2570,30 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe HOLLERITH.$write db, unique: no
       .pipe D.$on_end => handler()
     #.......................................................................................................
-    input.write [ '千', 'variant',     [ '仟', '韆',              ], ]
+    input.write [ '千', 'variant', '仟', ]
     input.end()
   #.........................................................................................................
   value_matchers = [
-    [ 0x54, 0x70, 0x6f, 0x73, 0x00, 0x54, 0x76, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x00, 0x54, 0xe4, 0xbb, 0x9f, 0x00, 0x45, 0x54, 0xe5, 0x8d, 0x83, 0x00, 0x00, 0x4c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,],
-    [ 0x54, 0x70, 0x6f, 0x73, 0x00, 0x54, 0x76, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x00, 0x54, 0xe9, 0x9f, 0x86, 0x00, 0x45, 0x54, 0xe5, 0x8d, 0x83, 0x00, 0x00, 0x4c, 0x3f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,],
-    [ 0x54, 0x73, 0x70, 0x6f, 0x00, 0x45, 0x54, 0xe5, 0x8d, 0x83, 0x00, 0x00, 0x54, 0x76, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x00, 0x45, 0x54, 0xe4, 0xbb, 0x9f, 0x00, 0x54, 0xe9, 0x9f, 0x86, 0x00, 0x00,],
+    [ 0x54, 0x70, 0x6f, 0x73, 0x00, 0x54, 0x76, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x00, 0x42, 0x54, 0xe4, 0xbb, 0x9f, 0x00, 0x45, 0x54, 0xe5, 0x8d, 0x83, 0x00, 0x00, ]
+    [ 0x54, 0x73, 0x70, 0x6f, 0x00, 0x45, 0x54, 0xe5, 0x8d, 0x83, 0x00, 0x00, 0x54, 0x76, 0x61, 0x72, 0x69, 0x61, 0x6e, 0x74, 0x00, 0x42, 0x54, 0xe4, 0xbb, 0x9f, 0x00, ]
     ]
   #.........................................................................................................
   show = ( handler ) ->
     query = { prefix: [], star: '*', }
     input = db[ '%self' ].createReadStream()
     input
-      # .pipe D.$observe ( record ) => info rpr record
+      .pipe D.$observe ( record ) => info rpr record
       .pipe do =>
         idx       = -1
         zero_bfr  = new Buffer [ 0x00, ]
-        return D.$observe ( record ) =>
-          idx += +1
-          { key, value, } = record
-          T.eq key,   new Buffer value_matchers[ idx ]
-          T.eq value, zero_bfr
+        return D.$observe ( record, has_ended ) =>
+          if record?
+            idx += +1
+            { key, value, } = record
+            T.eq key,   new Buffer value_matchers[ idx ]
+            T.eq value, zero_bfr
+          if has_ended
+            T.eq idx, value_matchers.length - 1
       #.....................................................................................................
       .pipe D.$on_end -> handler()
   #.........................................................................................................
@@ -2608,15 +2613,16 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe HOLLERITH.$write db, unique: no
       .pipe D.$on_end => handler()
     #.......................................................................................................
-    input.write [ [ 'glyph', '千', ], 'variant',     [ '仟', '韆',              ], ]
-    input.write [ [ 'glyph', '千', ], 'usagecode',   'CJKTHM',                    ]
+    input.write [ [ 'glyph', '千', ], 'variant',     '仟',      ]
+    input.write [ [ 'glyph', '千', ], 'variant',     '韆',      ]
+    input.write [ [ 'glyph', '千', ], 'usagecode',   'CJKTHM',  ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
   matchers = [
-    [ 'pos', 'usagecode', 'CJKTHM', [ 'glyph', '千' ] ]
-    [ 'pos', 'variant', '仟', [ 'glyph', '千' ], 0 ]
-    [ 'pos', 'variant', '韆', [ 'glyph', '千' ], 1 ]
+    [ 'pos', 'usagecode', null, 'CJKTHM', [ 'glyph', '千' ], ]
+    [ 'pos', 'variant',   null, '仟',     [ 'glyph', '千' ], ]
+    [ 'pos', 'variant',   null, '韆',     [ 'glyph', '千' ], ]
     ]
   #.........................................................................................................
   show = ( handler ) ->
@@ -2627,9 +2633,12 @@ clear_leveldb = ( leveldb, handler ) ->
       #.....................................................................................................
       .pipe do =>
         idx = -1
-        return D.$observe ( phrase ) =>
-          idx += +1
-          T.eq phrase, matchers[ idx ]
+        return D.$observe ( phrase, has_ended ) =>
+          if phrase?
+            idx += +1
+            T.eq phrase, matchers[ idx ]
+          if has_ended
+            T.eq idx, matchers.length - 1
       #.....................................................................................................
       .pipe D.$on_end => handler()
   #.........................................................................................................
@@ -2649,28 +2658,31 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe HOLLERITH.$write db, unique: no
       .pipe D.$on_end => handler()
     #.......................................................................................................
-    input.write [ '千', 'variant',     [ '仟', '韆',              ], ]
-    input.write [ '千', 'usagecode',   'CJKTHM',                    ]
+    input.write [ '千', 'variant',     '仟',      ]
+    input.write [ '千', 'variant',     '韆',      ]
+    input.write [ '千', 'usagecode',   'CJKTHM',  ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
   matchers = [
-    [ 'pos', 'usagecode', 'CJKTHM', '千' ]
-    [ 'pos', 'variant', '仟', '千', 0 ]
-    [ 'pos', 'variant', '韆', '千', 1 ]
+    [ 'pos', 'usagecode', null, 'CJKTHM', '千' ]
+    [ 'pos', 'variant',   null, '仟',     '千', ]
+    [ 'pos', 'variant',   null, '韆',     '千', ]
     ]
   #.........................................................................................................
   show = ( handler ) ->
     query = { prefix: [ 'pos', ], star: '*', }
     input = HOLLERITH.create_phrasestream db, query
     input
-      .pipe D.$observe ( phrase ) => info rpr phrase # JSON.stringify phrase
-      #.....................................................................................................
+      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
       .pipe do =>
         idx = -1
-        return D.$observe ( phrase ) =>
-          idx += +1
-          T.eq phrase, matchers[ idx ]
+        return D.$observe ( phrase, has_ended ) =>
+          if phrase?
+            idx += +1
+            T.eq phrase, matchers[ idx ]
+          if has_ended
+            T.eq idx, matchers.length - 1
       #.....................................................................................................
       .pipe D.$on_end => handler()
   #.........................................................................................................
@@ -2690,15 +2702,16 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe HOLLERITH.$write db, unique: no
       .pipe D.$on_end => handler()
     #.......................................................................................................
-    input.write [ [ '千', ], 'variant',     [ '仟', '韆',              ], ]
-    input.write [ [ '千', ], 'usagecode',   'CJKTHM',                    ]
+    input.write [ [ '千', ], 'variant',     '仟',      ]
+    input.write [ [ '千', ], 'variant',     '韆',      ]
+    input.write [ [ '千', ], 'usagecode',   'CJKTHM',  ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
   matchers = [
-    [ 'pos', 'usagecode', 'CJKTHM', '千' ]
-    [ 'pos', 'variant', '仟', '千', 0 ]
-    [ 'pos', 'variant', '韆', '千', 1 ]
+    [ 'pos', 'usagecode', null, 'CJKTHM', '千' ]
+    [ 'pos', 'variant',   null, '仟',     '千', ]
+    [ 'pos', 'variant',   null, '韆',     '千', ]
     ]
   #.........................................................................................................
   show = ( handler ) ->
@@ -2709,9 +2722,12 @@ clear_leveldb = ( leveldb, handler ) ->
       #.....................................................................................................
       .pipe do =>
         idx = -1
-        return D.$observe ( phrase ) =>
-          idx += +1
-          T.eq phrase, matchers[ idx ]
+        return D.$observe ( phrase, has_ended ) =>
+          if phrase?
+            idx += +1
+            T.eq phrase, matchers[ idx ]
+          if has_ended
+            T.eq idx, matchers.length - 1
       #.....................................................................................................
       .pipe D.$on_end => handler()
   #.........................................................................................................
@@ -2720,6 +2736,11 @@ clear_leveldb = ( leveldb, handler ) ->
     yield write_data resume
     yield show resume
     done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "(v4) read normalized phrases" ] = ( T, done ) ->
+  T.fail "not implemented"
+  done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "dddddddddddddddddd" ] = ( T, done ) ->
@@ -2753,9 +2774,9 @@ clear_leveldb = ( leveldb, handler ) ->
     input.write [ '韆', 'reading',     0,      'qian',     ]
     input.write [ '千', 'similarity',  'XYZ',  '于',       ]
     input.write [ '千', 'similarity',  'DEF',  '干',       ]
-    input.write [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13,  3, 56 ), { value: 17.4, unit: '°C', }, ]
-    input.write [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13,  4, 30 ), { value: 18.5, unit: '°C', }, ]
-    input.write [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13, 23,  2 ), { value: 16.1, unit: '°C', }, ]
+    input.write [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13,  3, 56 ), { type: 'temperature', value: [ 17.4, '°C' ], }, ]
+    input.write [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13,  4, 30 ), { type: 'temperature', value: [ 18.5, '°C' ], }, ]
+    input.write [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13, 23,  2 ), { type: 'temperature', value: [ 16.1, '°C' ], }, ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
@@ -2766,9 +2787,9 @@ clear_leveldb = ( leveldb, handler ) ->
     # input = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', ], star: '*', }
     #.......................................................................................................
     input
-      # .pipe D.$observe ( phrase ) => info JSON.stringify phrase
+      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
       # .pipe D.$observe ( phrase ) => info rpr phrase
-      .pipe D.$observe ( phrase ) => log ( require 'util' ).inspect phrase, { maxArrayLength: 1000, depth: null, colors: true, }
+      # .pipe D.$observe ( phrase ) => log ( require 'util' ).inspect phrase, { maxArrayLength: 1000, depth: null, colors: true, }
       # .pipe do =>
       #   idx = -1
       #   return D.$observe ( phrase ) =>
@@ -2928,13 +2949,13 @@ unless module.parent?
     # "Pinyin Unicode Sorting"
     # "ensure `Buffer.compare` gives same sorting as LevelDB"
     # "(v4) values are `0x00` buffers"
-    # "(v4) store SPO, POS both as keys only"
-    # "(v4) store non-list subject as single-element list"
-    # "(v4) read POS phrases (sbj is a list)"
-    # "(v4) read POS phrases (sbj isn't a list)"
-    # "(v4) read POS phrases (sbj is a singleton list)"
-    # "(v4) read normalized phrases"
-    "dddddddddddddddddd"
+    "(v4) store SPO, POS both as keys only"
+    "(v4) store non-list subject as single-element list"
+    "(v4) read POS phrases (sbj is a list)"
+    "(v4) read POS phrases (sbj isn't a list)"
+    "(v4) read POS phrases (sbj is a singleton list)"
+    "(v4) read normalized phrases"
+    # "dddddddddddddddddd"
     # "eeeeeeeeeeeeeeeeee"
     ]
   @_prune()
