@@ -150,10 +150,8 @@ HOLLERITH                 = require './main'
   if prefix[ prefix.length - 1 ] is '*'
     prefix.pop()
     star = '*'
-  if prefix[ 2 ] is '-'
-    prefix[ 2 ] = null
-  else if CND.isa_number ( n = parseInt prefix[ 2 ], 10 )
-    prefix[ 2 ] = n
+  if prefix[ 2 ] is '-'                                   then prefix[ 2 ] = null
+  else if CND.isa_number ( n = parseInt prefix[ 2 ], 10 ) then prefix[ 2 ] = n
   query             = if star? then { prefix, star, } else { prefix, }
   input             = HOLLERITH.create_phrasestream db, query
   urge "query: #{rpr query}"
@@ -220,8 +218,6 @@ HOLLERITH                 = require './main'
     b.push [ key_rpr, value_rpr, ]
   b = CND.columnify b, columnify_settings
   return a + '\n' + b
-
-
 
 
 ############################################################################################################

@@ -1230,6 +1230,11 @@ characters and see what happens. This is the data we start with:
 [ [ 'glyph', '重', ], 'reading', [ 'zh:py/bare', 1, 'chong', ] ]
 ```
 
+* For each phrase that has a non-null index, we store a second phrase with the index field
+  set to `null` to enable queries for object values at any index. Note that as a matter of course,
+  phrases with duplicate object values (which would differ solely by index) will thereby be
+  conflated; in other words, this step turns lists into sets.
+
 * Indexing phrases will not be stored in SPO form anymore.
 
 <!-- 

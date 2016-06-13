@@ -190,16 +190,11 @@ step                      = ( require 'coffeenode-suspend' ).step
     [ obj, idx, ]             = [ idx, null, ]  unless obj?
     send [ 'spo', sbj, prd,  idx, obj,      ]
     send [ 'pos',      prd,  idx, obj, sbj, ]
+    ### For each phrase that has a non-null index, we store a second phrase with the index field
+    set to `null` to enable queries for object values at any index. Note that as a matter of course,
+    phrases with duplicate object values (which would differ solely by index) will thereby be
+    conflated; in other words, this step turns lists into sets. ###
     send [ 'pos',      prd, null, obj, sbj, ] unless idx is null
-    # #.......................................................................................................
-    # unless ( ( obj_type = CND.type_of obj ) is 'pod' ) or ( prd in loner_predicates )
-    #   #.....................................................................................................
-    #   if ( obj_type is 'list' ) and not ( prd in solid_predicates )
-    #     for obj_element, obj_idx in obj
-    #       send [ 'pos', prd, obj_element, sbj, obj_idx, ]
-    #   #.....................................................................................................
-    #   else
-    #     send [ 'pos', prd, obj, sbj, ]
   #.........................................................................................................
   $encode = => $ ( longphrase, send ) =>
     send type: 'put', key: ( @_encode_key db, longphrase ), value: @_zero_value_bfr
@@ -528,8 +523,6 @@ step                      = ( require 'coffeenode-suspend' ).step
   else
     lo_hint_bfr = if lo_hint? then (        @_encode_key db, lo_hint )          else null
     hi_hint_bfr = if hi_hint? then ( @_query_from_prefix db, hi_hint )[ 'lte' ] else null
-    # lo_hint_bfr = if lo_hint? then (        @_encode_key db, lo_hint )          else CODEC[ 'keys' ][ 'lo' ]
-    # hi_hint_bfr = if hi_hint? then ( @_query_from_prefix db, hi_hint )[ 'lte' ] else CODEC[ 'keys' ][ 'hi' ]
     query       = { gte: lo_hint_bfr, lte: hi_hint_bfr, }
   #.........................................................................................................
   R = db[ '%self' ].createKeyStream query
@@ -688,8 +681,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   if star?
     ### 'Asterisk' encoding: partial key segments match ###
     gte   = @_encode_key db, prefix
-    lte   = @_encode_key db, prefix
-    lte[ lte.length - 1 ] = CODEC[ 'typemarkers'  ][ 'hi' ]
+    lte   = @_encode_key db, prefix, yes
   #.........................................................................................................
   else
     ### 'Classical' encoding: only full key segments match ###
