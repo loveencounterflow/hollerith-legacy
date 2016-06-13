@@ -2405,87 +2405,48 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe HOLLERITH.$index 'strokeorder': 'singular', 'reading':     'plural'
       .pipe HOLLERITH.$index 'strokeorder': 'singular', 'variant':     'plural'
       .pipe HOLLERITH.$index 'strokeorder': 'singular', 'similarity':  'plural'
-      .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
-        handler()
+      .pipe HOLLERITH.$write db, unique: no
+      .pipe D.$on_end => handler()
     #.......................................................................................................
-    input.write [ [ '千', ], 'variant',     [ '仟', '韆',              ], ]
-    input.write [ [ '千', ], 'similarity',  [ '于', '干',              ], ]
-    input.write [ [ '千', ], 'usagecode',   'CJKTHM',                    ]
-    input.write [ [ '千', ], 'strokeorder', '312',                       ]
-    input.write [ [ '千', ], 'reading',     [ 'qian', 'foo', 'bar',   ], ]
-    input.write [ [ '仟', ], 'strokeorder', '32312',                     ]
-    input.write [ [ '仟', ], 'usagecode',   'CJKTHm',                    ]
-    input.write [ [ '仟', ], 'reading',     [ 'qian',                 ], ]
-    input.write [ [ '韆', ], 'strokeorder', '122125112125221134515454',  ]
-    input.write [ [ '韆', ], 'usagecode',   'KTHm',                      ]
-    input.write [ [ '韆', ], 'reading',     [ 'qian',                 ], ]
+    input.write [ '千', 'variant',     '仟', ]
+    input.write [ '千', 'variant',     '韆', ]
+    input.write [ '千', 'similarity',  '于', ]
+    input.write [ '千', 'similarity',  '干', ]
+    input.write [ '千', 'usagecode',   'CJKTHM',                    ]
+    input.write [ '千', 'strokeorder', '312',                       ]
+    input.write [ '千', 'reading',     'qian', ]
+    input.write [ '千', 'reading',     'foo', ]
+    input.write [ '千', 'reading',     'bar', ]
+    input.write [ '仟', 'strokeorder', '32312',                     ]
+    input.write [ '仟', 'usagecode',   'CJKTHm',                    ]
+    input.write [ '仟', 'reading',     'qian', ]
+    input.write [ '韆', 'strokeorder', '122125112125221134515454',  ]
+    input.write [ '韆', 'usagecode',   'KTHm',                      ]
+    input.write [ '韆', 'reading',     'qian', ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
-  matchers = [
-    ["pos","reading","bar",["千"],2]
-    ["pos","reading","bar",["千","similarity",4,"于"]]
-    ["pos","reading","bar",["千","similarity",5,"干"]]
-    ["pos","reading","bar",["千","strokeorder",2,"312"]]
-    ["pos","reading","bar",["千","variant",4,"仟"]]
-    ["pos","reading","bar",["千","variant",5,"韆"]]
-    ["pos","reading","foo",["千"],1]
-    ["pos","reading","foo",["千","similarity",2,"于"]]
-    ["pos","reading","foo",["千","similarity",3,"干"]]
-    ["pos","reading","foo",["千","strokeorder",1,"312"]]
-    ["pos","reading","foo",["千","variant",2,"仟"]]
-    ["pos","reading","foo",["千","variant",3,"韆"]]
-    ["pos","reading","qian",["仟"],0]
-    ["pos","reading","qian",["仟","strokeorder",0,"32312"]]
-    ["pos","reading","qian",["千"],0]
-    ["pos","reading","qian",["千","similarity",0,"于"]]
-    ["pos","reading","qian",["千","similarity",1,"干"]]
-    ["pos","reading","qian",["千","strokeorder",0,"312"]]
-    ["pos","reading","qian",["千","variant",0,"仟"]]
-    ["pos","reading","qian",["千","variant",1,"韆"]]
-    ["pos","reading","qian",["韆"],0]
-    ["pos","reading","qian",["韆","strokeorder",0,"122125112125221134515454"]]
-    ["pos","similarity","于",["千"],0]
-    ["pos","similarity","干",["千"],1]
-    ["pos","strokeorder","122125112125221134515454",["韆"]]
-    ["pos","strokeorder","122125112125221134515454",["韆","reading",0,"qian"]]
-    ["pos","strokeorder","312",["千"]]
-    ["pos","strokeorder","312",["千","reading",0,"qian"]]
-    ["pos","strokeorder","312",["千","reading",1,"foo"]]
-    ["pos","strokeorder","312",["千","reading",2,"bar"]]
-    ["pos","strokeorder","312",["千","similarity",0,"于"]]
-    ["pos","strokeorder","312",["千","similarity",1,"干"]]
-    ["pos","strokeorder","312",["千","variant",0,"仟"]]
-    ["pos","strokeorder","312",["千","variant",1,"韆"]]
-    ["pos","strokeorder","32312",["仟"]]
-    ["pos","strokeorder","32312",["仟","reading",0,"qian"]]
-    ["pos","usagecode","CJKTHM",["千"]]
-    ["pos","usagecode","CJKTHm",["仟"]]
-    ["pos","usagecode","KTHm",["韆"]]
-    ["pos","variant","仟",["千"],0]
-    ["pos","variant","韆",["千"],1]
-    ]
+  matchers = []
   #.........................................................................................................
   show = ( handler ) ->
     query = { prefix: [ 'pos', ], star: '*', }
     input = HOLLERITH.create_phrasestream db, query
     input
       .pipe D.$observe ( phrase ) => info JSON.stringify phrase
-      #.....................................................................................................
       .pipe do =>
         idx = -1
-        return D.$observe ( phrase ) =>
-          idx += +1
-          T.eq phrase, matchers[ idx ]
-      #.....................................................................................................
-      .pipe D.$on_end -> handler()
+        return D.$observe ( phrase, has_ended ) =>
+          if phrase?
+            idx += +1
+            T.eq phrase, matchers[ idx ]
+          if has_ended
+            T.eq idx, matchers.length - 1
+            handler()
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
     yield write_data resume
-    yield show resume
-    done()
+    show done
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "(v4) values are `0x00` buffers" ] = ( T, done ) ->
@@ -2945,18 +2906,18 @@ unless module.parent?
     # "use non-string subjects in phrases (4)"
     # "binary indexing"
     # "n-ary indexing (1)"
-    # "n-ary indexing (2)"
-    # "Pinyin Unicode Sorting"
-    # "ensure `Buffer.compare` gives same sorting as LevelDB"
+    "n-ary indexing (2)"
+    # # "Pinyin Unicode Sorting"
+    # # "ensure `Buffer.compare` gives same sorting as LevelDB"
     # "(v4) values are `0x00` buffers"
-    "(v4) store SPO, POS both as keys only"
-    "(v4) store non-list subject as single-element list"
-    "(v4) read POS phrases (sbj is a list)"
-    "(v4) read POS phrases (sbj isn't a list)"
-    "(v4) read POS phrases (sbj is a singleton list)"
-    "(v4) read normalized phrases"
-    # "dddddddddddddddddd"
-    # "eeeeeeeeeeeeeeeeee"
+    # "(v4) store SPO, POS both as keys only"
+    # "(v4) store non-list subject as single-element list"
+    # "(v4) read POS phrases (sbj is a list)"
+    # "(v4) read POS phrases (sbj isn't a list)"
+    # "(v4) read POS phrases (sbj is a singleton list)"
+    # "(v4) read normalized phrases"
+    # # "dddddddddddddddddd"
+    # # "eeeeeeeeeeeeeeeeee"
     ]
   @_prune()
   @_main()
