@@ -1190,38 +1190,38 @@ characters and see what happens. This is the data we start with:
 
 ## Plans for v4
 
-* Both SPO and POS phrases are now stored entirely in the LevelDB `key`; the 
-  LevelDB `value` field is not used (or rather, it is set to a constant 
-  default value). IOW, Hollerith DBs are implemented as 'keys-only' store.
+● Both SPO and POS phrases are now stored entirely in the LevelDB `key`; the
+LevelDB `value` field is not used (or rather, it is set to a constant  default
+value). IOW, Hollerith DBs are implemented as 'keys-only' store.
 
-* Since entire phrases like `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`
-  will be stored in the key, retrieving what reading a given glyph has cannot
-  be done by using the LevelDB `get` operation; instead, `get` is implmented internally
-  by iterating over a prefix stream that contains all keys that match 
-  ``[ [ 'glyph', '月', ], 'reading', ...`.
+● Since entire phrases like `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`
+will be stored in the key, retrieving what reading a given glyph has cannot
+be done by using the LevelDB `get` operation; instead, `get` is implemented internally
+by iterating over a prefix stream that contains all keys that match 
+``[ [ 'glyph', '月', ], 'reading', ...`.
 
-* **All phrase subjects, even those of non-index phrases, are stored as lists**, so
-  for example the v2 phrase `[ '重', 'reading', 'zhong', ]`
-  becomes, in v4: `[ [ '重', ], 'reading', 'zhong', ]`. The semantics
-  remain unchanged; if you want to store the fact that a number of subjects shares
-  a given predicate / object pair, you will still have to enter one phrase for
-  each subject concerned. This step is necessary to keep POS phrase ordering 
-  when using secondary indexes, as these use 'sub-phrases' as subjects. 
+● **All phrase subjects, even those of non-index phrases, are stored as lists**, so
+for example the v2 phrase `[ '重', 'reading', 'zhong', ]`
+becomes, in v4: `[ [ '重', ], 'reading', 'zhong', ]`. The semantics
+remain unchanged; if you want to store the fact that a number of subjects shares
+a given predicate / object pair, you will still have to enter one phrase for
+each subject concerned. This step is necessary to keep POS phrase ordering 
+when using secondary indexes, as these use 'sub-phrases' as subjects. 
 
 As a convenience, **any subject that isn't already a list will be transparently
 converted to a list with a single element; conversely, when reading from the
 database, any phrase with a subject that is a list with a single element will 
 be transformed into a phrase where the subject is simply that single element.**   
 
-* Since all subjects are now lists, it is a small step to use typed subjects
-  and objects, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`. 
-  This is, however, purely optional.
+● Since all subjects are now lists, **it is a small step to use typed subjects
+and objects**, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`. 
+This is, however, purely optional.
 
-* With phrases-as-keys, it becomes possible to store any number of facts about
-  a given subject / predicate pair as long as objects are distinct, even without having
-  to use an index. Without an index, object values will be retrieved in lexicographic 
-  order; to implement repeated objects and / or a specific ordering, an explicit 
-  index—placed between predicate and object—has to be inserted: 
+● With phrases-as-keys, **it becomes possible to store any number of facts about
+a given subject / predicate pair as long as objects are distinct**, even without having
+to use an index. Without an index, object values will be retrieved in lexicographic 
+order; to implement repeated objects and / or a specific ordering, an explicit 
+index—placed between predicate and object—has to be inserted: 
 
 ```coffee
 [ '重', 'reading/py/bare', 0, 'zhong', ] ]
@@ -1251,24 +1251,24 @@ send [ '千', 'variant', 1, '韆', ]
 i.e. you have to construct and send one SPO phrase with an explicit index for
 each element of a multi-valued relationship.
 
-* For each phrase that has an integer ('classical') index, we store a second
-  phrase with the index field set to `null` to enable queries for phrase
-  object values at any index. Note that as a matter of course, phrases with
-  duplicate object values (which would differ solely by index) will thereby be
-  conflated; in other words, this step turns lists into sets.
+● For each phrase that has an integer ('classical') index, we store a second
+phrase with the index field set to `null` to enable queries for phrase
+object values at any index. Note that as a matter of course, phrases with
+duplicate object values (which would differ solely by index) will thereby be
+conflated; in other words, this step turns lists into sets.
 
 When writing to the DB, an index field may or may not be present; when
 present, it can take **any** value, including an explicit `null`.
 
-* Reading that an explicit index can take any value—not only integers as 
-  classical indices are wont to be—one may find it tempting to use indexes as
-  a device to impregnate an ordering unto object values that depends on object
-  values. However, in the general case that is not advisable,  as it clearly
-  interferes with the semantics of the index; it would block the index field
-  so you cannot both sort phrases intrinsically (by object value) and
-  extrinsically (to indicate some property like importance or relevance);
+● Reading that an explicit index can take any value—not only integers as 
+classical indices are wont to be—one may find it tempting to use indexes as
+a device to impregnate an ordering unto object values that depends on object
+values. However, in the general case that is not advisable,  as it clearly
+interferes with the semantics of the index; it would block the index field
+so you cannot both sort phrases intrinsically (by object value) and
+extrinsically (to indicate some property like importance or relevance);
 
-Instead, what you most likely want to do is extend the object
+Instead, what you most likely want to do is extend the phrase object
 value to a list with one or more elements up front 
 
 > We earlier said that thePinyin accented letters won't lexicographically sort
@@ -1302,7 +1302,7 @@ send [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13, 23,  2 ), 16.1, ]
 > `process.hrtime`](https://nodejs.org/api/process.html#process_process_hrtime_time)
 > the better fit for a given application.
 
-* Indexing phrases will not be stored in SPO form anymore.
+● Indexing phrases will not be stored in SPO form anymore.
 
 <!-- 
 
