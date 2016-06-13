@@ -1206,18 +1206,22 @@ characters and see what happens. This is the data we start with:
   remain unchanged; if you want to store the fact that a number of subjects shares
   a given predicate / object pair, you will still have to enter one phrase for
   each subject concerned. This step is necessary to keep POS phrase ordering 
-  when using secondary indexes, as these use 'sub-phrases' as subjects.
+  when using secondary indexes, as these use 'sub-phrases' as subjects. 
+
+  As a convenience, **any subject that isn't already a list will be transparently
+  converted to a list with a single element; conversely, when reading from the
+  database, any phrase with a subject that is a list with a single element will 
+  be transformed into a phrase where the subject is simply that single element.**   
 
 * Since all subjects are now lists, it is a small step to use typed subjects
-  and objects, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`. This is,
-  however, purely optional.
+  and objects, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`. 
+  This is, however, purely optional.
 
 * With phrases-as-keys, it becomes possible to store any number of facts about
-  a given subject / predicate pair as long as objects are distinct, without having
+  a given subject / predicate pair as long as objects are distinct, even without having
   to use an index. Without an index, object values will be retrieved in lexicographic 
   order; to implement repeated objects and / or a specific ordering, an explicit 
-  index—placed either between predicate and object, or else between object type 
-  and object value—may be inserted: 
+  index—placed between predicate and object—has to be inserted: 
 
 ```coffee
 [ '重', 'reading/py/bare', 0, 'zhong', ] ]
@@ -1225,19 +1229,72 @@ characters and see what happens. This is the data we start with:
 
 [ [ 'glyph', '重', ], 'reading', 0, [ 'zh:py/bare', 'zhong', ] ]
 [ [ 'glyph', '重', ], 'reading', 1, [ 'zh:py/bare', 'chong', ] ]
-
-[ [ 'glyph', '重', ], 'reading', [ 'zh:py/bare', 0, 'zhong', ] ]
-[ [ 'glyph', '重', ], 'reading', [ 'zh:py/bare', 1, 'chong', ] ]
 ```
 
-* For each phrase that has a non-null index, we store a second phrase with the index field
-  set to `null` to enable queries for object values at any index. Note that as a matter of course,
-  phrases with duplicate object values (which would differ solely by index) will thereby be
-  conflated; in other words, this step turns lists into sets.
+  When preparing SPO phrases for the `$write` transform, it is now possible
+  (and advisable) to use explicit indexes where called for, and to send 
+  a single phrase for each element of a multi-valued phrase. For example,
+  where before you would've had
+
+``` 
+send [ '千', 'variant', [ '仟', '韆', ], ]
+``` 
+
+  you'd now say
+
+``` 
+send [ '千', 'variant', 0, '仟', ]
+send [ '千', 'variant', 1, '韆', ]
+``` 
+
+* For each phrase that has a non-`null` index, we store a second phrase  with
+  the index field set to `null` to enable queries for object values at any
+  index. Note that as a matter of course, phrases with duplicate object values
+  (which would differ solely by index) will thereby be conflated; in other
+  words, this step turns lists into sets.
+
+  When writing to the DB, an index field may or may not be present; when
+  present, it can take **any** value, including an explicit `null`.
+
+* Reading that an explicit index can take any value—not only integers as 
+  classical indices are wont to be—one may find it tempting to use
+  indexes as a device to impregnate an ordering unto object values that
+  depends on object values. However, that is not advisable, as it clearly
+  interferes with the semantics of the index:
+
+  * it would block the index field so you cannot both sort phrases
+    intrinsically (by object value) and extrinsically (to indicate
+    some property like importance or relevance);
+
+  * since the index field is not `null`, an extra phrase with the index 
+    set to `null` would be generated for each entry—probably not what you 
+    want.
+
+  Instead, what you most likely want to do is extend the object
+  value to a list with one or more elements up front 
+
+  We earlier said that thePinyin accented letters won't lexicographically sort
+  the way you'd expected them to in a dictionary. There, you'd like to have
+  all syllables with an `a` in the first tone come before those in the second
+  and so forth, with those in the light ('fifth') tone coming last, followed
+  by those syllables that are otherwise the same, but have `e` as their main
+  vowel and so on; it's possible to implement this either by pairing each
+  accented syllable with a rewritten one (e.g. [ 'LA1NG', 'lāng', ], [ 'LA2NG',
+  'láng', ], [ 'LA3NG', 'lǎng', ],[ 'LA4NG', 'làng', ], [ 'LA5NG', 'lang', ],
+  [ 'LE1NG', 'lēng', ], [ 'LE2NG', 'léng', ], [ 'LE3NG', 'lěng', ], [ 'LE4NG',
+  'lèng', ], [ 'LE5NG', 'leng', ] etc. would do the trick), or to use
+  only those 'proxy values' and convert them back into renderable 
+  representations before sending them to output (hint: you could use a database
+  for that).
+
+
 
 * Indexing phrases will not be stored in SPO form anymore.
 
 <!-- 
+
+
+
 
 ```
 so|glyph:字|gloss:letter, character, word|o:0

@@ -2745,12 +2745,14 @@ clear_leveldb = ( leveldb, handler ) ->
     # input.write [ '韆', 'usagecode',   'KTHm',                      ]
     # input.write [ '韆', 'reading',     [ 'qian',                 ], ]
     # input.write [ '千', 'reading',     [ 'qian', 'foo', 'bar',   ], ]
-    input.write [ '千', 'usagecode',   'CJKTHM',                    ]
-    input.write [ '韆', 'usagecode',   'KTHm',                      ]
-    input.write [ '千', 'reading',  0, 'foo',  ]
-    input.write [ '千', 'reading',  1, 'bar',  ]
-    input.write [ '千', 'reading',  2, 'qian', ]
-    input.write [ '韆', 'reading',  0, 'qian', ]
+    input.write [ '千', 'usagecode',       'CJKTHM',   ]
+    input.write [ '韆', 'usagecode', null, 'KTHm',     ] # can use explicit `null`
+    input.write [ '千', 'reading',   0,    'foo',      ]
+    input.write [ '千', 'reading',   1,    'bar',      ]
+    input.write [ '千', 'reading',   2,    'qian',     ]
+    input.write [ '韆', 'reading',   0,    'qian',     ]
+    input.write [ '千', 'similarity', 'XYZ', '于', ]
+    input.write [ '千', 'similarity', 'DEF', '干', ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
@@ -2759,6 +2761,76 @@ clear_leveldb = ( leveldb, handler ) ->
   show = ( handler ) ->
     input = HOLLERITH.create_phrasestream db, { prefix: [], star: '*', }
     # input = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', ], star: '*', }
+    #.......................................................................................................
+    input
+      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
+      # .pipe do =>
+      #   idx = -1
+      #   return D.$observe ( phrase ) =>
+      #     idx += +1
+      #     T.eq phrase, matchers[ idx ]
+      #.....................................................................................................
+      .pipe D.$on_end -> handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    yield write_data resume
+    yield show resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "eeeeeeeeeeeeeeeeee" ] = ( T, done ) ->
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    input = D.create_throughstream()
+    #.......................................................................................................
+    input
+      .pipe HOLLERITH.$write db, unique: no
+      .pipe D.$on_end => handler()
+    #.......................................................................................................
+    input.write [ 'A1', 'reading', null, [ 'a1', 'ā', ], ]
+    input.write [ 'A2', 'reading', null, [ 'a2', 'á', ], ]
+    input.write [ 'A3', 'reading', null, [ 'a3', 'ǎ', ], ]
+    input.write [ 'A4', 'reading', null, [ 'a4', 'à', ], ]
+    input.write [ 'A5', 'reading', null, [ 'a5', 'a', ], ]
+    #.......................................................................................................
+    input.write [ 'E1', 'reading', null, [ 'e1', 'ē', ], ]
+    input.write [ 'E2', 'reading', null, [ 'e2', 'é', ], ]
+    input.write [ 'E3', 'reading', null, [ 'e3', 'ě', ], ]
+    input.write [ 'E4', 'reading', null, [ 'e4', 'è', ], ]
+    input.write [ 'E5', 'reading', null, [ 'e5', 'e', ], ]
+    #.......................................................................................................
+    input.write [ 'I1', 'reading', null, [ 'i1', 'ī', ], ]
+    input.write [ 'I2', 'reading', null, [ 'i2', 'í', ], ]
+    input.write [ 'I3', 'reading', null, [ 'i3', 'ǐ', ], ]
+    input.write [ 'I4', 'reading', null, [ 'i4', 'ì', ], ]
+    input.write [ 'I5', 'reading', null, [ 'i5', 'i', ], ]
+    #.......................................................................................................
+    input.write [ 'O1', 'reading', null, [ 'o1', 'ō', ], ]
+    input.write [ 'O2', 'reading', null, [ 'o2', 'ó', ], ]
+    input.write [ 'O3', 'reading', null, [ 'o3', 'ǒ', ], ]
+    input.write [ 'O4', 'reading', null, [ 'o4', 'ò', ], ]
+    input.write [ 'O5', 'reading', null, [ 'o5', 'o', ], ]
+    #.......................................................................................................
+    input.write [ 'U1', 'reading', null, [ 'u1', 'ū', ], ]
+    input.write [ 'U2', 'reading', null, [ 'u2', 'ú', ], ]
+    input.write [ 'U3', 'reading', null, [ 'u3', 'ǔ', ], ]
+    input.write [ 'U4', 'reading', null, [ 'u4', 'ù', ], ]
+    input.write [ 'U5', 'reading', null, [ 'u5', 'u', ], ]
+    #.......................................................................................................
+    input.write [ 'Ü1', 'reading', null, [ 'ü1', 'ǖ', ], ]
+    input.write [ 'Ü2', 'reading', null, [ 'ü2', 'ǘ', ], ]
+    input.write [ 'Ü3', 'reading', null, [ 'ü3', 'ǚ', ], ]
+    input.write [ 'Ü4', 'reading', null, [ 'ü4', 'ǜ', ], ]
+    input.write [ 'Ü5', 'reading', null, [ 'ü5', 'ü', ], ]
+    #.......................................................................................................
+    input.end()
+  #.........................................................................................................
+  matchers = []
+  #.........................................................................................................
+  show = ( handler ) ->
+    # input = HOLLERITH.create_phrasestream db, { prefix: [], star: '*', }
+    input = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', ], star: '*', }
     #.......................................................................................................
     input
       .pipe D.$observe ( phrase ) => info JSON.stringify phrase
@@ -2858,6 +2930,7 @@ unless module.parent?
     # "(v4) read POS phrases (sbj is a singleton list)"
     # "(v4) read normalized phrases"
     "dddddddddddddddddd"
+    "eeeeeeeeeeeeeeeeee"
     ]
   @_prune()
   @_main()
