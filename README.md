@@ -1208,10 +1208,10 @@ characters and see what happens. This is the data we start with:
   each subject concerned. This step is necessary to keep POS phrase ordering 
   when using secondary indexes, as these use 'sub-phrases' as subjects. 
 
-  As a convenience, **any subject that isn't already a list will be transparently
-  converted to a list with a single element; conversely, when reading from the
-  database, any phrase with a subject that is a list with a single element will 
-  be transformed into a phrase where the subject is simply that single element.**   
+As a convenience, **any subject that isn't already a list will be transparently
+converted to a list with a single element; conversely, when reading from the
+database, any phrase with a subject that is a list with a single element will 
+be transformed into a phrase where the subject is simply that single element.**   
 
 * Since all subjects are now lists, it is a small step to use typed subjects
   and objects, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`. 
@@ -1231,10 +1231,10 @@ characters and see what happens. This is the data we start with:
 [ [ 'glyph', '重', ], 'reading', 1, [ 'zh:py/bare', 'chong', ] ]
 ```
 
-  When preparing SPO phrases for the `$write` transform, it is now possible
-  (and advisable) to use explicit indexes where called for, and to send 
-  a single phrase for each element of a multi-valued phrase. For example,
-  where before you would've had
+When preparing SPO phrases for the `$write` transform, it is now possible
+(and advisable) to use explicit indexes where called for, and to send 
+a single phrase for each element of a multi-valued phrase. For example,
+where before you would've had
 
 ``` 
 send [ '千', 'variant', [ '仟', '韆', ], ]
@@ -1253,8 +1253,8 @@ send [ '千', 'variant', 1, '韆', ]
   values (which would differ solely by index) will thereby be conflated; in
   other words, this step turns lists into sets.
 
-  When writing to the DB, an index field may or may not be present; when
-  present, it can take **any** value, including an explicit `null`.
+When writing to the DB, an index field may or may not be present; when
+present, it can take **any** value, including an explicit `null`.
 
 * Reading that an explicit index can take any value—not only integers as 
   classical indices are wont to be—one may find it tempting to use indexes as
@@ -1264,25 +1264,25 @@ send [ '千', 'variant', 1, '韆', ]
   so you cannot both sort phrases intrinsically (by object value) and
   extrinsically (to indicate some property like importance or relevance);
 
-  Instead, what you most likely want to do is extend the object
-  value to a list with one or more elements up front 
+Instead, what you most likely want to do is extend the object
+value to a list with one or more elements up front 
 
-  We earlier said that thePinyin accented letters won't lexicographically sort
-  the way you'd expected them to in a dictionary. There, you'd like to have
-  all syllables with an `a` in the first tone come before those in the second
-  and so forth, with those in the light ('fifth') tone coming last, followed
-  by those syllables that are otherwise the same, but have `e` as their main
-  vowel and so on; it's possible to implement this either by pairing each
-  accented syllable with a rewritten one (e.g. [ 'LA1NG', 'lāng', ], [ 'LA2NG',
-  'láng', ], [ 'LA3NG', 'lǎng', ],[ 'LA4NG', 'làng', ], [ 'LA5NG', 'lang', ],
-  [ 'LE1NG', 'lēng', ], [ 'LE2NG', 'léng', ], [ 'LE3NG', 'lěng', ], [ 'LE4NG',
-  'lèng', ], [ 'LE5NG', 'leng', ] etc. would do the trick), or to use
-  only those 'proxy values' and convert them back into renderable 
-  representations before sending them to output (hint: you could use a database
-  for that).
+> We earlier said that thePinyin accented letters won't lexicographically sort
+> the way you'd expected them to in a dictionary. There, you'd like to have
+> all syllables with an `a` in the first tone come before those in the second
+> and so forth, with those in the light ('fifth') tone coming last, followed
+> by those syllables that are otherwise the same, but have `e` as their main
+> vowel and so on; it's possible to implement this either by pairing each
+> accented syllable with a rewritten one (e.g. [ 'LA1NG', 'lāng', ], [ 'LA2NG',
+> 'láng', ], [ 'LA3NG', 'lǎng', ],[ 'LA4NG', 'làng', ], [ 'LA5NG', 'lang', ],
+> [ 'LE1NG', 'lēng', ], [ 'LE2NG', 'léng', ], [ 'LE3NG', 'lěng', ], [ 'LE4NG',
+> 'lèng', ], [ 'LE5NG', 'leng', ] etc. would do the trick), or to use
+> only those 'proxy values' and convert them back into renderable 
+> representations before sending them to output (hint: you could use a database
+> for that).
 
-  With the above limitations in mind, I presently still think that the index
-  field *does* lend itself to time series:
+> With the above limitations in mind, I presently still think that the index
+> field *does* lend itself to time series:
 
 ```
 send [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13,  3, 56 ), 17.4, ]
@@ -1290,13 +1290,13 @@ send [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13,  4, 30 ), 18.5, ]
 send [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13, 23,  2 ), 16.1, ]
 ```
 
-  > For this specific use case you may want to ensure that no two readings with
-  > the same timestamp may ever occur. The Hollerith Codec does properly encode
-  > and decode  JS `Date` objects and, furthermore, does encode them in a way
-  > that keeps chronological ordering within LevelDB; that said, you may find timestamps
-  > expressed as milliseconds since epoch or [NodeJS' 
-  > `process.hrtime`](https://nodejs.org/api/process.html#process_process_hrtime_time)
-  > the better fit for a given application.
+> For this specific use case you may want to ensure that no two readings with
+> the same timestamp may ever occur. The Hollerith Codec does properly encode
+> and decode  JS `Date` objects and, furthermore, does encode them in a way
+> that keeps chronological ordering within LevelDB; that said, you may find timestamps
+> expressed as milliseconds since epoch or [NodeJS' 
+> `process.hrtime`](https://nodejs.org/api/process.html#process_process_hrtime_time)
+> the better fit for a given application.
 
 * Indexing phrases will not be stored in SPO form anymore.
 
