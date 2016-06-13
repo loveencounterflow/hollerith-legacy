@@ -184,17 +184,21 @@ step                      = ( require 'coffeenode-suspend' ).step
   R                 = D.create_throughstream()
   batch_written     = null
   #.........................................................................................................
+  is_integer = ( x ) -> ( x? ) and ( x is parseInt x )
+  #.........................................................................................................
   $index = => $ ( spo, send ) =>
     [ sbj, prd, idx, obj, ]   = spo
     sbj                       = [ sbj, ]        unless CND.isa_list sbj
     [ obj, idx, ]             = [ idx, null, ]  unless obj?
     send [ 'spo', sbj, prd,  idx, obj,      ]
     send [ 'pos',      prd,  idx, obj, sbj, ]
-    ### For each phrase that has a non-null index, we store a second phrase with the index field
+    ### For each phrase that has an integer index, we store a second phrase with the index field
     set to `null` to enable queries for object values at any index. Note that as a matter of course,
     phrases with duplicate object values (which would differ solely by index) will thereby be
     conflated; in other words, this step turns lists into sets. ###
-    send [ 'pos',      prd, null, obj, sbj, ] unless idx is null
+    ### TAINT the `is_integer` function should be configurable with the `settings` object and
+    be more generally named sth like `use default index` or somesuch. (???) ###
+    send [ 'pos',      prd, null, obj, sbj, ] if is_integer idx
   #.........................................................................................................
   $encode = => $ ( longphrase, send ) =>
     send type: 'put', key: ( @_encode_key db, longphrase ), value: @_zero_value_bfr

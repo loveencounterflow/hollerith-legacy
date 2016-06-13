@@ -1247,28 +1247,22 @@ send [ '千', 'variant', 0, '仟', ]
 send [ '千', 'variant', 1, '韆', ]
 ``` 
 
-* For each phrase that has a non-`null` index, we store a second phrase  with
-  the index field set to `null` to enable queries for object values at any
-  index. Note that as a matter of course, phrases with duplicate object values
-  (which would differ solely by index) will thereby be conflated; in other
-  words, this step turns lists into sets.
+* For each phrase that has an integer ('classical') index, we store a second 
+  phrasewith the index field set to `null` to enable queries for object values
+  at any index. Note that as a matter of course, phrases with duplicate object
+  values (which would differ solely by index) will thereby be conflated; in
+  other words, this step turns lists into sets.
 
   When writing to the DB, an index field may or may not be present; when
   present, it can take **any** value, including an explicit `null`.
 
 * Reading that an explicit index can take any value—not only integers as 
-  classical indices are wont to be—one may find it tempting to use
-  indexes as a device to impregnate an ordering unto object values that
-  depends on object values. However, that is not advisable, as it clearly
-  interferes with the semantics of the index:
-
-  * it would block the index field so you cannot both sort phrases
-    intrinsically (by object value) and extrinsically (to indicate
-    some property like importance or relevance);
-
-  * since the index field is not `null`, an extra phrase with the index 
-    set to `null` would be generated for each entry—probably not what you 
-    want.
+  classical indices are wont to be—one may find it tempting to use indexes as
+  a device to impregnate an ordering unto object values that depends on object
+  values. However, in the general case that is not advisable,  as it clearly
+  interferes with the semantics of the index; it would block the index field
+  so you cannot both sort phrases intrinsically (by object value) and
+  extrinsically (to indicate some property like importance or relevance);
 
   Instead, what you most likely want to do is extend the object
   value to a list with one or more elements up front 
@@ -1287,7 +1281,22 @@ send [ '千', 'variant', 1, '韆', ]
   representations before sending them to output (hint: you could use a database
   for that).
 
+  With the above limitations in mind, I presently still think that the index
+  field *does* lend itself to time series:
 
+```
+send [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13,  3, 56 ), 17.4, ]
+send [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13,  4, 30 ), 18.5, ]
+send [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13, 23,  2 ), 16.1, ]
+```
+
+  > For this specific use case you may want to ensure that no two readings with
+  > the same timestamp may ever occur. The Hollerith Codec does properly encode
+  > and decode  JS `Date` objects and, furthermore, does encode them in a way
+  > that keeps chronological ordering within LevelDB; that said, you may find timestamps
+  > expressed as milliseconds since epoch or [NodeJS' 
+  > `process.hrtime`](https://nodejs.org/api/process.html#process_process_hrtime_time)
+  > the better fit for a given application.
 
 * Indexing phrases will not be stored in SPO form anymore.
 

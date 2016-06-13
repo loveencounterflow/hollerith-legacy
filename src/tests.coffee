@@ -2745,14 +2745,17 @@ clear_leveldb = ( leveldb, handler ) ->
     # input.write [ '韆', 'usagecode',   'KTHm',                      ]
     # input.write [ '韆', 'reading',     [ 'qian',                 ], ]
     # input.write [ '千', 'reading',     [ 'qian', 'foo', 'bar',   ], ]
-    input.write [ '千', 'usagecode',       'CJKTHM',   ]
-    input.write [ '韆', 'usagecode', null, 'KTHm',     ] # can use explicit `null`
-    input.write [ '千', 'reading',   0,    'foo',      ]
-    input.write [ '千', 'reading',   1,    'bar',      ]
-    input.write [ '千', 'reading',   2,    'qian',     ]
-    input.write [ '韆', 'reading',   0,    'qian',     ]
-    input.write [ '千', 'similarity', 'XYZ', '于', ]
-    input.write [ '千', 'similarity', 'DEF', '干', ]
+    input.write [ '千', 'usagecode',           'CJKTHM',   ]
+    input.write [ '韆', 'usagecode',   null,   'KTHm',     ] # can use explicit `null`
+    input.write [ '千', 'reading',     0,      'foo',      ]
+    input.write [ '千', 'reading',     1,      'bar',      ]
+    input.write [ '千', 'reading',     2,      'qian',     ]
+    input.write [ '韆', 'reading',     0,      'qian',     ]
+    input.write [ '千', 'similarity',  'XYZ',  '于',       ]
+    input.write [ '千', 'similarity',  'DEF',  '干',       ]
+    input.write [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13,  3, 56 ), { value: 17.4, unit: '°C', }, ]
+    input.write [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13,  4, 30 ), { value: 18.5, unit: '°C', }, ]
+    input.write [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13, 23,  2 ), { value: 16.1, unit: '°C', }, ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
@@ -2763,7 +2766,9 @@ clear_leveldb = ( leveldb, handler ) ->
     # input = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', ], star: '*', }
     #.......................................................................................................
     input
-      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
+      # .pipe D.$observe ( phrase ) => info JSON.stringify phrase
+      # .pipe D.$observe ( phrase ) => info rpr phrase
+      .pipe D.$observe ( phrase ) => log ( require 'util' ).inspect phrase, { maxArrayLength: 1000, depth: null, colors: true, }
       # .pipe do =>
       #   idx = -1
       #   return D.$observe ( phrase ) =>
@@ -2930,7 +2935,7 @@ unless module.parent?
     # "(v4) read POS phrases (sbj is a singleton list)"
     # "(v4) read normalized phrases"
     "dddddddddddddddddd"
-    "eeeeeeeeeeeeeeeeee"
+    # "eeeeeeeeeeeeeeeeee"
     ]
   @_prune()
   @_main()
