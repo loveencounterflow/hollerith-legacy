@@ -1200,9 +1200,9 @@ characters and see what happens. This is the data we start with:
   by iterating over a prefix stream that contains all keys that match 
   ``[ [ 'glyph', '月', ], 'reading', ...`.
 
-* All subjects, even those of non-index phrases, must need be stored as lists, so
-  for example the v2 phrase `[ '重', 'reading', [ 'zhong', 'chong', ] ]`
-  becomes, in v4: `[ [ '重', ], 'reading', [ 'zhong', 'chong', ] ]`. The semantics
+* **All phrase subjects, even those of non-index phrases, are stored as lists**, so
+  for example the v2 phrase `[ '重', 'reading', 'zhong', ]`
+  becomes, in v4: `[ [ '重', ], 'reading', 'zhong', ]`. The semantics
   remain unchanged; if you want to store the fact that a number of subjects shares
   a given predicate / object pair, you will still have to enter one phrase for
   each subject concerned. This step is necessary to keep POS phrase ordering 
@@ -1231,27 +1231,31 @@ be transformed into a phrase where the subject is simply that single element.**
 [ [ 'glyph', '重', ], 'reading', 1, [ 'zh:py/bare', 'chong', ] ]
 ```
 
-When preparing SPO phrases for the `$write` transform, it is now possible
-(and advisable) to use explicit indexes where called for, and to send 
-a single phrase for each element of a multi-valued phrase. For example,
-where before you would've had
+When preparing SPO phrases for the `$write` transform, it is now possible (and
+advisable) to use explicit indexes where called for, and to send  a single
+phrase for each element of a multi-valued phrase. **Observe that list values
+in phrase object position will not any more result in multiple primary index
+phrases**. For example, where before you had
 
 ``` 
 send [ '千', 'variant', [ '仟', '韆', ], ]
 ``` 
 
-  you'd now say
+you'd now say
 
 ``` 
 send [ '千', 'variant', 0, '仟', ]
 send [ '千', 'variant', 1, '韆', ]
 ``` 
 
-* For each phrase that has an integer ('classical') index, we store a second 
-  phrasewith the index field set to `null` to enable queries for object values
-  at any index. Note that as a matter of course, phrases with duplicate object
-  values (which would differ solely by index) will thereby be conflated; in
-  other words, this step turns lists into sets.
+i.e. you have to construct and send one SPO phrase with an explicit index for
+each element of a multi-valued relationship.
+
+* For each phrase that has an integer ('classical') index, we store a second
+  phrase with the index field set to `null` to enable queries for phrase
+  object values at any index. Note that as a matter of course, phrases with
+  duplicate object values (which would differ solely by index) will thereby be
+  conflated; in other words, this step turns lists into sets.
 
 When writing to the DB, an index field may or may not be present; when
 present, it can take **any** value, including an explicit `null`.
