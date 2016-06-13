@@ -230,8 +230,8 @@ step                      = ( require 'coffeenode-suspend' ).step
 #-----------------------------------------------------------------------------------------------------------
 @validate_spo = ( spo ) ->
   ### Do a shallow sanity check to see whether `spo` is a triplet. ###
-  throw new Error "invalid SPO key, must be list: #{rpr spo}" unless CND.isa_list spo
-  throw new Error "invalid SPO key, must be of length 3: #{rpr spo}" unless 3 <= spo.length <= 4
+  throw new Error "invalid SPO key, must be list: #{rpr spo}"             unless CND.isa_list spo
+  throw new Error "invalid SPO key, must be of length 3 or 4: #{rpr spo}" unless 3 <= spo.length <= 4
   return null
 
 #-----------------------------------------------------------------------------------------------------------

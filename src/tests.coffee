@@ -1801,38 +1801,41 @@ clear_leveldb = ( leveldb, handler ) ->
     input = D.create_throughstream()
     #.......................................................................................................
     input
-      .pipe HOLLERITH.$write db
+      .pipe HOLLERITH.$write db, unique: no
       .pipe D.$on_end ->
         handler()
     #.......................................................................................................
-    input.write [ '千', 'guide/kwic/v3/sortcode', [ [ [ '0686f---', null ], '千', [], [] ] ], ]
-    input.write [ '于', 'guide/kwic/v3/sortcode', [ [ [ '0019f---', null ], '于', [], [] ] ], ]
-    input.write [ '干', 'guide/kwic/v3/sortcode', [ [ [ '0020f---', null ], '干', [], [] ] ], ]
+    input.write [ '千', 'kwic/sortcode', 0, '34d### 千', ]
+    input.write [ '于', 'kwic/sortcode', 0, '3a2### 于', ]
+    input.write [ '干', 'kwic/sortcode', 0, 'j7u### 干', ]
     #.......................................................................................................
     ### Three phrases to register '千 looks similar to both 于 and 干': ###
-    input.write [ '千', 'shape/similarity', [ '于', '干', ], ]
-    input.write [ '于', 'shape/similarity', [ '干', '千', ], ]
-    input.write [ '干', 'shape/similarity', [ '千', '于', ], ]
-    ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
-    input.write [ [ '千', 'shape/similarity', [ '于', '干', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0686f---', null ], '千', [], [] ] ], ]
-    input.write [ [ '于', 'shape/similarity', [ '千', '干', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0019f---', null ], '于', [], [] ] ], ]
-    input.write [ [ '干', 'shape/similarity', [ '千', '于', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0020f---', null ], '干', [], [] ] ], ]
-    #.......................................................................................................
-    ### Two sub-factorial renderings of 千 as 亻一 and 丿十: ###
-    input.write [ '亻', 'guide/kwic/v3/sortcode', [ [ [ '0774f---', null ], '亻', [], [] ] ], ]
-    input.write [ '一', 'guide/kwic/v3/sortcode', [ [ [ '0000f---', null ], '一', [], [] ] ], ]
-    input.write [ '丿', 'guide/kwic/v3/sortcode', [ [ [ '0645f---', null ], '丿', [], [] ] ], ]
-    input.write [ '十', 'guide/kwic/v3/sortcode', [ [ [ '0104f---', null ], '十', [], [] ] ], ]
-    input.write [
-      [ '千', 'guide/lineup/uchr', '亻一', ], 'guide/kwic/v3/sortcode', [
-        [ [ '0774f---', '0000f---', null, ], [ '亻', [ '一', ], []        ], ]
-        [ [ '0000f---', null, '0774f---', ], [ '一', [],        [ '亻', ] ], ]
-      ] ]
-    input.write [
-      [ '千', 'guide/lineup/uchr', '丿十', ], 'guide/kwic/v3/sortcode', [
-        [ [ '0645f---', '0104f---', null, ], [ '丿', [ '十', ], []        ], ]
-        [ [ '0104f---', null, '0645f---', ], [ '十', [],        [ '丿', ] ], ]
-      ] ]
+    input.write [ '千', 'shape/similarity', '于', ]
+    input.write [ '千', 'shape/similarity', '干', ]
+    input.write [ '于', 'shape/similarity', '干', ]
+    input.write [ '于', 'shape/similarity', '千', ]
+    input.write [ '干', 'shape/similarity', '千', ]
+    input.write [ '干', 'shape/similarity', '于', ]
+    # ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
+    # input.write [ [ '千', 'shape/similarity', [ '于', '干', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0686f---', null ], '千', [], [] ] ], ]
+    # input.write [ [ '于', 'shape/similarity', [ '千', '干', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0019f---', null ], '于', [], [] ] ], ]
+    # input.write [ [ '干', 'shape/similarity', [ '千', '于', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0020f---', null ], '干', [], [] ] ], ]
+    # #.......................................................................................................
+    # ### Two sub-factorial renderings of 千 as 亻一 and 丿十: ###
+    # input.write [ '亻', 'guide/kwic/v3/sortcode', [ [ [ '0774f---', null ], '亻', [], [] ] ], ]
+    # input.write [ '一', 'guide/kwic/v3/sortcode', [ [ [ '0000f---', null ], '一', [], [] ] ], ]
+    # input.write [ '丿', 'guide/kwic/v3/sortcode', [ [ [ '0645f---', null ], '丿', [], [] ] ], ]
+    # input.write [ '十', 'guide/kwic/v3/sortcode', [ [ [ '0104f---', null ], '十', [], [] ] ], ]
+    # input.write [
+    #   [ '千', 'guide/lineup/uchr', '亻一', ], 'guide/kwic/v3/sortcode', [
+    #     [ [ '0774f---', '0000f---', null, ], [ '亻', [ '一', ], []        ], ]
+    #     [ [ '0000f---', null, '0774f---', ], [ '一', [],        [ '亻', ] ], ]
+    #   ] ]
+    # input.write [
+    #   [ '千', 'guide/lineup/uchr', '丿十', ], 'guide/kwic/v3/sortcode', [
+    #     [ [ '0645f---', '0104f---', null, ], [ '丿', [ '十', ], []        ], ]
+    #     [ [ '0104f---', null, '0645f---', ], [ '十', [],        [ '丿', ] ], ]
+    #   ] ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
