@@ -1805,17 +1805,22 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe D.$on_end ->
         handler()
     #.......................................................................................................
-    input.write [ '千', 'kwic/sortcode', 0, '34d### 千', ]
-    input.write [ '于', 'kwic/sortcode', 0, '3a2### 于', ]
-    input.write [ '干', 'kwic/sortcode', 0, 'j7u### 干', ]
-    #.......................................................................................................
-    ### Three phrases to register '千 looks similar to both 于 and 干': ###
-    input.write [ '千', 'shape/similarity', '于', ]
-    input.write [ '千', 'shape/similarity', '干', ]
-    input.write [ '于', 'shape/similarity', '干', ]
-    input.write [ '于', 'shape/similarity', '千', ]
-    input.write [ '干', 'shape/similarity', '千', ]
-    input.write [ '干', 'shape/similarity', '于', ]
+    # input.write [ '千', 'kwic/sortcode', 0, '34d### 千', ]
+    # input.write [ '于', 'kwic/sortcode', 0, '3a2### 于', ]
+    # input.write [ '干', 'kwic/sortcode', 0, 'j7u### 干', ]
+    # input.write [ '干', 'reading', 0, 'foo', ]
+    # input.write [ '干', 'reading', 0, 'bar', ]
+    # #.......................................................................................................
+    # input.write [ '千', 'shape/similarity', '于', ]
+    # input.write [ '千', 'shape/similarity', '干', ]
+    input.write [ ( Symbol.for 'index' ), [ '千', 'reading',          'foo', ], 'kwic/sortcode', '34d###', ]
+    input.write [ ( Symbol.for 'index' ), [ '千', 'shape/similarity', '于', ],  'kwic/sortcode', '34d###', ]
+    # input.write [ [ '千', 'kwic/sortcode', 0, '34d### 千', ], 'reading',          'foo', ]
+    # input.write [ [ '千', 'kwic/sortcode', 0, '34d### 千', ], 'shape/similarity', '于',  ]
+    # input.write [ '于', 'shape/similarity', '干', ]
+    # input.write [ '于', 'shape/similarity', '千', ]
+    # input.write [ '干', 'shape/similarity', '千', ]
+    # input.write [ '干', 'shape/similarity', '于', ]
     # ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
     # input.write [ [ '千', 'shape/similarity', [ '于', '干', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0686f---', null ], '千', [], [] ] ], ]
     # input.write [ [ '于', 'shape/similarity', [ '千', '干', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0019f---', null ], '于', [], [] ] ], ]

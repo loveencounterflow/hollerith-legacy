@@ -187,10 +187,15 @@ step                      = ( require 'coffeenode-suspend' ).step
   is_integer = ( x ) -> ( x? ) and ( x is parseInt x )
   #.........................................................................................................
   $index = => $ ( spo, send ) =>
+    index_only = no
+    if spo[ 0 ] is Symbol.for 'index'
+      spo.shift()
+      index_only = yes
     [ sbj, prd, idx, obj, ]   = spo
+    @validate_spo spo
     sbj                       = [ sbj, ]        unless CND.isa_list sbj
     [ obj, idx, ]             = [ idx, null, ]  unless obj?
-    send [ 'spo', sbj, prd,  idx, obj,      ]
+    send [ 'spo', sbj, prd,  idx, obj,      ]   unless index_only
     send [ 'pos',      prd,  idx, obj, sbj, ]
     ### For each phrase that has an integer index, we store a second phrase with the index field
     set to `null` to enable queries for object values at any index. Note that as a matter of course,
@@ -216,7 +221,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   #.........................................................................................................
   pipeline = []
   # pipeline.push $load_bloom()         if ensure_unique
-  pipeline.push @$validate_spo()
+  # pipeline.push @$validate_spo()
   # pipeline.push $ensure_unique_sp()   if ensure_unique
   pipeline.push $index()
   pipeline.push $encode()
