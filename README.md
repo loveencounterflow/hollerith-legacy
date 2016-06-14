@@ -1302,7 +1302,21 @@ send [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13, 23,  2 ), 16.1, ]
 > `process.hrtime`](https://nodejs.org/api/process.html#process_process_hrtime_time)
 > the better fit for a given application.
 
-● Indexing phrases will not be stored in SPO form anymore.
+● Indexing phrases will not be stored in SPO form anymore. You can make any phrase
+appear only in POS form by including `Symbol.for 'index'` as first element. This is
+how secondary indexes are implemented. For example, sending in
+
+```
+[ ( Symbol.for 'index' ), [ '千', 'reading',          'foo', ], 'kwic/sortcode', '34d###', ]
+[ ( Symbol.for 'index' ), [ '千', 'shape/similarity', '于', ],  'kwic/sortcode', '34d###', ]
+```
+
+results in two POS phrases and no SPO phrase:
+
+```
+[ 'pos', 'kwic/sortcode', null, '34d###', [ '千', 'reading', 'foo' ] ]
+[ 'pos', 'kwic/sortcode', null, '34d###', [ '千', 'shape/similarity', '于' ] ]
+```
 
 <!-- 
 

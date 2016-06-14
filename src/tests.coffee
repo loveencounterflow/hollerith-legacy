@@ -1798,6 +1798,7 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "(v4) use non-string subjects in phrases (1)" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
+    IDX   = Symbol.for 'index'
     input = D.create_throughstream()
     #.......................................................................................................
     input
@@ -1805,16 +1806,22 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe D.$on_end ->
         handler()
     #.......................................................................................................
-    # input.write [ '千', 'kwic/sortcode', 0, '34d### 千', ]
-    # input.write [ '于', 'kwic/sortcode', 0, '3a2### 于', ]
-    # input.write [ '干', 'kwic/sortcode', 0, 'j7u### 干', ]
-    # input.write [ '干', 'reading', 0, 'foo', ]
-    # input.write [ '干', 'reading', 0, 'bar', ]
-    # #.......................................................................................................
-    # input.write [ '千', 'shape/similarity', '于', ]
-    # input.write [ '千', 'shape/similarity', '干', ]
-    input.write [ ( Symbol.for 'index' ), [ '千', 'reading',          'foo', ], 'kwic/sortcode', '34d###', ]
-    input.write [ ( Symbol.for 'index' ), [ '千', 'shape/similarity', '于', ],  'kwic/sortcode', '34d###', ]
+    input.write [ '千', 'kwic/sortcode', '34d###', ]
+    input.write [ '于', 'kwic/sortcode', '3a2###', ]
+    input.write [ '干', 'kwic/sortcode', 'j7u###', ]
+    input.write [ '干', 'reading', 0, 'qian', ]
+    input.write [ '干', 'reading', 0, 'foo', ]
+    input.write [ '干', 'reading', 0, 'bar', ]
+    #.......................................................................................................
+    input.write [ '千', 'shape/similarity', '于', ]
+    input.write [ '千', 'shape/similarity', '干', ]
+    #.......................................................................................................
+    input.write [ IDX, [ '千', 'reading',          'qian', ], 'kwic/sortcode', '34d###', ]
+    input.write [ IDX, [ '千', 'reading',          'foo', ], 'kwic/sortcode', '34d###', ]
+    input.write [ IDX, [ '千', 'reading',          'bar', ], 'kwic/sortcode', '34d###', ]
+    input.write [ IDX, [ '千', 'shape/similarity', '于', ],  'kwic/sortcode', '34d###', ]
+    input.write [ IDX, [ '千', 'shape/similarity', '干', ],  'kwic/sortcode', '34d###', ]
+    input.write [ IDX, [ '于', 'reading',          'yu', ],  'kwic/sortcode', '3a2###', ]
     # input.write [ [ '千', 'kwic/sortcode', 0, '34d### 千', ], 'reading',          'foo', ]
     # input.write [ [ '千', 'kwic/sortcode', 0, '34d### 千', ], 'shape/similarity', '于',  ]
     # input.write [ '于', 'shape/similarity', '干', ]
@@ -1845,7 +1852,7 @@ clear_leveldb = ( leveldb, handler ) ->
     input.end()
   #.........................................................................................................
   show = ( handler ) ->
-    input = HOLLERITH.create_phrasestream db
+    input = HOLLERITH.create_phrasestream db, flatten: yes
     input
       .pipe D.$observe ( phrase ) =>
         info JSON.stringify phrase

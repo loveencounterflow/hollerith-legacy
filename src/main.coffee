@@ -409,8 +409,8 @@ step                      = ( require 'coffeenode-suspend' ).step
 #===========================================================================================================
 # READING
 #-----------------------------------------------------------------------------------------------------------
-@create_phrasestream = ( db, query ) ->
-  R = @_create_phrasestream db, query
+@create_phrasestream = ( db, query, settings ) ->
+  R = @_create_phrasestream db, query, settings
   # if query[ 'spo' ]
   #   R = R.pipe $ ( phrase, send ) =>
   #     [ phrasetype, tail..., ] = phrase
@@ -455,15 +455,22 @@ step                      = ( require 'coffeenode-suspend' ).step
 
 #-----------------------------------------------------------------------------------------------------------
 @_create_phrasestream = ( db, query, handler ) ->
+  # switch arity = arguments.length
+  #   when 3
+  #     if CND.isa_function settings
+  #       handler   = settings
+  #       settings  = null
+  #   when 4 then null
+  #   else throw new Error "expected 3 or 4 arguments, got #{arity}"
   input = @create_longphrasestream db, query
-  R = input.pipe @$longphrase_as_phrase db
+  R = input.pipe @$longphrase_as_phrase db, query
   if handler?
     R = R
       .pipe D.$collect()
       .pipe $ ( data, send ) =>
         handler null, data
     R.on 'error', ( error ) => handler error
-  R[ '%meta' ] = input[ '%meta' ]
+  # R[ '%meta' ] = input[ '%meta' ]
   return R
 
 #-----------------------------------------------------------------------------------------------------------
@@ -497,6 +504,8 @@ step                      = ( require 'coffeenode-suspend' ).step
           when 'hi'
             throw new Error "illegal to specify `hi` but not `lo`"
             # hi_hint = query[ key ]
+          when 'flatten'
+            null
           else
             throw new Error "unknown hint key #{rpr key}"
       when 2
@@ -588,7 +597,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@longphrase_as_phrase = ( db, longphrase ) ->
+@longphrase_as_phrase = ( db, longphrase, settings ) ->
   try
     [ phrasetype, tail..., ]  = longphrase
     unless ( tail_length = tail.length ) is 4
@@ -602,7 +611,8 @@ step                      = ( require 'coffeenode-suspend' ).step
       when 0 then throw new Error "subject can't be empty; read phrase #{rpr longphrase}"
     if phrasetype is 'spo'
       return [ 'spo', sbj, prd, idx, obj, ]
-    return [ 'pos', prd, idx, obj, sbj, ]
+    return [ 'pos', prd, idx, obj, sbj..., ] if settings[ 'flatten' ] and CND.isa_list sbj
+    return [ 'pos', prd, idx, obj, sbj,    ]
   catch error
     warn "detected problem with phrase #{rpr longphrase}"
     throw error
@@ -618,7 +628,8 @@ step                      = ( require 'coffeenode-suspend' ).step
   throw new Error "unknown phrasetype #{rpr phrasetype}"
 
 #-----------------------------------------------------------------------------------------------------------
-@$longphrase_as_phrase = ( db ) -> $ ( key, send ) => send @longphrase_as_phrase db, key
+@$longphrase_as_phrase = ( db, settings ) ->
+  return $ ( key, send ) => send @longphrase_as_phrase db, key, settings
 
 #-----------------------------------------------------------------------------------------------------------
 @key_from_url = ( db, url ) ->
