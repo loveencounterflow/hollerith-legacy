@@ -481,12 +481,6 @@ clear_leveldb = ( leveldb, handler ) ->
         done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "create_facetstream throws with wrong arguments" ] = ( T, done ) ->
-  message = "illegal to specify `hi` but not `lo`"
-  T.throws message, ( -> HOLLERITH.create_facetstream db, hi: [ 'xxx', ] )
-  done()
-
-#-----------------------------------------------------------------------------------------------------------
 @[ "read POS facets" ] = ( T, done ) ->
   probes_idx  = 0
   idx         = -1
@@ -1807,21 +1801,26 @@ clear_leveldb = ( leveldb, handler ) ->
         handler()
     #.......................................................................................................
     input.write [ '千', 'kwic/sortcode', '34d###', ]
-    input.write [ '于', 'kwic/sortcode', '3a2###', ]
-    input.write [ '干', 'kwic/sortcode', 'j7u###', ]
-    input.write [ '干', 'reading', 0, 'qian', ]
-    input.write [ '干', 'reading', 0, 'foo', ]
-    input.write [ '干', 'reading', 0, 'bar', ]
-    #.......................................................................................................
-    input.write [ '千', 'shape/similarity', '于', ]
-    input.write [ '千', 'shape/similarity', '干', ]
-    #.......................................................................................................
-    input.write [ IDX, [ '千', 'reading',          'qian', ], 'kwic/sortcode', '34d###', ]
-    input.write [ IDX, [ '千', 'reading',          'foo', ], 'kwic/sortcode', '34d###', ]
-    input.write [ IDX, [ '千', 'reading',          'bar', ], 'kwic/sortcode', '34d###', ]
-    input.write [ IDX, [ '千', 'shape/similarity', '于', ],  'kwic/sortcode', '34d###', ]
-    input.write [ IDX, [ '千', 'shape/similarity', '干', ],  'kwic/sortcode', '34d###', ]
-    input.write [ IDX, [ '于', 'reading',          'yu', ],  'kwic/sortcode', '3a2###', ]
+    input.write [ ( Symbol.for 'index' ), [ '千', 'reading',          'foo', ], 'kwic/sortcode', '34d###', ]
+    input.write [ ( Symbol.for 'index' ), [ '千', 'shape/similarity', '于', ],  'kwic/sortcode', '34d###', ]
+    # #.......................................................................................................
+    # input.write [ '千', 'kwic/sortcode', '34d###', ]
+    # input.write [ '于', 'kwic/sortcode', '3a2###', ]
+    # input.write [ '干', 'kwic/sortcode', 'j7u###', ]
+    # input.write [ '干', 'reading', 0, 'qian', ]
+    # input.write [ '干', 'reading', 0, 'foo', ]
+    # input.write [ '干', 'reading', 0, 'bar', ]
+    # #.......................................................................................................
+    # input.write [ '千', 'shape/similarity', '于', ]
+    # input.write [ '千', 'shape/similarity', '干', ]
+    # #.......................................................................................................
+    # input.write [ IDX, [ '千', 'reading',          'qian', ], 'kwic/sortcode', '34d###', ]
+    # input.write [ IDX, [ '千', 'reading',          'foo', ], 'kwic/sortcode', '34d###', ]
+    # input.write [ IDX, [ '千', 'reading',          'bar', ], 'kwic/sortcode', '34d###', ]
+    # input.write [ IDX, [ '千', 'shape/similarity', '于', ],  'kwic/sortcode', '34d###', ]
+    # input.write [ IDX, [ '千', 'shape/similarity', '干', ],  'kwic/sortcode', '34d###', ]
+    # input.write [ IDX, [ '于', 'reading',          'yu', ],  'kwic/sortcode', '3a2###', ]
+
     # input.write [ [ '千', 'kwic/sortcode', 0, '34d### 千', ], 'reading',          'foo', ]
     # input.write [ [ '千', 'kwic/sortcode', 0, '34d### 千', ], 'shape/similarity', '于',  ]
     # input.write [ '于', 'shape/similarity', '干', ]
@@ -1852,7 +1851,7 @@ clear_leveldb = ( leveldb, handler ) ->
     input.end()
   #.........................................................................................................
   show = ( handler ) ->
-    input = HOLLERITH.create_phrasestream db, flatten: yes
+    input = HOLLERITH.create_phrasestream db, unbox: no#, flatten: yes
     input
       .pipe D.$observe ( phrase ) =>
         info JSON.stringify phrase
@@ -2597,16 +2596,25 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input.end()
   #.........................................................................................................
-  matchers = [
+  matchers_boxed = [
+    [ 'pos', 'usagecode', null, 'CJKTHM', [ 'glyph', '千' ], ]
+    [ 'pos', 'variant',   null, '仟',     [ 'glyph', '千' ], ]
+    [ 'pos', 'variant',   null, '韆',     [ 'glyph', '千' ], ]
+    ]
+  #.........................................................................................................
+  matchers_unboxed = [
     [ 'pos', 'usagecode', null, 'CJKTHM', [ 'glyph', '千' ], ]
     [ 'pos', 'variant',   null, '仟',     [ 'glyph', '千' ], ]
     [ 'pos', 'variant',   null, '韆',     [ 'glyph', '千' ], ]
     ]
   #.........................................................................................................
   show = ( handler ) ->
+    boxed_has_ended   = no
+    unboxed_has_ended = no
+    #.......................................................................................................
     query = { prefix: [ 'pos', ], star: '*', }
-    input = HOLLERITH.create_phrasestream db, query
-    input
+    input_boxed = HOLLERITH.create_phrasestream db, query
+    input_boxed
       .pipe D.$observe ( phrase ) => info rpr phrase # JSON.stringify phrase
       #.....................................................................................................
       .pipe do =>
@@ -2614,11 +2622,28 @@ clear_leveldb = ( leveldb, handler ) ->
         return D.$observe ( phrase, has_ended ) =>
           if phrase?
             idx += +1
-            T.eq phrase, matchers[ idx ]
+            T.eq phrase, matchers_boxed[ idx ]
           if has_ended
-            T.eq idx, matchers.length - 1
-      #.....................................................................................................
-      .pipe D.$on_end => handler()
+            boxed_has_ended = yes
+            T.eq idx, matchers_boxed.length - 1
+            warn "part of test deactivated"
+            return handler()# if unboxed_has_ended
+    # #.......................................................................................................
+    # query = { prefix: [ 'pos', ], star: '*', unbox: no, }
+    # input_unboxed = HOLLERITH.create_phrasestream db, query
+    # input_unboxed
+    #   .pipe D.$observe ( phrase ) => info rpr phrase # JSON.stringify phrase
+    #   #.....................................................................................................
+    #   .pipe do =>
+    #     idx = -1
+    #     return D.$observe ( phrase, has_ended ) =>
+    #       if phrase?
+    #         idx += +1
+    #         T.eq phrase, matchers_unboxed[ idx ]
+    #       if has_ended
+    #         unboxed_has_ended = yes
+    #         T.eq idx, matchers_unboxed.length - 1
+    #         return handler() if boxed_has_ended
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -2852,6 +2877,50 @@ clear_leveldb = ( leveldb, handler ) ->
     yield show resume
     done()
 
+#-----------------------------------------------------------------------------------------------------------
+@[ "(v4) create_longphrasestream rejects illegal arguments" ] = ( T, done ) ->
+  probes = [
+    ( -> HOLLERITH.create_longphrasestream db, hi: [ 'xxx', ] )
+    ( -> HOLLERITH.create_longphrasestream db, lo: [ 'xxx', ] )
+    ( -> HOLLERITH.create_longphrasestream db, hi: [ 'xxx', ], prefix: [ 'xxx' ] )
+    ( -> HOLLERITH.create_longphrasestream db, foobar: [ 'xxx', ] )
+    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx' ], star: '?' )
+    ( -> HOLLERITH.create_longphrasestream db, lo: [ 'xxx' ], star: '?' )
+    ]
+  matchers = [
+    "must use either 'prefix' or 'hi' and 'lo', got 'hi'"
+    "must use either 'prefix' or 'hi' and 'lo', got 'lo'"
+    "illegal to use 'hi' or 'lo' together with 'prefix'"
+    "legal query keys are 'prefix', 'star', 'lo', 'hi', 'unbox', 'flatten', got 'foobar'"
+    "expected 'star' to be '*', got '?'"
+    "must use either 'prefix' or 'hi' and 'lo', got 'lo', 'star'"
+    ]
+  for probe, probe_idx in probes
+    matcher = matchers[ probe_idx ]
+    # try
+    #   probe()
+    #   throw new Error "shouldn't happen"
+    # catch error
+    #   throw error if error[ 'message' ] is "shouldn't happen"
+    #   debug '5620' , JSON.stringify error[ 'message' ]
+    T.throws matcher, probe
+  done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "(v4) create_longphrasestream accepts legal arguments" ] = ( T, done ) ->
+  probes = [
+    ( -> HOLLERITH.create_longphrasestream db, lo: [ 'xxx', ], hi: [ 'xxx', ] )
+    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx', ] )
+    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx', ], star: '*' )
+    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx', ], star: '*', unbox: yes )
+    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx', ], star: '*', flatten: yes )
+    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx', ], star: '*', unbox: no, flatten: yes )
+    ]
+  for probe, probe_idx in probes
+    ### thx to German Attanasio http://stackoverflow.com/a/28564000/256361 ###
+    T.ok probe() instanceof ( require 'stream' ).Stream
+  done()
+
 
 #===========================================================================================================
 #
@@ -2874,7 +2943,6 @@ unless module.parent?
     # "read keys without error (2)"
     # "read keys without error (3)"
     # "read keys without error (4)"
-    # "create_facetstream throws with wrong arguments"
     # "read POS facets"
     # "read POS phrases (1)"
     # "read POS phrases (2)"
@@ -2917,21 +2985,23 @@ unless module.parent?
     # "$write rejects duplicate S/P pairs"
     # "codec accepts long keys"
     # "write private types (1)"
-    "(v4) use non-string subjects in phrases (1)"
-    # "use non-string subjects in phrases (2)"
-    # "use non-string subjects in phrases (3)"
-    # "use non-string subjects in phrases (4)"
-    # "binary indexing"
-    # "n-ary indexing (1)"
-    # "n-ary indexing (2)"
-    # # "Pinyin Unicode Sorting"
-    # # "ensure `Buffer.compare` gives same sorting as LevelDB"
+    # "(v4) use non-string subjects in phrases (1)"
+    # # "use non-string subjects in phrases (2)"
+    # # "use non-string subjects in phrases (3)"
+    # # "use non-string subjects in phrases (4)"
+    # # "binary indexing"
+    # # "n-ary indexing (1)"
+    # # "n-ary indexing (2)"
+    # # # "Pinyin Unicode Sorting"
+    # # # "ensure `Buffer.compare` gives same sorting as LevelDB"
     # "(v4) values are `0x00` buffers"
     # "(v4) store SPO, POS both as keys only"
     # "(v4) store non-list subject as single-element list"
     # "(v4) read POS phrases (sbj is a list)"
     # "(v4) read POS phrases (sbj isn't a list)"
     # "(v4) read POS phrases (sbj is a singleton list)"
+    "(v4) create_longphrasestream rejects illegal arguments"
+    "(v4) create_longphrasestream accepts legal arguments"
     # "(v4) read normalized phrases"
     # # "dddddddddddddddddd"
     # # "eeeeeeeeeeeeeeeeee"

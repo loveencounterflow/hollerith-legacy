@@ -488,41 +488,46 @@ step                      = ( require 'coffeenode-suspend' ).step
     `[ 'pos', 'shapeclass', ]` and `[ 'pos', 'shape/strokeorder', ]`.
   * If only `lo` or only `hi` is given, an error is issued.
   ###
-  lo_hint = null
-  hi_hint = null
+  lo_hint     = null
+  hi_hint     = null
+  legal_keys  = [ 'prefix', 'star', 'lo', 'hi', 'unbox', 'flatten', ]
   #.........................................................................................................
   if query?
-    keys = Object.keys query
-    switch arity = keys.length
-      when 1
-        switch key = keys[ 0 ]
-          when 'prefix'
-            lo_hint = query[ key ]
-          when 'lo', 'prefix'
-            throw new Error "illegal to specify `lo` but not `hi`"
-            # lo_hint = query[ key ]
-          when 'hi'
-            throw new Error "illegal to specify `hi` but not `lo`"
-            # hi_hint = query[ key ]
-          when 'flatten'
-            null
-          else
-            throw new Error "unknown hint key #{rpr key}"
-      when 2
-        keys.sort()
-        if keys[ 0 ] is 'hi' and keys[ 1 ] is 'lo'
-          lo_hint = query[ 'lo' ]
-          hi_hint = query[ 'hi' ]
-        else if keys[ 0 ] is 'prefix' and keys[ 1 ] is 'star'
-          lo_hint = query[ 'prefix' ]
-          hi_hint = query[ 'star' ]
-          throw new Error "expected `star` to be '*', got #{rpr hi_hint}" unless hi_hint is '*'
-        else
-          throw new Error "illegal hint keys #{rpr keys}"
-      else
-        throw new Error "illegal hint arity #{rpr arity}"
+    keys        = Object.keys query
+    has_prefix  = 'prefix' in keys
+    has_lo      = 'lo'     in keys
+    has_hi      = 'hi'     in keys
+    has_star    = 'star'   in keys
+    #.......................................................................................................
+    unless CND.is_subset keys, legal_keys
+      legal_keys  = ( rpr key for key in legal_keys ).join ', '
+      keys        = ( rpr key for key in       keys ).join ', '
+      throw new Error "legal query keys are #{legal_keys}, got #{keys}"
+    #.......................................................................................................
+    if ( not has_prefix ) and ( not has_lo or not has_hi )
+      keys        = ( rpr key for key in       keys ).join ', '
+      throw new Error "must use either 'prefix' or 'hi' and 'lo', got #{keys}"
+    #.......................................................................................................
+    if ( has_lo or has_hi ) and ( has_star )
+      throw new Error "illegal to use 'star' with 'lo' or 'hi'" if query[ 'star' ]?
+    #.......................................................................................................
+    if ( has_star ) and ( query[ 'star' ] isnt '*' )
+      throw new Error "expected 'star' to be '*', got #{rpr query[ 'star' ]}"
+    #.......................................................................................................
+    if ( has_prefix ) and ( has_lo or has_hi )
+      throw new Error "illegal to use 'hi' or 'lo' together with 'prefix'"
+    #.......................................................................................................
+    if ( has_lo and not has_hi ) or ( has_hi and not has_lo )
+      throw new Error "illegal to use only one of 'hi' or 'lo'"
+    #.......................................................................................................
+    if has_prefix
+      lo_hint = query[ 'prefix' ]
+      hi_hint = if has_star then '*' else null
+    #.......................................................................................................
+    else
+      lo_hint = query[ 'lo' ]
+      hi_hint = query[ 'hi' ]
   #.........................................................................................................
-  # debug '©KaWp7', lo_hint, hi_hint
   return @_create_longphrasestream db, lo_hint, hi_hint
 
 #-----------------------------------------------------------------------------------------------------------
@@ -597,7 +602,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@longphrase_as_phrase = ( db, longphrase, settings ) ->
+@longphrase_as_phrase = ( db, longphrase, settings = {} ) ->
   try
     [ phrasetype, tail..., ]  = longphrase
     unless ( tail_length = tail.length ) is 4
@@ -607,7 +612,7 @@ step                      = ( require 'coffeenode-suspend' ).step
       when 'pos' then [      prd, idx, obj, sbj, ] = tail
       else throw new Error "unknown phrasetype #{rpr phrasetype}"
     switch sbj_length = sbj.length
-      when 1 then sbj = sbj[ 0 ]
+      when 1 then sbj = sbj[ 0 ] if settings[ 'unbox' ] ? true
       when 0 then throw new Error "subject can't be empty; read phrase #{rpr longphrase}"
     if phrasetype is 'spo'
       return [ 'spo', sbj, prd, idx, obj, ]
@@ -618,71 +623,71 @@ step                      = ( require 'coffeenode-suspend' ).step
     throw error
 
 #-----------------------------------------------------------------------------------------------------------
-@normalize_phrase = ( db, phrase ) ->
-  switch phrasetype = phrase[ 0 ]
-    when 'spo'
-      return phrase
-    when 'pos'
-      return [ 'spo', phrase[ 3 ], phrase[ 1 ], phrase[ 2 ], phrase[ 4 ], ] if phrase[ 4 ]?
-      return [ 'spo', phrase[ 3 ], phrase[ 1 ], phrase[ 2 ],           ]
-  throw new Error "unknown phrasetype #{rpr phrasetype}"
-
-#-----------------------------------------------------------------------------------------------------------
 @$longphrase_as_phrase = ( db, settings ) ->
   return $ ( key, send ) => send @longphrase_as_phrase db, key, settings
 
-#-----------------------------------------------------------------------------------------------------------
-@key_from_url = ( db, url ) ->
-  ### TAINT does not unescape as yet ###
-  ### TAINT does not cast values as yet ###
-  ### TAINT does not support multiple indexes as yet ###
-  [ phrasetype, first, second, idx, ] = url.split '|'
-  unless phrasetype? and phrasetype.length > 0 and phrasetype in [ 'so', 'os', ]
-    throw new Error "illegal URL key #{rpr url}"
-  unless first? and first.length > 0 and second? and second.length > 0
-    throw new Error "illegal URL key #{rpr url}"
-  idx = if ( idx? and idx.length > 0 ) then ( parseInt idx, 10 ) else 0
-  [ sk, sv, ] =  first.split ':'
-  [ ok, ov, ] = second.split ':'
-  unless sk? and sk.length > 0 and ok? and ok.length > 0
-    throw new Error "illegal URL key #{rpr url}"
-  [ sk, sv, ok, ov, ] = [ ok, ov, sk, sv, ] if phrasetype is 'os'
-  return [ phrasetype, sk, sv, ok, ov, idx, ]
+# #-----------------------------------------------------------------------------------------------------------
+# @normalize_phrase = ( db, phrase ) ->
+#   switch phrasetype = phrase[ 0 ]
+#     when 'spo'
+#       return phrase
+#     when 'pos'
+#       return [ 'spo', phrase[ 3 ], phrase[ 1 ], phrase[ 2 ], phrase[ 4 ], ] if phrase[ 4 ]?
+#       return [ 'spo', phrase[ 3 ], phrase[ 1 ], phrase[ 2 ],           ]
+#   throw new Error "unknown phrasetype #{rpr phrasetype}"
 
-#-----------------------------------------------------------------------------------------------------------
-@as_url = ( db, key, value, settings ) ->
-  key         = @_decode_key    db, key   if CND.isa_jsbuffer key
-  value       = @_decode_value  db, value if CND.isa_jsbuffer value
-  colors      = settings?[ 'colors' ] ? no
-  I           = if colors then CND.darkgrey '|' else '|'
-  E           = if colors then CND.darkgrey ':' else ':'
-  [ phrasetype, tail..., ]  = key
-  if phrasetype is 'spo'
-    [ sbj, prd, ] = tail
-    obj           = rpr value
-    if colors
-      phrasetype  = CND.grey      phrasetype
-      sbj         = CND.RED       sbj
-      prd         = CND.YELLOW    prd
-      obj         = CND.GREEN     obj
-    return phrasetype + I + sbj + I + prd + E + obj
-    # else
-    #   return "spo|#{sbj}|#{prd}|"
-  else
-    [ prd, obj, sbj, idx, ] = tail
-    idx_rpr = if idx? then rpr idx else ''
-    if colors
-      phrasetype  = CND.grey      phrasetype
-      sbj         = CND.RED       sbj
-      prd         = CND.YELLOW    prd
-      obj         = CND.GREEN     obj
-      return phrasetype + I + prd + E + obj + I + sbj
-    else
-      return "pos|#{prd}:#{obj}|#{sbj}|#{idx_rpr}"
+# #-----------------------------------------------------------------------------------------------------------
+# @key_from_url = ( db, url ) ->
+#   ### TAINT does not unescape as yet ###
+#   ### TAINT does not cast values as yet ###
+#   ### TAINT does not support multiple indexes as yet ###
+#   [ phrasetype, first, second, idx, ] = url.split '|'
+#   unless phrasetype? and phrasetype.length > 0 and phrasetype in [ 'so', 'os', ]
+#     throw new Error "illegal URL key #{rpr url}"
+#   unless first? and first.length > 0 and second? and second.length > 0
+#     throw new Error "illegal URL key #{rpr url}"
+#   idx = if ( idx? and idx.length > 0 ) then ( parseInt idx, 10 ) else 0
+#   [ sk, sv, ] =  first.split ':'
+#   [ ok, ov, ] = second.split ':'
+#   unless sk? and sk.length > 0 and ok? and ok.length > 0
+#     throw new Error "illegal URL key #{rpr url}"
+#   [ sk, sv, ok, ov, ] = [ ok, ov, sk, sv, ] if phrasetype is 'os'
+#   return [ phrasetype, sk, sv, ok, ov, idx, ]
 
-#-----------------------------------------------------------------------------------------------------------
-@$url_from_key = ( db ) -> $ ( key, send ) => send @url_from_key db, key
-@$key_from_url = ( db ) -> $ ( url, send ) => send @key_from_url db, key
+# #-----------------------------------------------------------------------------------------------------------
+# @as_url = ( db, key, value, settings ) ->
+#   key         = @_decode_key    db, key   if CND.isa_jsbuffer key
+#   value       = @_decode_value  db, value if CND.isa_jsbuffer value
+#   colors      = settings?[ 'colors' ] ? no
+#   I           = if colors then CND.darkgrey '|' else '|'
+#   E           = if colors then CND.darkgrey ':' else ':'
+#   [ phrasetype, tail..., ]  = key
+#   if phrasetype is 'spo'
+#     [ sbj, prd, ] = tail
+#     obj           = rpr value
+#     if colors
+#       phrasetype  = CND.grey      phrasetype
+#       sbj         = CND.RED       sbj
+#       prd         = CND.YELLOW    prd
+#       obj         = CND.GREEN     obj
+#     return phrasetype + I + sbj + I + prd + E + obj
+#     # else
+#     #   return "spo|#{sbj}|#{prd}|"
+#   else
+#     [ prd, obj, sbj, idx, ] = tail
+#     idx_rpr = if idx? then rpr idx else ''
+#     if colors
+#       phrasetype  = CND.grey      phrasetype
+#       sbj         = CND.RED       sbj
+#       prd         = CND.YELLOW    prd
+#       obj         = CND.GREEN     obj
+#       return phrasetype + I + prd + E + obj + I + sbj
+#     else
+#       return "pos|#{prd}:#{obj}|#{sbj}|#{idx_rpr}"
+
+# #-----------------------------------------------------------------------------------------------------------
+# @$url_from_key = ( db ) -> $ ( key, send ) => send @url_from_key db, key
+# @$key_from_url = ( db ) -> $ ( url, send ) => send @key_from_url db, key
 
 #-----------------------------------------------------------------------------------------------------------
 @_type_from_key = ( db, key ) ->

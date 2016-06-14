@@ -1194,24 +1194,39 @@ characters and see what happens. This is the data we start with:
 LevelDB `value` field is not used (or rather, it is set to a constant  default
 value). IOW, Hollerith DBs are implemented as 'keys-only' store.
 
-● Since entire phrases like `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`
-will be stored in the key, retrieving what reading a given glyph has cannot
-be done by using the LevelDB `get` operation; instead, `get` is implemented internally
-by iterating over a prefix stream that contains all keys that match 
-``[ [ 'glyph', '月', ], 'reading', ...`.
+● Since we now store entire phrases like `[ '月', 'reading', 'yue', ]` in the
+LevelDB `key` field, there's now way to retrieve a given fact with a LevelDB
+`get` opration if all you have are subject and predicate. Before, this fact
+would have been stored as `{ key: [ '月', 'reading', ], value: 'yue', }`, so it
+was possible (and meaningful) to ask for `db.get { key: [ '月', 'reading', ]
+}`. Now you'd have to ask for `db.get { key: [ '月', 'reading', 'yue', ] }`—IOW
+all you can do with the LevelDB `get` operation and a Hollerith v4 store is
+checking whether a given fact exists or not. However, the Hollerith API still
+does have a `get` operation, albeit in a slightly different form: when you
+call `get` with a prefix (an incomplete phrase), it creates a phrasestream
+with all the phrases that match the prefix; in case exactly one phrase turns up,
+that is the result for the `get` operation; if it turns up more than one phrase, that 
+is an unconditional error; if it does not turn up any phrase, either an error
+is thrown or a fallback value (if provided in the function call) is returned. 
 
-● **All phrase subjects, even those of non-index phrases, are stored as lists**, so
-for example the v2 phrase `[ '重', 'reading', 'zhong', ]`
+● **All phrase subjects, even those of non-index phrases, are stored as lists;
+this is called boxing / unboxing**.
+
+For example, the v2 phrase `[ '重', 'reading', 'zhong', ]`
 becomes, in v4: `[ [ '重', ], 'reading', 'zhong', ]`. The semantics
 remain unchanged; if you want to store the fact that a number of subjects shares
 a given predicate / object pair, you will still have to enter one phrase for
-each subject concerned. This step is necessary to keep POS phrase ordering 
-when using secondary indexes, as these use 'sub-phrases' as subjects. 
+each subject concerned. 
+
+Boxing is necessary to keep POS phrase ordering when using secondary indexes,
+as these use 'sub-phrases' as subjects.
 
 As a convenience, **any subject that isn't already a list will be transparently
 converted to a list with a single element; conversely, when reading from the
 database, any phrase with a subject that is a list with a single element will 
 be transformed into a phrase where the subject is simply that single element.**   
+Depending on your needs, you may not want boxed subjects to be unboxed for 
+you, so you may create a phrasestream with `unbox: false` to prevent that.
 
 ● Since all subjects are now lists, **it is a small step to use typed subjects
 and objects**, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`. 
@@ -1307,6 +1322,7 @@ appear only in POS form by including `Symbol.for 'index'` as first element. This
 how secondary indexes are implemented. For example, sending in
 
 ```
+[ '千', 'kwic/sortcode', '34d###', ]
 [ ( Symbol.for 'index' ), [ '千', 'reading',          'foo', ], 'kwic/sortcode', '34d###', ]
 [ ( Symbol.for 'index' ), [ '千', 'shape/similarity', '于', ],  'kwic/sortcode', '34d###', ]
 ```
@@ -1314,9 +1330,14 @@ how secondary indexes are implemented. For example, sending in
 results in two POS phrases and no SPO phrase:
 
 ```
+[ 'pos', 'kwic/sortcode', null, '34d###', '千', ]
 [ 'pos', 'kwic/sortcode', null, '34d###', [ '千', 'reading', 'foo' ] ]
 [ 'pos', 'kwic/sortcode', null, '34d###', [ '千', 'shape/similarity', '于' ] ]
+[ 'spo', '千', 'kwic/sortcode', null, '34d###', ]
 ```
+Observe that 
+
+Depending on how you process these 
 
 <!-- 
 
