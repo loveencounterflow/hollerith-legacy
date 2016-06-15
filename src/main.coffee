@@ -186,7 +186,18 @@ step                      = ( require 'coffeenode-suspend' ).step
   #.........................................................................................................
   is_integer = ( x ) -> ( x? ) and ( x is parseInt x )
   #.........................................................................................................
-  $index = => $ ( spo, send ) =>
+  $add_secondary_index = =>
+    cache = []
+    return $async ( phrase, send, end ) =>
+      if phrase?
+        return send phrase unless phrase[ 0 ] is Symbol.for 'make-secondary-index'
+        [ _, db, predicates, ] = phrase
+        cache.push { db, predicates, }
+      if end?
+        @_add_secondary_index entry... for entry in cache
+        end()
+  #.........................................................................................................
+  $add_primary_index = => $ ( spo, send ) =>
     index_only = no
     if spo[ 0 ] is Symbol.for 'index'
       spo.shift()
@@ -223,7 +234,8 @@ step                      = ( require 'coffeenode-suspend' ).step
   # pipeline.push $load_bloom()         if ensure_unique
   # pipeline.push @$validate_spo()
   # pipeline.push $ensure_unique_sp()   if ensure_unique
-  pipeline.push $index()
+  pipeline.push $add_secondary_index()
+  pipeline.push $add_primary_index()
   pipeline.push $encode()
   pipeline.push D.$batch batch_size
   pipeline.push $write()
@@ -411,59 +423,73 @@ step                      = ( require 'coffeenode-suspend' ).step
   ### TAINT For the time being, we only support secondary indexes, and the implementation is not at all
   written in a generic fashion. A future version will likely support tertiary indexes, but that will
   necessitate waiting for the end of the write stream and re-reading all the records. ###
+  return D.$on_start ( send ) =>
+    send [ ( Symbol.for 'make-secondary-index' ), db, predicates, ]
+
+#-----------------------------------------------------------------------------------------------------------
+@_add_secondary_index = ( description, handler ) =>
   #.........................................................................................................
   if predicates.length isnt 2
     throw new Error "only indexes with exactly 2 steps supported at this time"
   #.........................................................................................................
-  phrases         = []
-  phrase_counts   = {}
+  query   = { prefix: [ 'reading', ], star: '*', flatten: yes }
+  input   = @create_phrasestream db, query
+  input
+    .pipe D.$observe ( phrase ) => whisper '_add_secondary_index', phrase
+  # #.........................................................................................................
+  # if predicates.length isnt 2
+  #   throw new Error "only indexes with exactly 2 steps supported at this time"
   #.........................................................................................................
-  if is_retro_index = predicates[ 0 ] is predicates[ 1 ]
-    predicates.pop()
-    phrases.push {}
-    predicate_count = 2
-  else
-    phrases.push {} for predicate in predicates
-  #.........................................................................................................
-  new_index_phrase = ( fphrase, tphrase ) =>
-    [ fsubj, fprd, fidx, fobj, ]  = fphrase
-    [ tsubj, tprd, tidx, tobj, ]  = tphrase
-    return [ [ tsbj, tprd, tidx, tobj, ], fprd, fidx, fobj, ]
-  #.........................................................................................................
-  link = ( phrases ) =>
-    [ from_phrase, to_phrase, ] = phrases
-    [ fsbj, fprd, fobj, ]       = from_phrase
-    [ tsbj, tprd, tobj, ]       =   to_phrase
-    tsbj_is_list                = CND.isa_list tsbj
-    #.......................................................................................................
-    for sub_fobj in fobj
-      for sub_tobj in tobj
-        idx += +1
-        R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
-    #.......................................................................................................
-    return R
-  #.........................................................................................................
-  return $ ( phrase, send, end ) =>
-    if phrase?
-      send phrase
-      [ sbj, prd, idx, obj, ] = phrase
-      return unless ( prd_idx = predicates.indexOf prd ) >= 0
-      # if is_retro_index
-      sbj_txt                       = JSON.stringify sbj
-      phrase_target                 = phrases[ sbj_txt]?= []
-      phrase_target[ prd_idx ]      = phrase
-      phrase_counts[ sbj_txt ]      = ( phrase_counts[ sbj_txt ] ? 0 ) + 1
-      return null if phrase_counts[ sbj_txt ] < predicate_count
-    #.......................................................................................................
-    debug '5543', phrases[ sbj_txt ]
-    # send index_phrase for index_phrase in link phrases[ sbj_txt ]
-    #.......................................................................................................
-    if end?
-      # if is_retro_index
-        # send index_phrase for index_phrase in link phrases[ sbj_txt ]
-      end()
-    #.......................................................................................................
-    return null
+  # #.........................................................................................................
+  # phrases         = []
+  # phrase_counts   = {}
+  # #.........................................................................................................
+  # if is_retro_index = predicates[ 0 ] is predicates[ 1 ]
+  #   predicates.pop()
+  #   phrases.push {}
+  #   predicate_count = 2
+  # else
+  #   phrases.push {} for predicate in predicates
+  # #.........................................................................................................
+  # new_index_phrase = ( fphrase, tphrase ) =>
+  #   [ fsubj, fprd, fidx, fobj, ]  = fphrase
+  #   [ tsubj, tprd, tidx,  tobj, ]  = tphrase
+  #   return [ [ tsbj, tprd, tidx, tobj, ], fprd, fidx, fobj, ]
+  # #.........................................................................................................
+  # link = ( phrases ) =>
+  #   [ from_phrase, to_phrase, ] = phrases
+  #   [ fsbj, fprd, fobj, ]       = from_phrase
+  #   [ tsbj, tprd, tobj, ]       =   to_phrase
+  #   tsbj_is_list                = CND.isa_list tsbj
+  #   #.......................................................................................................
+  #   for sub_fobj in fobj
+  #     for sub_tobj in tobj
+  #       idx += +1
+  #       R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
+  #   #.......................................................................................................
+  #   return R
+  # #.........................................................................................................
+  # return $ ( phrase, send ) =>
+  #   if phrase?
+  #     send phrase
+  #     [ sbj, prd, idx, obj, ] = phrase
+  #     return unless ( prd_idx = predicates.indexOf prd ) >= 0
+  #     # if is_retro_index
+  #     sbj_txt                       = JSON.stringify sbj
+  #     phrase_target                 = phrases[ sbj_txt]?= []
+  #     phrase_target[ prd_idx ]      = phrase
+  #     phrase_counts[ sbj_txt ]      = ( phrase_counts[ sbj_txt ] ? 0 ) + 1
+  #     return null if phrase_counts[ sbj_txt ] < predicate_count
+  #   #.......................................................................................................
+  #   debug '5543', phrases#[ sbj_txt ]
+  #   # send index_phrase for index_phrase in link phrases[ sbj_txt ]
+  #   #.......................................................................................................
+  #   if end?
+  #     # if is_retro_index
+  #       # send index_phrase for index_phrase in link phrases[ sbj_txt ]
+  #     end()
+  #   #.......................................................................................................
+  #   return null
 
 
 #===========================================================================================================

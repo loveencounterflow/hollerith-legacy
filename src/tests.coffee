@@ -1964,21 +1964,29 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input
     # .pipe HOLLERITH.$index_v4 db, 'reading', 'reading'
+    # .pipe HOLLERITH.$index_v4 db, 'reading', 'gloss'
+    # .pipe HOLLERITH.$index_v4 db, 'reading', 'similarity'
+    # .pipe HOLLERITH.$index_v4 db, 'reading', 'usagecode'
+    .pipe HOLLERITH.$index_v4 db, 'reading', 'variant'
     .pipe HOLLERITH.$write db, unique: no
     .pipe D.$on_end ->
       handler()
     #.......................................................................................................
+    input.write [ '國', 'reading',     'guo',        ]
+    input.write [ '國', 'variant',     '国',        ]
+    input.write [ '國', 'variant',     '圀',        ]
+    input.write [ '國', 'variant',     '囯',        ]
     input.write [ '千', 'reading',     'qian',       ]
-    input.write [ '千', 'reading',     'foo',        ]
     input.write [ '千', 'reading',     'bar',        ]
     input.write [ '千', 'variant',     '仟',         ]
-    input.write [ '千', 'variant',     '韆',         ]
     input.write [ '千', 'similarity',  '于',         ]
     input.write [ '千', 'similarity',  '干',         ]
     input.write [ '千', 'usagecode',   'CJKTHM',     ]
     input.write [ '千', 'gloss', 0,  'thousand',     ]
     input.write [ '千', 'gloss', 1,  'kilo',         ]
+    input.write [ '千', 'variant',     '韆',         ]
     input.write [ '千', 'gloss', 2,  'millenary',    ]
+    input.write [ '千', 'reading',     'foo',        ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
@@ -2588,7 +2596,7 @@ unless module.parent?
     "(v4) secondary indexing, API"
     # # "binary indexing"
     # # "n-ary indexing (1)"
-    "(v4) n-ary indexing (2)"
+    # "(v4) n-ary indexing (2)"
     # # # "Pinyin Unicode Sorting"
     # # # "ensure `Buffer.compare` gives same sorting as LevelDB"
     # "(v4) values are `0x00` buffers"
