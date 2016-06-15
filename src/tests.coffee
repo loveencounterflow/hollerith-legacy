@@ -38,8 +38,10 @@ db                        = null
 levelup                   = require 'level'
 leveldown                 = require 'leveldown'
 CODEC                     = require 'hollerith-codec'
+ASYNC                     = require 'async'
 #...........................................................................................................
 ƒ                         = CND.format_number
+
 
 # #-----------------------------------------------------------------------------------------------------------
 # @_sort_list = ( list ) ->
@@ -1803,60 +1805,148 @@ clear_leveldb = ( leveldb, handler ) ->
     input.write [ '千', 'kwic/sortcode', '34d###', ]
     input.write [ ( Symbol.for 'index' ), [ '千', 'reading',          'foo', ], 'kwic/sortcode', '34d###', ]
     input.write [ ( Symbol.for 'index' ), [ '千', 'shape/similarity', '于', ],  'kwic/sortcode', '34d###', ]
-    # #.......................................................................................................
-    # input.write [ '千', 'kwic/sortcode', '34d###', ]
-    # input.write [ '于', 'kwic/sortcode', '3a2###', ]
-    # input.write [ '干', 'kwic/sortcode', 'j7u###', ]
-    # input.write [ '干', 'reading', 0, 'qian', ]
-    # input.write [ '干', 'reading', 0, 'foo', ]
-    # input.write [ '干', 'reading', 0, 'bar', ]
-    # #.......................................................................................................
-    # input.write [ '千', 'shape/similarity', '于', ]
-    # input.write [ '千', 'shape/similarity', '干', ]
-    # #.......................................................................................................
-    # input.write [ IDX, [ '千', 'reading',          'qian', ], 'kwic/sortcode', '34d###', ]
-    # input.write [ IDX, [ '千', 'reading',          'foo', ], 'kwic/sortcode', '34d###', ]
-    # input.write [ IDX, [ '千', 'reading',          'bar', ], 'kwic/sortcode', '34d###', ]
-    # input.write [ IDX, [ '千', 'shape/similarity', '于', ],  'kwic/sortcode', '34d###', ]
-    # input.write [ IDX, [ '千', 'shape/similarity', '干', ],  'kwic/sortcode', '34d###', ]
-    # input.write [ IDX, [ '于', 'reading',          'yu', ],  'kwic/sortcode', '3a2###', ]
+    #.......................................................................................................
+    input.end()
+  #.........................................................................................................
+  read = ( settings, handler ) ->
+    Z = []
+    input = HOLLERITH.create_phrasestream db, settings
+    input
+      .pipe D.$observe ( phrase ) => Z.push phrase
+      .pipe D.$on_end             => handler null, Z
+  #.........................................................................................................
+  show = ( handler ) ->
+    tasks = []
+    #.......................................................................................................
+    tasks.push ( handler ) =>
+      input = HOLLERITH.create_phrasestream db, unbox: no, flatten: no
+      input
+        .pipe D.$observe ( phrase ) => urge '1 (ubx:n flt:n)', JSON.stringify phrase
+        .pipe D.$on_end             => urge(); handler()
+    #.......................................................................................................
+    tasks.push ( handler ) =>
+      input = HOLLERITH.create_phrasestream db, unbox: no, flatten: yes
+      input
+        .pipe D.$observe ( phrase ) => urge '2 (ubx:n flt:y)', JSON.stringify phrase
+        .pipe D.$on_end             => urge(); handler()
+    #.......................................................................................................
+    tasks.push ( handler ) =>
+      input = HOLLERITH.create_phrasestream db, unbox: yes, flatten: no
+      input
+        .pipe D.$observe ( phrase ) => urge '3 (ubx:y flt:n)', JSON.stringify phrase
+        .pipe D.$on_end             => urge(); handler()
+    #.......................................................................................................
+    tasks.push ( handler ) =>
+      input = HOLLERITH.create_phrasestream db, unbox: yes, flatten: yes
+      input
+        .pipe D.$observe ( phrase ) => urge '4 (ubx:y flt:y)', JSON.stringify phrase
+        .pipe D.$on_end             => urge(); handler()
+    #.......................................................................................................
+    ASYNC.series tasks, => handler()
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    # yield feed_test_data db, probes_idx, resume
+    yield write_data resume
+    yield show resume
+    probes = yield read { unbox: no, flatten: no, }, resume
+    T.eq probes, [
+      ["pos","kwic/sortcode",null,"34d###",["千"]]
+      ["pos","kwic/sortcode",null,"34d###",["千","reading","foo"]]
+      ["pos","kwic/sortcode",null,"34d###",["千","shape/similarity","于"]]
+      ["spo",["千"],"kwic/sortcode",null,"34d###"]
+      ]
+    probes = yield read { unbox: no, flatten: yes, }, resume
+    T.eq probes, [
+      ["pos","kwic/sortcode",null,"34d###","千"]
+      ["pos","kwic/sortcode",null,"34d###","千","reading","foo"]
+      ["pos","kwic/sortcode",null,"34d###","千","shape/similarity","于"]
+      ["spo",["千"],"kwic/sortcode",null,"34d###"]
+      ]
+    probes = yield read { unbox: yes, flatten: no, }, resume
+    T.eq probes, [
+      ["pos","kwic/sortcode",null,"34d###","千"]
+      ["pos","kwic/sortcode",null,"34d###",["千","reading","foo"]]
+      ["pos","kwic/sortcode",null,"34d###",["千","shape/similarity","于"]]
+      ["spo","千","kwic/sortcode",null,"34d###"]
+      ]
+    probes = yield read { unbox: yes, flatten: yes, }, resume
+    T.eq probes, [
+      ["pos","kwic/sortcode",null,"34d###","千"]
+      ["pos","kwic/sortcode",null,"34d###","千","reading","foo"]
+      ["pos","kwic/sortcode",null,"34d###","千","shape/similarity","于"]
+      ["spo","千","kwic/sortcode",null,"34d###"]
+      ]
+    done()
 
-    # input.write [ [ '千', 'kwic/sortcode', 0, '34d### 千', ], 'reading',          'foo', ]
-    # input.write [ [ '千', 'kwic/sortcode', 0, '34d### 千', ], 'shape/similarity', '于',  ]
-    # input.write [ '于', 'shape/similarity', '干', ]
-    # input.write [ '于', 'shape/similarity', '千', ]
-    # input.write [ '干', 'shape/similarity', '千', ]
-    # input.write [ '干', 'shape/similarity', '于', ]
-    # ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
-    # input.write [ [ '千', 'shape/similarity', [ '于', '干', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0686f---', null ], '千', [], [] ] ], ]
-    # input.write [ [ '于', 'shape/similarity', [ '千', '干', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0019f---', null ], '于', [], [] ] ], ]
-    # input.write [ [ '干', 'shape/similarity', [ '千', '于', ], ], 'guide/kwic/v3/sortcode', [ [ [ '0020f---', null ], '干', [], [] ] ], ]
-    # #.......................................................................................................
-    # ### Two sub-factorial renderings of 千 as 亻一 and 丿十: ###
-    # input.write [ '亻', 'guide/kwic/v3/sortcode', [ [ [ '0774f---', null ], '亻', [], [] ] ], ]
-    # input.write [ '一', 'guide/kwic/v3/sortcode', [ [ [ '0000f---', null ], '一', [], [] ] ], ]
-    # input.write [ '丿', 'guide/kwic/v3/sortcode', [ [ [ '0645f---', null ], '丿', [], [] ] ], ]
-    # input.write [ '十', 'guide/kwic/v3/sortcode', [ [ [ '0104f---', null ], '十', [], [] ] ], ]
-    # input.write [
-    #   [ '千', 'guide/lineup/uchr', '亻一', ], 'guide/kwic/v3/sortcode', [
-    #     [ [ '0774f---', '0000f---', null, ], [ '亻', [ '一', ], []        ], ]
-    #     [ [ '0000f---', null, '0774f---', ], [ '一', [],        [ '亻', ] ], ]
-    #   ] ]
-    # input.write [
-    #   [ '千', 'guide/lineup/uchr', '丿十', ], 'guide/kwic/v3/sortcode', [
-    #     [ [ '0645f---', '0104f---', null, ], [ '丿', [ '十', ], []        ], ]
-    #     [ [ '0104f---', null, '0645f---', ], [ '十', [],        [ '丿', ] ], ]
-    #   ] ]
+#-----------------------------------------------------------------------------------------------------------
+@[ "(v4) secondary indexing, manual" ] = ( T, done ) ->
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    IDX   = Symbol.for 'index'
+    input = D.create_throughstream()
+    #.......................................................................................................
+    input
+      .pipe HOLLERITH.$write db, unique: no
+      .pipe D.$on_end ->
+        handler()
+    #.......................................................................................................
+    input.write [ '千', 'reading',     'qian',       ]
+    input.write [ '千', 'reading',     'foo',        ]
+    input.write [ '千', 'reading',     'bar',        ]
+    input.write [ '千', 'variant',     '仟',         ]
+    input.write [ '千', 'variant',     '韆',         ]
+    input.write [ '千', 'similarity',  '于',         ]
+    input.write [ '千', 'similarity',  '干',         ]
+    input.write [ '千', 'usagecode',   'CJKTHM',     ]
+    input.write [ '千', 'gloss', 0,  'thousand',     ]
+    input.write [ '千', 'gloss', 1,  'kilo',         ]
+    input.write [ '千', 'gloss', 2,  'millenary',    ]
+    #.......................................................................................................
+    input.write [ IDX, [ '千', 'reading',    null, 'foo',    ], 'reading', 'qian', ]
+    input.write [ IDX, [ '千', 'reading',    null, 'bar',    ], 'reading', 'qian', ]
+    input.write [ IDX, [ '千', 'reading',    null, 'qian',   ], 'reading', 'foo', ]
+    input.write [ IDX, [ '千', 'reading',    null, 'bar',    ], 'reading', 'foo', ]
+    input.write [ IDX, [ '千', 'reading',    null, 'qian',   ], 'reading', 'bar', ]
+    input.write [ IDX, [ '千', 'reading',    null, 'foo',    ], 'reading', 'bar', ]
+    #.......................................................................................................
+    input.write [ IDX, [ '千', 'variant',    null, '仟',      ], 'reading', 'qian', ]
+    input.write [ IDX, [ '千', 'variant',    null, '韆',      ], 'reading', 'qian', ]
+    input.write [ IDX, [ '千', 'variant',    null, '仟',      ], 'reading', 'foo', ]
+    input.write [ IDX, [ '千', 'variant',    null, '韆',      ], 'reading', 'foo', ]
+    input.write [ IDX, [ '千', 'variant',    null, '仟',      ], 'reading', 'bar', ]
+    input.write [ IDX, [ '千', 'variant',    null, '韆',      ], 'reading', 'bar', ]
+    #.......................................................................................................
+    input.write [ IDX, [ '千', 'similarity', null, '于',      ], 'reading', 'qian', ]
+    input.write [ IDX, [ '千', 'similarity', null, '干',      ], 'reading', 'qian', ]
+    input.write [ IDX, [ '千', 'similarity', null, '于',      ], 'reading', 'foo', ]
+    input.write [ IDX, [ '千', 'similarity', null, '干',      ], 'reading', 'foo', ]
+    input.write [ IDX, [ '千', 'similarity', null, '于',      ], 'reading', 'bar', ]
+    input.write [ IDX, [ '千', 'similarity', null, '干',      ], 'reading', 'bar', ]
+    #.......................................................................................................
+    input.write [ IDX, [ '千', 'usagecode',  null, 'CJKTHM', ], 'reading', 'qian', ]
+    input.write [ IDX, [ '千', 'usagecode',  null, 'CJKTHM', ], 'reading', 'foo', ]
+    input.write [ IDX, [ '千', 'usagecode',  null, 'CJKTHM', ], 'reading', 'bar', ]
+    #.......................................................................................................
+    input.write [ IDX, [ '千', 'gloss',      0,    'thousand',  ], 'reading', 'qian', ]
+    input.write [ IDX, [ '千', 'gloss',      1,    'kilo',      ], 'reading', 'qian', ]
+    input.write [ IDX, [ '千', 'gloss',      2,    'millenary', ], 'reading', 'qian', ]
+    input.write [ IDX, [ '千', 'gloss',      0,    'thousand',  ], 'reading', 'foo', ]
+    input.write [ IDX, [ '千', 'gloss',      1,    'kilo',      ], 'reading', 'foo', ]
+    input.write [ IDX, [ '千', 'gloss',      2,    'millenary', ], 'reading', 'foo', ]
+    input.write [ IDX, [ '千', 'gloss',      0,    'thousand',  ], 'reading', 'bar', ]
+    input.write [ IDX, [ '千', 'gloss',      1,    'kilo',      ], 'reading', 'bar', ]
+    input.write [ IDX, [ '千', 'gloss',      2,    'millenary', ], 'reading', 'bar', ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
   show = ( handler ) ->
-    input = HOLLERITH.create_phrasestream db, unbox: no#, flatten: yes
+    #.......................................................................................................
+    input = HOLLERITH.create_phrasestream db#, flatten: yes
     input
       .pipe D.$observe ( phrase ) =>
-        info JSON.stringify phrase
-      .pipe D.$on_end ->
-        handler()
+        ( if phrase[ 0 ] is 'pos' then urge else help ) JSON.stringify phrase
+      .pipe D.$on_end             => info(); handler()
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -1866,42 +1956,39 @@ clear_leveldb = ( leveldb, handler ) ->
     done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "use non-string subjects in phrases (2)" ] = ( T, done ) ->
+@[ "(v4) secondary indexing, API" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
+    IDX   = Symbol.for 'index'
     input = D.create_throughstream()
     #.......................................................................................................
     input
-      .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
-        handler()
+    # .pipe HOLLERITH.$index_v4 db, 'reading', 'reading'
+    .pipe HOLLERITH.$write db, unique: no
+    .pipe D.$on_end ->
+      handler()
     #.......................................................................................................
-    input.write [ '千', 'reading/py/base', [ 'qian', ], ]
-    input.write [ '于', 'reading/py/base', [ 'yu',   ], ]
-    input.write [ '干', 'reading/py/base', [ 'gan',  ], ]
-    #.......................................................................................................
-    ### Three phrases to register '千 looks similar to both 于 and 干': ###
-    input.write [ '千', 'shape/similarity', [ '于', '干', ], ]
-    input.write [ '于', 'shape/similarity', [ '干', '千', ], ]
-    input.write [ '干', 'shape/similarity', [ '千', '于', ], ]
-    ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
-    input.write [ [ '千', 'shape/similarity', [ '于', '干', ], 0, ], 'reading/py/base', [ 'qian', ], ]
-    input.write [ [ '于', 'shape/similarity', [ '千', '干', ], 0, ], 'reading/py/base', [ 'yu',   ], ]
-    input.write [ [ '干', 'shape/similarity', [ '千', '于', ], 0, ], 'reading/py/base', [ 'gan',  ], ]
-    #.......................................................................................................
-    input.write [ [ '千', 'reading/py/base',  [ 'qian', ],    0, ], 'shape/similarity', [ '于', '干', ], ]
-    input.write [ [ '于', 'reading/py/base',  [ 'yu',   ],    0, ], 'shape/similarity', [ '千', '干', ], ]
-    input.write [ [ '干', 'reading/py/base',  [ 'gan',  ],    0, ], 'shape/similarity', [ '千', '于', ], ]
+    input.write [ '千', 'reading',     'qian',       ]
+    input.write [ '千', 'reading',     'foo',        ]
+    input.write [ '千', 'reading',     'bar',        ]
+    input.write [ '千', 'variant',     '仟',         ]
+    input.write [ '千', 'variant',     '韆',         ]
+    input.write [ '千', 'similarity',  '于',         ]
+    input.write [ '千', 'similarity',  '干',         ]
+    input.write [ '千', 'usagecode',   'CJKTHM',     ]
+    input.write [ '千', 'gloss', 0,  'thousand',     ]
+    input.write [ '千', 'gloss', 1,  'kilo',         ]
+    input.write [ '千', 'gloss', 2,  'millenary',    ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
   show = ( handler ) ->
-    input = HOLLERITH.create_phrasestream db
+    #.......................................................................................................
+    input = HOLLERITH.create_phrasestream db, flatten: yes
     input
       .pipe D.$observe ( phrase ) =>
-        info JSON.stringify phrase
-      .pipe D.$on_end ->
-        handler()
+        ( if phrase[ 0 ] is 'pos' then urge else help ) JSON.stringify phrase
+      .pipe D.$on_end             => info(); handler()
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -1911,503 +1998,7 @@ clear_leveldb = ( leveldb, handler ) ->
     done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "use non-string subjects in phrases (3)" ] = ( T, done ) ->
-  #.........................................................................................................
-  write_data = ( handler ) ->
-    input = D.create_throughstream()
-    #.......................................................................................................
-    input
-      .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
-        handler()
-    #.......................................................................................................
-    ### Readings for 3 glyphs: ###
-    input.write [ [ '千', ], 'reading/py/base', [ 'qian', ], ]
-    input.write [ [ '于', ], 'reading/py/base', [ 'yu',   ], ]
-    input.write [ [ '干', ], 'reading/py/base', [ 'gan',  ], ]
-    #.......................................................................................................
-    ### Three phrases to register '千 looks similar to both 于 and 干': ###
-    input.write [ [ '千', ], 'shape/similarity', [ '于', '干', ], ]
-    input.write [ [ '于', ], 'shape/similarity', [ '干', '千', ], ]
-    input.write [ [ '干', ], 'shape/similarity', [ '千', '于', ], ]
-    #.......................................................................................................
-    ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
-    ### (1) these will lead from reading to similarity, as in
-      `["pos","reading/py/base","gan",["干","shape/similarity",["千","于"]],0]`, meaning these phrases
-      are suitable for building a dictionary organzed by Pinyin readings with cross-references
-      to similar characters: ###
-    input.write [ [ '千', 'shape/similarity', [ '于', '干', ], ], 'reading/py/base', [ 'qian', ], ]
-    input.write [ [ '于', 'shape/similarity', [ '千', '干', ], ], 'reading/py/base', [ 'yu',   ], ]
-    input.write [ [ '干', 'shape/similarity', [ '千', '于', ], ], 'reading/py/base', [ 'gan',  ], ]
-    #.......................................................................................................
-    ### (2) these will lead from similarity to reading, as in
-      `["pos","shape/similarity","于",["千","reading/py/base",["qian"]],0]` ###
-    input.write [ [ '千', 'reading/py/base',  [ 'qian', ],    ], 'shape/similarity', [ '于', '干', ], ]
-    input.write [ [ '于', 'reading/py/base',  [ 'yu',   ],    ], 'shape/similarity', [ '千', '干', ], ]
-    input.write [ [ '干', 'reading/py/base',  [ 'gan',  ],    ], 'shape/similarity', [ '千', '于', ], ]
-    #.......................................................................................................
-    input.end()
-  #.........................................................................................................
-  show = ( handler ) ->
-    input = HOLLERITH.create_phrasestream db
-    input
-      .pipe D.$observe ( phrase ) =>
-        info JSON.stringify phrase
-      .pipe D.$on_end ->
-        handler()
-  #.........................................................................................................
-  step ( resume ) =>
-    yield clear_leveldb db[ '%self' ], resume
-    # yield feed_test_data db, probes_idx, resume
-    yield write_data resume
-    yield show resume
-    done()
-
-#-----------------------------------------------------------------------------------------------------------
-@[ "use non-string subjects in phrases (4)" ] = ( T, done ) ->
-  #.........................................................................................................
-  write_data = ( handler ) ->
-    input = D.create_throughstream()
-    #.......................................................................................................
-    input
-      .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
-        handler()
-    #.......................................................................................................
-    ### Readings for 3 glyphs: ###
-    input.write [ [ '千', ], 'reading/py/base', [ 'qian',      ], ]
-    input.write [ [ '于', ], 'reading/py/base', [ 'yu', 'foo', ], ]
-    input.write [ [ '干', ], 'reading/py/base', [ 'gan',       ], ]
-    input.write [ [ '人', ], 'reading/py/base', [ 'ren',       ], ]
-    #.......................................................................................................
-    ### Three phrases to register '千 looks similar to both 于 and 干': ###
-    # input.write [ [ '千', ], 'shape/similarity', [ '于', '干', ], ]
-    # input.write [ [ '于', ], 'shape/similarity', [ '干', '千', ], ]
-    # input.write [ [ '干', ], 'shape/similarity', [ '千', '于', ], ]
-    #.......................................................................................................
-    ### The same as the above, experimentally using nested phrases whose subject is itself a phrase: ###
-    ### (1) these will lead from reading to similarity, as in
-      `["pos","reading/py/base","gan",["干","shape/similarity",["千","于"]],0]`, meaning these phrases
-      are suitable for building a dictionary organzed by Pinyin readings with cross-references
-      to similar characters: ###
-    # input.write [ [ '千', 'shape/similarity', [ '于', '干', ], ], 'reading/py/base', 'qian', ]
-    # input.write [ [ '于', 'shape/similarity', [ '千', '干', ], ], 'reading/py/base', 'yu',   ]
-    # input.write [ [ '干', 'shape/similarity', [ '千', '于', ], ], 'reading/py/base', 'gan',  ]
-    input.write [ [ '千', 'shape/similarity', '于', ], 'reading/py/base', 'qian', ]
-    input.write [ [ '千', 'shape/similarity', '干', ], 'reading/py/base', 'qian', ]
-    input.write [ [ '于', 'shape/similarity', '千', ], 'reading/py/base', 'yu',   ]
-    input.write [ [ '于', 'shape/similarity', '干', ], 'reading/py/base', 'yu',   ]
-    input.write [ [ '干', 'shape/similarity', '千', ], 'reading/py/base', 'gan',  ]
-    input.write [ [ '干', 'shape/similarity', '于', ], 'reading/py/base', 'gan',  ]
-    input.write [ [ '于', 'shape/similarity', '千', 1, ], 'reading/py/base', 'foo',  ]
-    input.write [ [ '于', 'shape/similarity', '干', 2, ], 'reading/py/base', 'foo',  ]
-    #.......................................................................................................
-    # ### (2) these will lead from similarity to reading, as in
-    #   `["pos","shape/similarity","于",["千","reading/py/base",["qian"]],0]`. These phrases carry the same
-    #   information as the corresponding ones in `use non-string subjects in phrases (3)`, above,
-    #   but here the referenced similarity phrases have singular objects; consequently, subject / predicate
-    #   pairs may be repeated, which is why introducing an index is mandatory. As such, the index
-    #   need not be a number or for meaningful series—it only needs to be unique within the respective
-    #   group: ###
-    # input.write [ [ '千', 'reading/py/base',  [ 'qian', ], 0, ], 'shape/similarity', '于', ]
-    # input.write [ [ '千', 'reading/py/base',  [ 'qian', ], 1, ], 'shape/similarity', '干', ]
-    # input.write [ [ '于', 'reading/py/base',  [ 'yu',   ], 0, ], 'shape/similarity', '千', ]
-    # input.write [ [ '于', 'reading/py/base',  [ 'yu',   ], 1, ], 'shape/similarity', '干', ]
-    # input.write [ [ '干', 'reading/py/base',  [ 'gan',  ], 0, ], 'shape/similarity', '千', ]
-    # input.write [ [ '干', 'reading/py/base',  [ 'gan',  ], 1, ], 'shape/similarity', '于', ]
-    #.......................................................................................................
-    input.end()
-  #.........................................................................................................
-  show = ( handler ) ->
-    query = { prefix: [ 'pos', ], star: '*', }
-    input = HOLLERITH.create_phrasestream db #, query
-    input
-      .pipe D.$observe ( phrase ) =>
-        info JSON.stringify phrase
-      .pipe D.$on_end ->
-        handler()
-  #.........................................................................................................
-  step ( resume ) =>
-    yield clear_leveldb db[ '%self' ], resume
-    # yield feed_test_data db, probes_idx, resume
-    yield write_data resume
-    yield show resume
-    done()
-
-#-----------------------------------------------------------------------------------------------------------
-@[ "binary indexing" ] = ( T, done ) ->
-  #.........................................................................................................
-  $index = ( from_predicate, to_predicate, settings = {} ) =>
-    from_is_plural  = settings[ 'from' ] is 'plural'
-    to_is_plural    = settings[ 'to'   ] is 'plural'
-    from_cache      = {}
-    to_cache        = {}
-    #.......................................................................................................
-    new_index_phrase = ( tsbj, tprd, tobj, fprd, fobj, tsbj_is_list, idx = 0 ) =>
-      return [ [ tsbj..., tprd, idx, tobj, ], fprd, fobj, ] if tsbj_is_list
-      return [ [ tsbj,    tprd, idx, tobj, ], fprd, fobj, ]
-    #.......................................................................................................
-    link = ( from_phrase, to_phrase ) =>
-      [ fsbj, fprd, fobj, ] = from_phrase
-      [ tsbj, tprd, tobj, ] =   to_phrase
-      tsbj_is_list          = CND.isa_list tsbj
-      #.....................................................................................................
-      unless from_is_plural or to_is_plural
-        # fs ts
-        return [ new_index_phrase tsbj, tprd, tobj, fprd, fobj, tsbj_is_list ]
-      #.....................................................................................................
-      idx = -1
-      R   = []
-      if from_is_plural
-        # fp tp
-        if to_is_plural
-          for sub_fobj in fobj
-            for sub_tobj in tobj
-              idx += +1
-              R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
-        else
-        # fp ts
-          for sub_fobj in fobj
-            idx += +1
-            R.push new_index_phrase tsbj, tprd, tobj, fprd, sub_fobj, tsbj_is_list, idx
-      else
-        # fs tp
-        for sub_tobj in tobj
-          idx += +1
-          R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, fobj, tsbj_is_list, idx
-      #.....................................................................................................
-      return R
-    #.......................................................................................................
-    return $ ( phrase, send ) =>
-      send phrase
-      [ sbj, prd, obj, ] = phrase
-      #.....................................................................................................
-      switch prd
-        #...................................................................................................
-        when from_predicate
-          sbj_txt = JSON.stringify sbj
-          if ( to_phrase = to_cache[ sbj_txt ] )?
-            delete to_cache[ sbj_txt ]
-            send index_phrase for index_phrase in link phrase, to_phrase
-          else
-            from_cache[ sbj_txt ] = phrase
-        #...................................................................................................
-        when to_predicate
-          sbj_txt = JSON.stringify sbj
-          if ( from_phrase = from_cache[ sbj_txt ] )?
-            delete from_cache[ sbj_txt ]
-            send index_phrase for index_phrase in link from_phrase, phrase
-          else
-            to_cache[ sbj_txt ] = phrase
-      #.....................................................................................................
-      return null
-  #.........................................................................................................
-  write_data = ( handler ) ->
-    input = D.create_throughstream()
-    #.......................................................................................................
-    input
-      .pipe $index 'reading',     'variant',      { from: 'plural',   to: 'plural',   }
-      .pipe $index 'reading',     'similarity',   { from: 'plural',   to: 'plural',   }
-      .pipe $index 'reading',     'strokeorder',  { from: 'plural',   to: 'singular', }
-      .pipe $index 'strokeorder', 'reading',      { from: 'singular', to: 'plural',   }
-      .pipe $index 'strokeorder', 'usagecode',    { from: 'singular', to: 'singular', }
-      # .pipe $index 'strokeorder', 'variant',    { from: 'singular', to: 'plural',   }
-      # .pipe $index 'strokeorder', 'similarity', { from: 'singular', to: 'plural',   }
-      .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
-        handler()
-    #.......................................................................................................
-    input.write [ [ '千', ], 'variant',     [ '仟', '韆',              ], ]
-    input.write [ [ '千', ], 'similarity',  [ '于', '干',              ], ]
-    input.write [ [ '千', ], 'usagecode',   'CJKTHM',                    ]
-    input.write [ [ '千', ], 'strokeorder', '312',                       ]
-    input.write [ [ '千', ], 'reading',     [ 'qian', 'foo', 'bar',   ], ]
-    input.write [ [ '仟', ], 'strokeorder', '32312',                     ]
-    input.write [ [ '仟', ], 'usagecode',   'CJKTHm',                    ]
-    input.write [ [ '仟', ], 'reading',     [ 'qian',                 ], ]
-    input.write [ [ '韆', ], 'strokeorder', '122125112125221134515454',  ]
-    input.write [ [ '韆', ], 'usagecode',   'KTHm',                      ]
-    input.write [ [ '韆', ], 'reading',     [ 'qian',                 ], ]
-    #.......................................................................................................
-    # input.write [ ["千","variant",0,"仟"],"strokeorder","312"]
-    # input.write [ ["千","variant",1,"韆"],"strokeorder","312"]
-    # input.write [ ["千","variant",0,"仟",'usagecode','CJKTHm'],"strokeorder","312"]
-    # input.write [ ["千","variant",1,"韆",'usagecode','KTHm'],"strokeorder","312"]
-    #.......................................................................................................
-    # input.write [ [ '千', ], 'variant',     [ '仟', '韆', ], ]
-    # input.write [ [ '于', ], 'variant',     [ '於', '亐', ], ]
-    # input.write [ [ '干', ], 'variant',     [ '乾', '幹', '榦', '亁', '乹', ], ]
-    # input.write [ [ '人', ], 'variant',     [ '亻', '𠔽', ], ]
-    # input.write [ [ '仁', ], 'variant',     [ '忈', ], ]
-    # #.......................................................................................................
-    # input.write [ [ '千', ], 'usagecode',   'CJKTHM', ]
-    # input.write [ [ '于', ], 'usagecode',   'CJKTHM', ]
-    # input.write [ [ '干', ], 'usagecode',   'CJKTHM', ]
-    # input.write [ [ '人', ], 'usagecode',   'CJKTHM', ]
-    # input.write [ [ '仁', ], 'usagecode',   'CJKTHM', ]
-    # input.write [ [ '仟', ], 'usagecode',   'CJKTHm', ]
-    # input.write [ [ '韆', ], 'usagecode',   'KTHm',   ]
-    # input.write [ [ '於', ], 'usagecode',   'cJKTHM', ]
-    # input.write [ [ '亐', ], 'usagecode',   'K',      ]
-    # input.write [ [ '乾', ], 'usagecode',   'CJKTHM', ]
-    # input.write [ [ '幹', ], 'usagecode',   'JKTHM',  ]
-    # input.write [ [ '榦', ], 'usagecode',   'THm',    ]
-    # input.write [ [ '亻', ], 'usagecode',   'p',      ]
-    # #.......................................................................................................
-    # input.write [ [ '千', ], 'reading',     [ 'qian',               ], ]
-    # input.write [ [ '于', ], 'reading',     [ 'yu', 'foo', 'bar',   ], ]
-    # input.write [ [ '干', ], 'reading',     [ 'gan', 'ほす',        ], ]
-    # input.write [ [ '人', ], 'reading',     [ 'ren',                ], ]
-    # input.write [ [ '仁', ], 'reading',     [ 'ren',                ], ]
-    # input.write [ [ '千', ], 'similarity',  [ '于', '干',           ], ]
-    # input.write [ [ '于', ], 'similarity',  [ '干', '千',           ], ]
-    # input.write [ [ '干', ], 'similarity',  [ '千', '于',           ], ]
-    # #.......................................................................................................
-    # input.write [ [ '千', ], 'strokeorder', '312',                       ]
-    # input.write [ [ '于', ], 'strokeorder', '112',                       ]
-    # input.write [ [ '干', ], 'strokeorder', '112',                       ]
-    # input.write [ [ '人', ], 'strokeorder', '34',                        ]
-    # input.write [ [ '仁', ], 'strokeorder', '3211',                      ]
-    # input.write [ [ '仟', ], 'strokeorder', '32312',                     ]
-    # input.write [ [ '韆', ], 'strokeorder', '122125112125221134515454',  ]
-    # input.write [ [ '於', ], 'strokeorder', '41353444',                  ]
-    # input.write [ [ '亐', ], 'strokeorder', '115',                       ]
-    # input.write [ [ '乾', ], 'strokeorder', '12251112315',               ]
-    # input.write [ [ '幹', ], 'strokeorder', '1225111231112',             ]
-    # input.write [ [ '榦', ], 'strokeorder', '12251112341234',            ]
-    # input.write [ [ '亻', ], 'strokeorder', '32',                        ]
-    #.......................................................................................................
-    input.end()
-  #.........................................................................................................
-  matchers = [
-    ["pos","reading","bar",["千"],2]
-    ["pos","reading","bar",["千","similarity",4,"于"]]
-    ["pos","reading","bar",["千","similarity",5,"干"]]
-    ["pos","reading","bar",["千","strokeorder",2,"312"]]
-    ["pos","reading","bar",["千","variant",4,"仟"]]
-    ["pos","reading","bar",["千","variant",5,"韆"]]
-    ["pos","reading","foo",["千"],1]
-    ["pos","reading","foo",["千","similarity",2,"于"]]
-    ["pos","reading","foo",["千","similarity",3,"干"]]
-    ["pos","reading","foo",["千","strokeorder",1,"312"]]
-    ["pos","reading","foo",["千","variant",2,"仟"]]
-    ["pos","reading","foo",["千","variant",3,"韆"]]
-    ["pos","reading","qian",["仟"],0]
-    ["pos","reading","qian",["仟","strokeorder",0,"32312"]]
-    ["pos","reading","qian",["千"],0]
-    ["pos","reading","qian",["千","similarity",0,"于"]]
-    ["pos","reading","qian",["千","similarity",1,"干"]]
-    ["pos","reading","qian",["千","strokeorder",0,"312"]]
-    ["pos","reading","qian",["千","variant",0,"仟"]]
-    ["pos","reading","qian",["千","variant",1,"韆"]]
-    ["pos","reading","qian",["韆"],0]
-    ["pos","reading","qian",["韆","strokeorder",0,"122125112125221134515454"]]
-    ["pos","similarity","于",["千"],0]
-    ["pos","similarity","干",["千"],1]
-    ["pos","strokeorder","122125112125221134515454",["韆"]]
-    ["pos","strokeorder","122125112125221134515454",["韆","reading",0,"qian"]]
-    ["pos","strokeorder","122125112125221134515454",["韆","usagecode",0,"KTHm"]]
-    ["pos","strokeorder","312",["千"]]
-    ["pos","strokeorder","312",["千","reading",0,"qian"]]
-    ["pos","strokeorder","312",["千","reading",1,"foo"]]
-    ["pos","strokeorder","312",["千","reading",2,"bar"]]
-    ["pos","strokeorder","312",["千","usagecode",0,"CJKTHM"]]
-    ["pos","strokeorder","32312",["仟"]]
-    ["pos","strokeorder","32312",["仟","reading",0,"qian"]]
-    ["pos","strokeorder","32312",["仟","usagecode",0,"CJKTHm"]]
-    ["pos","usagecode","CJKTHM",["千"]]
-    ["pos","usagecode","CJKTHm",["仟"]]
-    ["pos","usagecode","KTHm",["韆"]]
-    ["pos","variant","仟",["千"],0]
-    ["pos","variant","韆",["千"],1]
-    ]
-  #.........................................................................................................
-  show = ( handler ) ->
-    query = { prefix: [ 'pos', ], star: '*', }
-    # query = { prefix: [ 'pos', 'strokeorder', '312', ], star: '*', }
-    input = HOLLERITH.create_phrasestream db, query
-    input
-      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
-      #.....................................................................................................
-      .pipe do =>
-        idx = -1
-        return D.$observe ( phrase ) =>
-          idx += +1
-          T.eq phrase, matchers[ idx ]
-      #.....................................................................................................
-      .pipe D.$on_end -> handler()
-  #.........................................................................................................
-  step ( resume ) =>
-    yield clear_leveldb db[ '%self' ], resume
-    yield write_data resume
-    yield show resume
-    done()
-
-#-----------------------------------------------------------------------------------------------------------
-@[ "n-ary indexing (1)" ] = ( T, done ) ->
-  #.........................................................................................................
-  $index = ( descriptions ) =>
-    predicates      = []
-    predicate_count = 0
-    arities         = []
-    phrases         = []
-    phrase_counts   = {}
-    #.......................................................................................................
-    for predicate, arity of descriptions
-      predicate_count += +1
-      unless arity in [ 'singular', 'plural', ]
-        throw new Error "expected 'singular' or 'plural' for arity, got #{rpr arity}"
-      predicates.push   predicate
-      phrases.push      {}
-      arities.push      arity
-    #.......................................................................................................
-    if predicate_count.length < 2
-      throw new Error "expected at least two predicate descriptions, got #{predicates.length}"
-    if predicate_count.length > 2
-      throw new Error "indexes with more than 2 steps not supported yet"
-    #.......................................................................................................
-    new_index_phrase = ( tsbj, tprd, tobj, fprd, fobj, tsbj_is_list, idx = 0 ) =>
-      return [ [ tsbj..., tprd, idx, tobj, ], fprd, fobj, ] if tsbj_is_list
-      return [ [ tsbj,    tprd, idx, tobj, ], fprd, fobj, ]
-    #.......................................................................................................
-    link = ( phrases ) =>
-      throw new Error "indexes with anything but 2 steps not supported yet" if phrases.length != 2
-      [ from_phrase, to_phrase, ] = phrases
-      [ fsbj, fprd, fobj, ]       = from_phrase
-      [ tsbj, tprd, tobj, ]       =   to_phrase
-      tsbj_is_list                = CND.isa_list tsbj
-      from_is_plural              = arities[ 0 ] is 'plural'
-      to_is_plural                = arities[ 1 ] is 'plural'
-      #.....................................................................................................
-      unless from_is_plural or to_is_plural
-        return [ new_index_phrase tsbj, tprd, tobj, fprd, fobj, tsbj_is_list ]
-      #.....................................................................................................
-      idx = -1
-      R   = []
-      if from_is_plural
-        if to_is_plural
-          for sub_fobj in fobj
-            for sub_tobj in tobj
-              idx += +1
-              R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
-        else
-          for sub_fobj in fobj
-            idx += +1
-            R.push new_index_phrase tsbj, tprd, tobj, fprd, sub_fobj, tsbj_is_list, idx
-      else
-        for sub_tobj in tobj
-          idx += +1
-          R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, fobj, tsbj_is_list, idx
-      #.....................................................................................................
-      return R
-    #.......................................................................................................
-    return $ ( phrase, send ) =>
-      send phrase
-      [ sbj, prd, obj, ] = phrase
-      return unless ( prd_idx = predicates.indexOf prd ) >= 0
-      sbj_txt                       = JSON.stringify sbj
-      phrase_target                 = phrases[ sbj_txt]?= []
-      phrase_target[ prd_idx ]      = phrase
-      phrase_counts[ sbj_txt ]      = ( phrase_counts[ sbj_txt ] ? 0 ) + 1
-      return null if phrase_counts[ sbj_txt ] < predicate_count
-      #.....................................................................................................
-      send index_phrase for index_phrase in link phrases[ sbj_txt ]
-      return null
-  #.........................................................................................................
-  write_data = ( handler ) ->
-    input = D.create_throughstream()
-    #.......................................................................................................
-    input
-      .pipe $index 'reading':     'plural',   'similarity':  'plural'
-      .pipe $index 'reading':     'plural',   'variant':     'plural'
-      .pipe $index 'reading':     'plural',   'strokeorder': 'singular'
-      .pipe $index 'strokeorder': 'singular', 'reading':     'plural'
-      .pipe $index 'strokeorder': 'singular', 'variant':     'plural'
-      .pipe $index 'strokeorder': 'singular', 'similarity':  'plural'
-      .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
-        handler()
-    #.......................................................................................................
-    input.write [ [ '千', ], 'variant',     [ '仟', '韆',              ], ]
-    input.write [ [ '千', ], 'similarity',  [ '于', '干',              ], ]
-    input.write [ [ '千', ], 'usagecode',   'CJKTHM',                    ]
-    input.write [ [ '千', ], 'strokeorder', '312',                       ]
-    input.write [ [ '千', ], 'reading',     [ 'qian', 'foo', 'bar',   ], ]
-    input.write [ [ '仟', ], 'strokeorder', '32312',                     ]
-    input.write [ [ '仟', ], 'usagecode',   'CJKTHm',                    ]
-    input.write [ [ '仟', ], 'reading',     [ 'qian',                 ], ]
-    input.write [ [ '韆', ], 'strokeorder', '122125112125221134515454',  ]
-    input.write [ [ '韆', ], 'usagecode',   'KTHm',                      ]
-    input.write [ [ '韆', ], 'reading',     [ 'qian',                 ], ]
-    #.......................................................................................................
-    input.end()
-  #.........................................................................................................
-  matchers = [
-    ["pos","reading","bar",["千"],2]
-    ["pos","reading","bar",["千","similarity",4,"于"]]
-    ["pos","reading","bar",["千","similarity",5,"干"]]
-    ["pos","reading","bar",["千","strokeorder",2,"312"]]
-    ["pos","reading","bar",["千","variant",4,"仟"]]
-    ["pos","reading","bar",["千","variant",5,"韆"]]
-    ["pos","reading","foo",["千"],1]
-    ["pos","reading","foo",["千","similarity",2,"于"]]
-    ["pos","reading","foo",["千","similarity",3,"干"]]
-    ["pos","reading","foo",["千","strokeorder",1,"312"]]
-    ["pos","reading","foo",["千","variant",2,"仟"]]
-    ["pos","reading","foo",["千","variant",3,"韆"]]
-    ["pos","reading","qian",["仟"],0]
-    ["pos","reading","qian",["仟","strokeorder",0,"32312"]]
-    ["pos","reading","qian",["千"],0]
-    ["pos","reading","qian",["千","similarity",0,"于"]]
-    ["pos","reading","qian",["千","similarity",1,"干"]]
-    ["pos","reading","qian",["千","strokeorder",0,"312"]]
-    ["pos","reading","qian",["千","variant",0,"仟"]]
-    ["pos","reading","qian",["千","variant",1,"韆"]]
-    ["pos","reading","qian",["韆"],0]
-    ["pos","reading","qian",["韆","strokeorder",0,"122125112125221134515454"]]
-    ["pos","similarity","于",["千"],0]
-    ["pos","similarity","干",["千"],1]
-    ["pos","strokeorder","122125112125221134515454",["韆"]]
-    ["pos","strokeorder","122125112125221134515454",["韆","reading",0,"qian"]]
-    ["pos","strokeorder","312",["千"]]
-    ["pos","strokeorder","312",["千","reading",0,"qian"]]
-    ["pos","strokeorder","312",["千","reading",1,"foo"]]
-    ["pos","strokeorder","312",["千","reading",2,"bar"]]
-    ["pos","strokeorder","312",["千","similarity",0,"于"]]
-    ["pos","strokeorder","312",["千","similarity",1,"干"]]
-    ["pos","strokeorder","312",["千","variant",0,"仟"]]
-    ["pos","strokeorder","312",["千","variant",1,"韆"]]
-    ["pos","strokeorder","32312",["仟"]]
-    ["pos","strokeorder","32312",["仟","reading",0,"qian"]]
-    ["pos","usagecode","CJKTHM",["千"]]
-    ["pos","usagecode","CJKTHm",["仟"]]
-    ["pos","usagecode","KTHm",["韆"]]
-    ["pos","variant","仟",["千"],0]
-    ["pos","variant","韆",["千"],1]
-    ]
-  #.........................................................................................................
-  show = ( handler ) ->
-    query = { prefix: [ 'pos', ], star: '*', }
-    input = HOLLERITH.create_phrasestream db, query
-    input
-      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
-      #.....................................................................................................
-      .pipe do =>
-        idx = -1
-        return D.$observe ( phrase ) =>
-          idx += +1
-          T.eq phrase, matchers[ idx ]
-      #.....................................................................................................
-      .pipe D.$on_end -> handler()
-  #.........................................................................................................
-  step ( resume ) =>
-    yield clear_leveldb db[ '%self' ], resume
-    yield write_data resume
-    yield show resume
-    done()
-
-#-----------------------------------------------------------------------------------------------------------
-@[ "n-ary indexing (2)" ] = ( T, done ) ->
+@[ "(v4) n-ary indexing (2)" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) =>
     input = D.create_throughstream()
@@ -2444,17 +2035,18 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   show = ( handler ) ->
     query = { prefix: [ 'pos', ], star: '*', }
+    # query = {}
     input = HOLLERITH.create_phrasestream db, query
     input
-      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
+      .pipe D.$observe ( phrase ) => info '5543', JSON.stringify phrase
       .pipe do =>
         idx = -1
         return D.$observe ( phrase, has_ended ) =>
-          if phrase?
-            idx += +1
-            T.eq phrase, matchers[ idx ]
+          # if phrase?
+          #   idx += +1
+          #   T.eq phrase, matchers[ idx ]
           if has_ended
-            T.eq idx, matchers.length - 1
+          #   T.eq idx, matchers.length - 1
             handler()
           return null
   #.........................................................................................................
@@ -2909,16 +2501,22 @@ clear_leveldb = ( leveldb, handler ) ->
 #-----------------------------------------------------------------------------------------------------------
 @[ "(v4) create_longphrasestream accepts legal arguments" ] = ( T, done ) ->
   probes = [
-    ( -> HOLLERITH.create_longphrasestream db, lo: [ 'xxx', ], hi: [ 'xxx', ] )
-    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx', ] )
-    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx', ], star: '*' )
-    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx', ], star: '*', unbox: yes )
-    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx', ], star: '*', flatten: yes )
-    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx', ], star: '*', unbox: no, flatten: yes )
+    { lo: [ 'xxx', ], hi: [ 'xxx', ],                         }
+    { prefix: [ 'xxx', ],                                     }
+    { prefix: [ 'xxx', ], star: '*',                          }
+    { prefix: [ 'xxx', ], star: '*', unbox: yes,              }
+    { prefix: [ 'xxx', ], star: '*', flatten: yes,            }
+    { prefix: [ 'xxx', ], star: '*', unbox: no, flatten: yes, }
+    { unbox: yes,                                             }
+    { unbox: yes, flatten: no,                                }
+    { flatten: no,                                            }
     ]
   for probe, probe_idx in probes
     ### thx to German Attanasio http://stackoverflow.com/a/28564000/256361 ###
-    T.ok probe() instanceof ( require 'stream' ).Stream
+    try
+      T.ok ( HOLLERITH.create_longphrasestream db, probe ) instanceof ( require 'stream' ).Stream
+    catch error
+      T.fail "#{rpr probe} fails with '#{error[ 'message' ]}'"
   done()
 
 
@@ -2985,13 +2583,12 @@ unless module.parent?
     # "$write rejects duplicate S/P pairs"
     # "codec accepts long keys"
     # "write private types (1)"
-    # "(v4) use non-string subjects in phrases (1)"
-    # # "use non-string subjects in phrases (2)"
-    # # "use non-string subjects in phrases (3)"
-    # # "use non-string subjects in phrases (4)"
+    "(v4) use non-string subjects in phrases (1)"
+    "(v4) secondary indexing, manual"
+    "(v4) secondary indexing, API"
     # # "binary indexing"
     # # "n-ary indexing (1)"
-    # # "n-ary indexing (2)"
+    "(v4) n-ary indexing (2)"
     # # # "Pinyin Unicode Sorting"
     # # # "ensure `Buffer.compare` gives same sorting as LevelDB"
     # "(v4) values are `0x00` buffers"
@@ -3000,8 +2597,8 @@ unless module.parent?
     # "(v4) read POS phrases (sbj is a list)"
     # "(v4) read POS phrases (sbj isn't a list)"
     # "(v4) read POS phrases (sbj is a singleton list)"
-    "(v4) create_longphrasestream rejects illegal arguments"
-    "(v4) create_longphrasestream accepts legal arguments"
+    # "(v4) create_longphrasestream rejects illegal arguments"
+    # "(v4) create_longphrasestream accepts legal arguments"
     # "(v4) read normalized phrases"
     # # "dddddddddddddddddd"
     # # "eeeeeeeeeeeeeeeeee"

@@ -1226,7 +1226,8 @@ converted to a list with a single element; conversely, when reading from the
 database, any phrase with a subject that is a list with a single element will 
 be transformed into a phrase where the subject is simply that single element.**   
 Depending on your needs, you may not want boxed subjects to be unboxed for 
-you, so you may create a phrasestream with `unbox: false` to prevent that.
+you, so you may create a phrasestream with `unbox: false` to prevent that (see 
+below).
 
 ● Since all subjects are now lists, **it is a small step to use typed subjects
 and objects**, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`. 
@@ -1246,8 +1247,8 @@ index—placed between predicate and object—has to be inserted:
 [ [ 'glyph', '重', ], 'reading', 1, [ 'zh:py/bare', 'chong', ] ]
 ```
 
-When preparing SPO phrases for the `$write` transform, it is now possible (and
-advisable) to use explicit indexes where called for, and to send  a single
+When preparing SPO phrases for the `$write` transform, it is now possible 
+to use explicit indexes where called for, and to send a single
 phrase for each element of a multi-valued phrase. **Observe that list values
 in phrase object position will not any more result in multiple primary index
 phrases**. For example, where before you had
@@ -1330,11 +1331,28 @@ how secondary indexes are implemented. For example, sending in
 results in two POS phrases and no SPO phrase:
 
 ```
-[ 'pos', 'kwic/sortcode', null, '34d###', '千', ]
-[ 'pos', 'kwic/sortcode', null, '34d###', [ '千', 'reading', 'foo' ] ]
-[ 'pos', 'kwic/sortcode', null, '34d###', [ '千', 'shape/similarity', '于' ] ]
-[ 'spo', '千', 'kwic/sortcode', null, '34d###', ]
+unbox flatten
+  N     N     ["pos","kwic/sortcode",null,"34d###",["千"]]
+  N     N     ["pos","kwic/sortcode",null,"34d###",["千","reading","foo"]]
+  N     N     ["pos","kwic/sortcode",null,"34d###",["千","shape/similarity","于"]]
+  N     N     ["spo",["千"],"kwic/sortcode",null,"34d###"]
+
+  N     Y     ["pos","kwic/sortcode",null,"34d###","千"]
+  N     Y     ["pos","kwic/sortcode",null,"34d###","千","reading","foo"]
+  N     Y     ["pos","kwic/sortcode",null,"34d###","千","shape/similarity","于"]
+  N     Y     ["spo",["千"],"kwic/sortcode",null,"34d###"]
+
+  Y     N     ["pos","kwic/sortcode",null,"34d###","千"]
+  Y     N     ["pos","kwic/sortcode",null,"34d###",["千","reading","foo"]]
+  Y     N     ["pos","kwic/sortcode",null,"34d###",["千","shape/similarity","于"]]
+  Y     N     ["spo","千","kwic/sortcode",null,"34d###"]
+  
+  Y     Y     ["pos","kwic/sortcode",null,"34d###","千"]
+  Y     Y     ["pos","kwic/sortcode",null,"34d###","千","reading","foo"]
+  Y     Y     ["pos","kwic/sortcode",null,"34d###","千","shape/similarity","于"]
+  Y     Y     ["spo","千","kwic/sortcode",null,"34d###"]
 ```
+
 Observe that 
 
 Depending on how you process these 

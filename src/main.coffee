@@ -335,6 +335,7 @@ step                      = ( require 'coffeenode-suspend' ).step
 # HIGHER-ORDER INDEXING
 #-----------------------------------------------------------------------------------------------------------
 @$index = ( descriptions ) =>
+  throw new Error "deprecated"
   ### TAINT For the time being, we only support secondary indexes, and the implementation is not at all
   written in a generic fashion. A future version will likely support tertiary indexes, but that will
   necessitate waiting for the end of the write stream and re-reading all the records. ###
@@ -403,6 +404,65 @@ step                      = ( require 'coffeenode-suspend' ).step
     return null if phrase_counts[ sbj_txt ] < predicate_count
     #.......................................................................................................
     send index_phrase for index_phrase in link phrases[ sbj_txt ]
+    return null
+
+#-----------------------------------------------------------------------------------------------------------
+@$index_v4 = ( db, predicates... ) =>
+  ### TAINT For the time being, we only support secondary indexes, and the implementation is not at all
+  written in a generic fashion. A future version will likely support tertiary indexes, but that will
+  necessitate waiting for the end of the write stream and re-reading all the records. ###
+  #.........................................................................................................
+  if predicates.length isnt 2
+    throw new Error "only indexes with exactly 2 steps supported at this time"
+  #.........................................................................................................
+  phrases         = []
+  phrase_counts   = {}
+  #.........................................................................................................
+  if is_retro_index = predicates[ 0 ] is predicates[ 1 ]
+    predicates.pop()
+    phrases.push {}
+    predicate_count = 2
+  else
+    phrases.push {} for predicate in predicates
+  #.........................................................................................................
+  new_index_phrase = ( fphrase, tphrase ) =>
+    [ fsubj, fprd, fidx, fobj, ]  = fphrase
+    [ tsubj, tprd, tidx, tobj, ]  = tphrase
+    return [ [ tsbj, tprd, tidx, tobj, ], fprd, fidx, fobj, ]
+  #.........................................................................................................
+  link = ( phrases ) =>
+    [ from_phrase, to_phrase, ] = phrases
+    [ fsbj, fprd, fobj, ]       = from_phrase
+    [ tsbj, tprd, tobj, ]       =   to_phrase
+    tsbj_is_list                = CND.isa_list tsbj
+    #.......................................................................................................
+    for sub_fobj in fobj
+      for sub_tobj in tobj
+        idx += +1
+        R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
+    #.......................................................................................................
+    return R
+  #.........................................................................................................
+  return $ ( phrase, send, end ) =>
+    if phrase?
+      send phrase
+      [ sbj, prd, idx, obj, ] = phrase
+      return unless ( prd_idx = predicates.indexOf prd ) >= 0
+      # if is_retro_index
+      sbj_txt                       = JSON.stringify sbj
+      phrase_target                 = phrases[ sbj_txt]?= []
+      phrase_target[ prd_idx ]      = phrase
+      phrase_counts[ sbj_txt ]      = ( phrase_counts[ sbj_txt ] ? 0 ) + 1
+      return null if phrase_counts[ sbj_txt ] < predicate_count
+    #.......................................................................................................
+    debug '5543', phrases[ sbj_txt ]
+    # send index_phrase for index_phrase in link phrases[ sbj_txt ]
+    #.......................................................................................................
+    if end?
+      # if is_retro_index
+        # send index_phrase for index_phrase in link phrases[ sbj_txt ]
+      end()
+    #.......................................................................................................
     return null
 
 
@@ -498,31 +558,41 @@ step                      = ( require 'coffeenode-suspend' ).step
     has_lo      = 'lo'     in keys
     has_hi      = 'hi'     in keys
     has_star    = 'star'   in keys
+    star        = query[ 'star'   ] ? null
+    prefix      = query[ 'prefix' ] ? null
     #.......................................................................................................
     unless CND.is_subset keys, legal_keys
       legal_keys  = ( rpr key for key in legal_keys ).join ', '
       keys        = ( rpr key for key in       keys ).join ', '
       throw new Error "legal query keys are #{legal_keys}, got #{keys}"
     #.......................................................................................................
-    if ( not has_prefix ) and ( not has_lo or not has_hi )
-      keys        = ( rpr key for key in       keys ).join ', '
-      throw new Error "must use either 'prefix' or 'hi' and 'lo', got #{keys}"
+    if ( not has_prefix ) and ( not has_lo ) and ( not has_hi )
+      has_prefix  = yes
+      prefix      = []
+      has_star    = yes
+      star        = '*'
     #.......................................................................................................
-    if ( has_lo or has_hi ) and ( has_star )
-      throw new Error "illegal to use 'star' with 'lo' or 'hi'" if query[ 'star' ]?
-    #.......................................................................................................
-    if ( has_star ) and ( query[ 'star' ] isnt '*' )
-      throw new Error "expected 'star' to be '*', got #{rpr query[ 'star' ]}"
-    #.......................................................................................................
-    if ( has_prefix ) and ( has_lo or has_hi )
-      throw new Error "illegal to use 'hi' or 'lo' together with 'prefix'"
-    #.......................................................................................................
-    if ( has_lo and not has_hi ) or ( has_hi and not has_lo )
-      throw new Error "illegal to use only one of 'hi' or 'lo'"
+    else
+      #.....................................................................................................
+      if ( not has_prefix ) and ( not has_lo or not has_hi )
+        keys        = ( rpr key for key in       keys ).join ', '
+        throw new Error "must use either 'prefix' or 'hi' and 'lo', got #{keys}"
+      #.....................................................................................................
+      if ( has_lo or has_hi ) and ( has_star )
+        throw new Error "illegal to use 'star' with 'lo' or 'hi'"
+      #.....................................................................................................
+      if ( has_star ) and ( star isnt '*' )
+        throw new Error "expected 'star' to be '*', got #{rpr star}"
+      #.....................................................................................................
+      if ( has_prefix ) and ( has_lo or has_hi )
+        throw new Error "illegal to use 'hi' or 'lo' together with 'prefix'"
+      #.....................................................................................................
+      if ( has_lo and not has_hi ) or ( has_hi and not has_lo )
+        throw new Error "illegal to use only one of 'hi' or 'lo'"
     #.......................................................................................................
     if has_prefix
-      lo_hint = query[ 'prefix' ]
-      hi_hint = if has_star then '*' else null
+      lo_hint = prefix
+      hi_hint = star if has_star
     #.......................................................................................................
     else
       lo_hint = query[ 'lo' ]
