@@ -54,6 +54,9 @@ ASYNC                     = require 'async'
 #===========================================================================================================
 # HELPERS
 #-----------------------------------------------------------------------------------------------------------
+isa_stream = ( x ) -> x instanceof ( require 'stream' ).Stream
+
+#-----------------------------------------------------------------------------------------------------------
 show_keys_and_key_bfrs = ( keys, key_bfrs ) ->
   f = ( p ) -> ( t for t in ( p.toString 'hex' ).split /(..)/ when t isnt '' ).join ' '
   #.........................................................................................................
@@ -2522,7 +2525,7 @@ clear_leveldb = ( leveldb, handler ) ->
   for probe, probe_idx in probes
     ### thx to German Attanasio http://stackoverflow.com/a/28564000/256361 ###
     try
-      T.ok ( HOLLERITH.create_longphrasestream db, probe ) instanceof ( require 'stream' ).Stream
+      T.ok isa_stream HOLLERITH.create_longphrasestream db, probe
     catch error
       T.fail "#{rpr probe} fails with '#{error[ 'message' ]}'"
   done()
@@ -2591,9 +2594,9 @@ unless module.parent?
     # "$write rejects duplicate S/P pairs"
     # "codec accepts long keys"
     # "write private types (1)"
-    "(v4) use non-string subjects in phrases (1)"
-    "(v4) secondary indexing, manual"
-    "(v4) secondary indexing, API"
+    # "(v4) use non-string subjects in phrases (1)"
+    # "(v4) secondary indexing, manual"
+    # "(v4) secondary indexing, API"
     # # "binary indexing"
     # # "n-ary indexing (1)"
     # "(v4) n-ary indexing (2)"
