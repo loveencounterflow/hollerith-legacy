@@ -998,7 +998,7 @@ brings to the table anyway—lists of values.
 
 Let's say you had two kinds of data about Chinese characters: what they're read like
 (using a simplified, non-tonal Pinyin transcription), and what other characters a
-given character looks similar two. We can capture this knowledge in two sets
+given character looks similar to. We can capture this knowledge in two sets
 of phrases; the first captures the pronunciations *qian* for 千, *yu* for
 于, and *gan* for 干; for good measure, I've thrown in another data point for 人:
 
@@ -1062,10 +1062,10 @@ dictionary.
 > of US ASCII chose to encode these letters in the way they did; when you throw
 > in the accented letters needed to write tonal Pinyin (or words from any
 > language with letters outside of `[a-z]`), that property is, in general, lost:
-> the accented letters needed for Pinyin sort lexicographically as 
+> the accented letters needed for Pinyin sort lexicographically as
 > `aeiouàáèéìíòóùúüāēěīōūǎǐǒǔǖǘǚǜ`, which is probably not what you want.
 > Coming to think of it, it *might* be a good idea to implement locale- or
-> use-case specific encodings for strings to Hollerith. 
+> use-case specific encodings for strings to Hollerith.
 
 Now if we wanted to build a dictionary with characters ordered by Pinyin that
 cross-references similar characters, one approach would be to iterate over those
@@ -1108,7 +1108,7 @@ is interesting if you want to have those entries to appear in a specific order:
 ```
 
 **④** Now add the predicate and object that you want the OP to appear below when
-dumping POS (Predicate—Object—Subject) phrases: 
+dumping POS (Predicate—Object—Subject) phrases:
 
 ```coffee
 # Subject                                     Predicate           Object
@@ -1119,11 +1119,11 @@ dumping POS (Predicate—Object—Subject) phrases:
 
 Here's a complete dump of our small database so far; the SPO phrases are greyed
 out to highlight the part where the action is going on: When we iterate over
-all phrases that start with the prefix `[ 'pos', 'reading/py/base', ...`, we'll 
+all phrases that start with the prefix `[ 'pos', 'reading/py/base', ...`, we'll
 get to see the three head entries for our three characters *gan* 干, *qian* 千,
-*yu* 于, in the order of their readings; in between each character and the 
+*yu* 于, in the order of their readings; in between each character and the
 beginning of the next head entry are sandwiched secondary entries with additional
-data: 
+data:
 
 ```coffee
   [ 'pos', 'reading/py/base', 'gan',  [ '干',                           ], 0, ]
@@ -1154,14 +1154,14 @@ before any strings. Therefore, plain phrases  with strings as subjects like `[
 'so', ], 'p', 'o', ]`, which is not what we want.
 
 > As a side-effect, subjects-as-lists open up a straightforward avenue to putting
-> type information into the subject. We can now be more specific and write, say, 
-> `[ 'character', '干', ]` for the subject. 
+> type information into the subject. We can now be more specific and write, say,
+> `[ 'character', '干', ]` for the subject.
 
-<!-- 
+<!--
 > Observe that with this addition, the
 > phrase subject now looks like a predicate / object pair, i.e. we could
 > re-conceptualize phrases as `[ s, o, ]` pairs with `s = [ sp, so, ]` and
-> `o = [ op, oo, ]` 
+> `o = [ op, oo, ]`
  -->
 
 We are, alas, not quite yet ready at this point. Our DB contains three
@@ -1200,13 +1200,13 @@ characters and see what happens. This is the data we start with:
 * Since entire phrases like `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`
   will be stored in the key, retrieving what reading a given glyph has cannot
   be done by using the LevelDB `get` operation; instead, `get` is implmented internally
-  by iterating over a prefix stream that contains all keys that match 
+  by iterating over a prefix stream that contains all keys that match
   ``[ [ 'glyph', '月', ], 'reading', ...`.
 
 * With phrases-as-keys, it becomes possible to store any number of facts about
   a given subject / predicate pair as long as objects are distinct, without having
-  to use an index. Without an index, object values will be retrieved in lexicographic 
-  order; to implement repeated objects and / or a 
+  to use an index. Without an index, object values will be retrieved in lexicographic
+  order; to implement repeated objects and / or a
   specific ordering other than lexicographic, an explicit index between predicate
   and object or between object type and object value may be inserted:
 
@@ -1220,7 +1220,7 @@ characters and see what happens. This is the data we start with:
 
 * Indexing phrases will not be stored in SPO form anymore.
 
-<!-- 
+<!--
 
 ```
 so|glyph:字|gloss:letter, character, word|o:0
