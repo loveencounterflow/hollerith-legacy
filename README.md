@@ -1188,8 +1188,9 @@ characters and see what happens. This is the data we start with:
 ### @read_sub = ( db, settings, read ) ->
 
 
+## Plans for v4
 
-## Plans for Version 3
+exp
 
 * Both SPO and POS phrases will be stored in the LevelDB key; the LevelDB value
   is not used, turning a Hollerith DB into a 'keys-only' store.
