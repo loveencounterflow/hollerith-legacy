@@ -1,7 +1,7 @@
 {
   "version": 3,
   "file": "demo.js",
-  "sourceRoot": "../../hollerith",
+  "sourceRoot": "..",
   "sources": [
     "src/demo.coffee"
   ],
