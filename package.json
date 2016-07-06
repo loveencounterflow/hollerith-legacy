@@ -22,7 +22,7 @@
   },
   "scripts": {
     "build": "coffee --map -o lib -c src",
-    "push": "git add . && git commit -m'update' && git push -u origin master",
+    "push": "git add . && git commit -m'update' && git push",
     "pub": "npm run build && npm run push && npm version patch && npm publish",
     "test": "npm run build && node lib/tests.js"
   },
