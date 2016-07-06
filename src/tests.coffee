@@ -136,7 +136,7 @@ clear_leveldb = ( leveldb, handler ) ->
   step ( resume ) =>
     yield HOLLERITH.clear db, resume
     whisper "writing test dataset ##{probes_idx} with settings #{rpr settings}"
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     switch probes_idx
       #-----------------------------------------------------------------------------------------------------
@@ -1089,7 +1089,7 @@ clear_leveldb = ( leveldb, handler ) ->
   write_probes = ( handler ) =>
     step ( resume ) =>
       yield HOLLERITH.clear db, resume
-      input = D.create_throughstream()
+      input = D.new_stream()
       input
         # .pipe ( [ sbj, prd, obj, ], send ) =>
         #   if prd is 'some-predicate' # always the case in this example
@@ -1239,7 +1239,7 @@ clear_leveldb = ( leveldb, handler ) ->
     T.eq error[ 'message' ], "invalid SPO key, must be list: 'xxx'"
     later done
   domain.run ->
-    input   = D.create_throughstream()
+    input   = D.new_stream()
     input
       .pipe HOLLERITH.$write db
       .pipe D.$on_end ->
@@ -1256,7 +1256,7 @@ clear_leveldb = ( leveldb, handler ) ->
     T.eq error[ 'message' ], "invalid SPO key, must be of length 3: [ 'foo' ]"
     done()
   domain.run ->
-    input   = D.create_throughstream()
+    input   = D.new_stream()
     input.pipe HOLLERITH.$write db
     input.write [ 'foo', ]
 
@@ -1270,7 +1270,7 @@ clear_leveldb = ( leveldb, handler ) ->
       method()
   #.........................................................................................................
   f = ->
-    input   = D.create_throughstream()
+    input   = D.new_stream()
     input
       .pipe HOLLERITH.$write db
       .pipe D.$on_end ->
@@ -1286,7 +1286,7 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "catching errors (1)" ] = ( T, done ) ->
   #.........................................................................................................
   d = D.run ->
-    input   = D.create_throughstream()
+    input   = D.new_stream()
     input
       .pipe HOLLERITH.$write db
       .pipe D.$on_end ->
@@ -1302,7 +1302,7 @@ clear_leveldb = ( leveldb, handler ) ->
   message = "should not produce error"
   #.........................................................................................................
   d = D.run ->
-    input   = D.create_throughstream()
+    input   = D.new_stream()
     input
       .pipe HOLLERITH.$write db
       .pipe D.$on_end ->
@@ -1378,7 +1378,7 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "keep ordering and completeness in asynchronous streams" ] = ( T, T_done ) ->
   step ( resume ) =>
     idx     = 0
-    input_A = D.create_throughstream()
+    input_A = D.new_stream()
     #.......................................................................................................
     input_B = input_A
       .pipe D.$stop_time "keep ordering and completeness in asynchronous streams"
@@ -1452,7 +1452,7 @@ clear_leveldb = ( leveldb, handler ) ->
     yield @_feed_test_data db, probes_idx, resume
     #.......................................................................................................
     try_writing = ->
-      input = D.create_throughstream()
+      input = D.new_stream()
       #.....................................................................................................
       input
         .pipe D.$show()
@@ -1483,7 +1483,7 @@ clear_leveldb = ( leveldb, handler ) ->
     yield @_feed_test_data db, probes_idx, resume
     #.......................................................................................................
     try_writing = ->
-      input = D.create_throughstream()
+      input = D.new_stream()
       #.....................................................................................................
       input
         # .pipe D.$show()
@@ -1520,7 +1520,7 @@ clear_leveldb = ( leveldb, handler ) ->
     ]
   #.........................................................................................................
   write_data = ( handler ) =>
-    input = D.create_throughstream()
+    input = D.new_stream()
     input
       # .pipe D.$show()
       .pipe HOLLERITH.$write db
@@ -1579,7 +1579,7 @@ clear_leveldb = ( leveldb, handler ) ->
     ]
   #.........................................................................................................
   write_data = ( handler ) =>
-    input = D.create_throughstream()
+    input = D.new_stream()
     input
       # .pipe D.$show()
       .pipe HOLLERITH.$write xdb
@@ -1645,7 +1645,7 @@ clear_leveldb = ( leveldb, handler ) ->
     ]
   #.........................................................................................................
   write_data = ( handler ) =>
-    input = D.create_throughstream()
+    input = D.new_stream()
     input
       # .pipe D.$show()
       .pipe HOLLERITH.$write xdb
@@ -1691,7 +1691,7 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "Pinyin Unicode Sorting" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db
@@ -1798,7 +1798,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
     IDX   = Symbol.for 'index'
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
@@ -1887,7 +1887,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
     IDX   = Symbol.for 'index'
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
@@ -1963,7 +1963,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
     IDX   = Symbol.for 'index'
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
     # .pipe HOLLERITH.$index_v4 db, 'reading', 'reading'
@@ -2012,7 +2012,7 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "(v4) n-ary indexing (2)" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) =>
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       # .pipe HOLLERITH.$index 'reading':     'plural',   'similarity':  'plural'
@@ -2072,7 +2072,7 @@ clear_leveldb = ( leveldb, handler ) ->
   matcher = new Buffer '\x00'
   #.........................................................................................................
   write_data = ( handler ) ->
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
@@ -2100,7 +2100,7 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "(v4) store SPO, POS both as keys only" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
@@ -2144,7 +2144,7 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "(v4) store non-list subject as single-element list" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
@@ -2187,7 +2187,7 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "(v4) read POS phrases (sbj is a list)" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
@@ -2258,7 +2258,7 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "(v4) read POS phrases (sbj isn't a list)" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
@@ -2302,11 +2302,14 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "(v4) read POS phrases (sbj is a singleton list)" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end => handler()
+      # .pipe D.$on_finish handler
+      .pipe D.$on_finish =>
+        debug '0442', "finished writing"
+        handler()
     #.......................................................................................................
     input.write [ [ '千', ], 'variant',     '仟',      ]
     input.write [ [ '千', ], 'variant',     '韆',      ]
@@ -2335,7 +2338,7 @@ clear_leveldb = ( leveldb, handler ) ->
           if has_ended
             T.eq idx, matchers.length - 1
       #.....................................................................................................
-      .pipe D.$on_end => handler()
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -2352,7 +2355,7 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "dddddddddddddddddd" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
@@ -2414,7 +2417,7 @@ clear_leveldb = ( leveldb, handler ) ->
 @[ "eeeeeeeeeeeeeeeeee" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
-    input = D.create_throughstream()
+    input = D.new_stream()
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
@@ -2602,15 +2605,15 @@ unless module.parent?
     # "(v4) n-ary indexing (2)"
     # # # "Pinyin Unicode Sorting"
     # # # "ensure `Buffer.compare` gives same sorting as LevelDB"
-    "(v4) values are `0x00` buffers"
-    "(v4) store SPO, POS both as keys only"
-    "(v4) store non-list subject as single-element list"
-    "(v4) read POS phrases (sbj is a list)"
-    "(v4) read POS phrases (sbj isn't a list)"
+    # "(v4) values are `0x00` buffers"
+    # "(v4) store SPO, POS both as keys only"
+    # "(v4) store non-list subject as single-element list"
+    # "(v4) read POS phrases (sbj is a list)"
+    # "(v4) read POS phrases (sbj isn't a list)"
+    # "(v4) create_longphrasestream rejects illegal arguments"
+    # "(v4) create_longphrasestream accepts legal arguments"
+    # "(v4) read normalized phrases"
     "(v4) read POS phrases (sbj is a singleton list)"
-    "(v4) create_longphrasestream rejects illegal arguments"
-    "(v4) create_longphrasestream accepts legal arguments"
-    "(v4) read normalized phrases"
     # "dddddddddddddddddd"
     # "eeeeeeeeeeeeeeeeee"
     ]

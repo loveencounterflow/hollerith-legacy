@@ -181,23 +181,24 @@ step                      = ( require 'coffeenode-suspend' ).step
   loner_predicates  = settings[ 'loners' ] ? []
   ensure_unique     = settings[ 'unique' ] ? true
   substrate         = db[ '%self' ]
-  R                 = D.create_throughstream()
   batch_written     = null
   #.........................................................................................................
   is_integer = ( x ) -> ( x? ) and ( x is parseInt x )
   #.........................................................................................................
   $add_secondary_index = =>
     cache = []
-    return $async ( phrase, send, end ) =>
+    return $async ( phrase, send ) =>
+      debug '7765-1', phrase
       if phrase?
         return send phrase unless phrase[ 0 ] is Symbol.for 'make-secondary-index'
         [ _, db, predicates, ] = phrase
         cache.push { db, predicates, }
       if end?
         @_add_secondary_index entry... for entry in cache
-        end()
+        send.done()
   #.........................................................................................................
   $add_primary_index = => $ ( spo, send ) =>
+    debug '7765-2', spo
     index_only = no
     if spo[ 0 ] is Symbol.for 'index'
       spo.shift()
@@ -238,11 +239,11 @@ step                      = ( require 'coffeenode-suspend' ).step
   pipeline.push $add_primary_index()
   pipeline.push $encode()
   pipeline.push D.$batch batch_size
+  pipeline.push D.$show()
   pipeline.push $write()
   # pipeline.push $save_bloom()         if ensure_unique
   #.........................................................................................................
-  R = R.pipe D.combine pipeline...
-  return R
+  return D.new_stream { pipeline }
 
 #-----------------------------------------------------------------------------------------------------------
 @validate_spo = ( spo ) ->

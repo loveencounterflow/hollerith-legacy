@@ -5,20 +5,20 @@
   "main": "lib/main.js",
   "dependencies": {
     "async": "^1.5.2",
-    "cnd": "^3.2.0",
+    "cnd": "^4.1.1",
     "coffeenode-suspend": "^0.1.11",
     "commander": "^2.9.0",
-    "hollerith-codec": "^1.2.3",
+    "hollerith-codec": "^1.2.4",
     "kwic": "^1.0.17",
     "level": "^1.4.0",
     "leveldown": "^1.4.6",
     "mkdirp": "^0.5.1",
     "ncr": "^1.0.0",
-    "pipedreams": "^3.0.9"
+    "pipedreams": "^4.0.3"
   },
   "devDependencies": {
     "coffeenode-chr": "^1.0.3",
-    "guy-test": "^1.2.1"
+    "guy-test": "^1.2.3"
   },
   "scripts": {
     "build": "coffee --map -o lib -c src",
