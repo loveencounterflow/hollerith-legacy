@@ -170,8 +170,6 @@ step                      = ( require 'coffeenode-suspend' ).step
 # WRITING
 #-----------------------------------------------------------------------------------------------------------
 @$write = ( db, settings ) ->
-  # ### TAINT currently loading and saving bloom filter each time a pipeline with `$write` is run ###
-  #.........................................................................................................
   settings         ?= {}
   ### Superficial experiments show that a much bigger batch size than 1'000 does not tend to improve
   throughput; therefore, in order to reduce memory footprint, it seems advisable to leave batch size
@@ -182,23 +180,26 @@ step                      = ( require 'coffeenode-suspend' ).step
   ensure_unique     = settings[ 'unique' ] ? true
   substrate         = db[ '%self' ]
   batch_written     = null
+  throw new Error "`unique` setting currently not supported" if ensure_unique
   #.........................................................................................................
   is_integer = ( x ) -> ( x? ) and ( x is parseInt x )
   #.........................................................................................................
   $add_secondary_index = =>
     cache = []
-    return $async ( phrase, send ) =>
+    return $async ( phrase, send, end ) =>
       debug '7765-1', phrase
       if phrase?
-        return send phrase unless phrase[ 0 ] is Symbol.for 'make-secondary-index'
+        return send.done phrase unless phrase[ 0 ] is Symbol.for 'make-secondary-index'
         [ _, db, predicates, ] = phrase
         cache.push { db, predicates, }
       if end?
         @_add_secondary_index entry... for entry in cache
+        end()
         send.done()
+    return null
   #.........................................................................................................
   $add_primary_index = => $ ( spo, send ) =>
-    debug '7765-2', spo
+    # debug '7765-2', spo
     index_only = no
     if spo[ 0 ] is Symbol.for 'index'
       spo.shift()
@@ -218,32 +219,23 @@ step                      = ( require 'coffeenode-suspend' ).step
     send [ 'pos',      prd, null, obj, sbj, ] if is_integer idx
   #.........................................................................................................
   $encode = => $ ( longphrase, send ) =>
-    send type: 'put', key: ( @_encode_key db, longphrase ), value: @_zero_value_bfr
+    send { type: 'put', key: ( @_encode_key db, longphrase ), value: @_zero_value_bfr, }
   #.........................................................................................................
-  $write = => $ ( batch, send ) =>
-    substrate.batch batch
-    batch_written()
-    send batch
-  #.........................................................................................................
-  if ensure_unique
-    throw new Error "`unique` setting currently not supported"
-    # { batch_written, $ensure_unique_sp, $load_bloom, $save_bloom, } = @_get_bloom_methods db
-  else
-    batch_written = ->
+  $write = => $async ( batch, send ) =>
+    substrate.batch batch, ->
+      send batch
+      send.done()
+    return null
   #.........................................................................................................
   pipeline = []
-  # pipeline.push $load_bloom()         if ensure_unique
   # pipeline.push @$validate_spo()
-  # pipeline.push $ensure_unique_sp()   if ensure_unique
-  pipeline.push $add_secondary_index()
+  # pipeline.push $add_secondary_index()
   pipeline.push $add_primary_index()
   pipeline.push $encode()
   pipeline.push D.$batch batch_size
-  pipeline.push D.$show()
   pipeline.push $write()
-  # pipeline.push $save_bloom()         if ensure_unique
   #.........................................................................................................
-  return D.new_stream { pipeline }
+  return D.new_stream { pipeline, }
 
 #-----------------------------------------------------------------------------------------------------------
 @validate_spo = ( spo ) ->
@@ -434,9 +426,9 @@ step                      = ( require 'coffeenode-suspend' ).step
     throw new Error "only indexes with exactly 2 steps supported at this time"
   #.........................................................................................................
   query   = { prefix: [ 'reading', ], star: '*', flatten: yes }
-  input   = @create_phrasestream db, query
+  input   = @new_phrasestream db, query
   input
-    .pipe D.$observe ( phrase ) => whisper '_add_secondary_index', phrase
+    .pipe $ ( phrase ) => whisper '_add_secondary_index', phrase if phrase
   # #.........................................................................................................
   # if predicates.length isnt 2
   #   throw new Error "only indexes with exactly 2 steps supported at this time"
@@ -496,8 +488,8 @@ step                      = ( require 'coffeenode-suspend' ).step
 #===========================================================================================================
 # READING
 #-----------------------------------------------------------------------------------------------------------
-@create_phrasestream = ( db, query, settings ) ->
-  R = @_create_phrasestream db, query, settings
+@new_phrasestream = ( db, query, settings ) ->
+  R = @_new_phrasestream db, query, settings
   # if query[ 'spo' ]
   #   R = R.pipe $ ( phrase, send ) =>
   #     [ phrasetype, tail..., ] = phrase
@@ -515,7 +507,7 @@ step                      = ( require 'coffeenode-suspend' ).step
       null
     else
       throw new Error "expected 2 or 3 arguments, got #{arity}"
-  return @_create_phrasestream db, query, handler
+  return @_new_phrasestream db, query, handler
 
 #-----------------------------------------------------------------------------------------------------------
 @read_one_phrase = ( db, query, handler ) ->
@@ -541,7 +533,7 @@ step                      = ( require 'coffeenode-suspend' ).step
     handler null, phrases[ 0 ]
 
 #-----------------------------------------------------------------------------------------------------------
-@_create_phrasestream = ( db, query, handler ) ->
+@_new_phrasestream = ( db, query, handler ) ->
   # switch arity = arguments.length
   #   when 3
   #     if CND.isa_function settings

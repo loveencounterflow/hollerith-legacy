@@ -525,7 +525,7 @@ clear_leveldb = ( leveldb, handler ) ->
     yield @_feed_test_data db, probes_idx, resume
     lo = [ 'pos', 'guide/lineup/length', 2, ]
     hi = [ 'pos', 'guide/lineup/length', 4, ]
-    input   = HOLLERITH.create_phrasestream db, { lo, hi, }
+    input   = HOLLERITH.new_phrasestream db, { lo, hi, }
     input
       .pipe $ ( phrase, send ) =>
         idx += +1
@@ -549,7 +549,7 @@ clear_leveldb = ( leveldb, handler ) ->
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     prefix    = [ 'pos', 'guide/uchr/has', ]
-    input     = HOLLERITH.create_phrasestream db, { prefix, }
+    input     = HOLLERITH.new_phrasestream db, { prefix, }
     settings  = { indexed: no, }
     input
       .pipe $ ( phrase, send ) =>
@@ -579,7 +579,7 @@ clear_leveldb = ( leveldb, handler ) ->
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     prefix  = [ 'spo', '𧷟', ]
-    input   = HOLLERITH.create_phrasestream db, { prefix, }
+    input   = HOLLERITH.new_phrasestream db, { prefix, }
     input
       .pipe $ ( phrase, send ) =>
         debug '©DsAfY', rpr phrase
@@ -1105,7 +1105,7 @@ clear_leveldb = ( leveldb, handler ) ->
   step ( resume ) =>
     #.......................................................................................................
     yield write_probes resume
-    input = HOLLERITH.create_phrasestream db
+    input = HOLLERITH.new_phrasestream db
     debug '©FphJK', input[ '%meta' ]
     input
       .pipe $ ( phrase, send ) =>
@@ -1147,8 +1147,8 @@ clear_leveldb = ( leveldb, handler ) ->
     yield @_feed_test_data db, probes_idx, resume
     # prefix    = [ 'pos', 'guide', ]
     prefix    = [ 'pos', 'guide', ]
-    input     = HOLLERITH.create_phrasestream db, { prefix, star: '*', }
-    # input     = HOLLERITH.create_phrasestream db, { prefix, }
+    input     = HOLLERITH.new_phrasestream db, { prefix, star: '*', }
+    # input     = HOLLERITH.new_phrasestream db, { prefix, }
     debug '©FphJK', input[ '%meta' ]
     settings  = { indexed: no, }
     input
@@ -1365,7 +1365,7 @@ clear_leveldb = ( leveldb, handler ) ->
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     prefix  = [ 'spo', ]
-    input   = HOLLERITH.create_phrasestream db, { prefix, }
+    input   = HOLLERITH.new_phrasestream db, { prefix, }
     input
       .pipe $shorten_spo()
       .pipe $consolidate()
@@ -1412,9 +1412,9 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
-    input_1     = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', 'strokecount'    ], }
-    input_2     = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', 'componentcount' ], }
-    input_3     = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', 'components'     ], }
+    input_1     = HOLLERITH.new_phrasestream db, { prefix: [ 'pos', 'strokecount'    ], }
+    input_2     = HOLLERITH.new_phrasestream db, { prefix: [ 'pos', 'componentcount' ], }
+    input_3     = HOLLERITH.new_phrasestream db, { prefix: [ 'pos', 'components'     ], }
     input_1
       .pipe D.$lockstep input_2, fallback: null
       .pipe D.$lockstep input_3, fallback: null
@@ -1532,7 +1532,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   read_data = ( handler ) ->
     #.......................................................................................................
-    input = HOLLERITH.create_phrasestream db
+    input = HOLLERITH.new_phrasestream db
     input
       # .pipe D.$show()
       .pipe $ ( phrase, send ) =>
@@ -1591,7 +1591,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   read_data = ( handler ) ->
     #.......................................................................................................
-    input = HOLLERITH.create_phrasestream xdb
+    input = HOLLERITH.new_phrasestream xdb
     input
       # .pipe D.$show()
       .pipe $ ( phrase, send ) =>
@@ -1657,7 +1657,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   read_data = ( handler ) ->
     #.......................................................................................................
-    input = HOLLERITH.create_phrasestream xdb
+    input = HOLLERITH.new_phrasestream xdb
     input
       # .pipe D.$show()
       .pipe $ ( phrase, send ) =>
@@ -1679,7 +1679,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   # step ( resume ) =>
   xdb   = HOLLERITH.new_db get_new_db_name()
-  input = HOLLERITH.create_phrasestream xdb
+  input = HOLLERITH.new_phrasestream xdb
   input.pause()
   input.pipe HOLLERITH.$write xdb
   input.resume()
@@ -1769,7 +1769,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   show = ( handler ) ->
     query = { prefix: [ 'pos', ], star: '*', }
-    input = HOLLERITH.create_phrasestream db, query
+    input = HOLLERITH.new_phrasestream db, query
     input
       .pipe do =>
         collector = []
@@ -1813,7 +1813,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   read = ( settings, handler ) ->
     Z = []
-    input = HOLLERITH.create_phrasestream db, settings
+    input = HOLLERITH.new_phrasestream db, settings
     input
       .pipe D.$observe ( phrase ) => Z.push phrase
       .pipe D.$on_end             => handler null, Z
@@ -1822,25 +1822,25 @@ clear_leveldb = ( leveldb, handler ) ->
     tasks = []
     #.......................................................................................................
     tasks.push ( handler ) =>
-      input = HOLLERITH.create_phrasestream db, unbox: no, flatten: no
+      input = HOLLERITH.new_phrasestream db, unbox: no, flatten: no
       input
         .pipe D.$observe ( phrase ) => urge '1 (ubx:n flt:n)', JSON.stringify phrase
         .pipe D.$on_end             => urge(); handler()
     #.......................................................................................................
     tasks.push ( handler ) =>
-      input = HOLLERITH.create_phrasestream db, unbox: no, flatten: yes
+      input = HOLLERITH.new_phrasestream db, unbox: no, flatten: yes
       input
         .pipe D.$observe ( phrase ) => urge '2 (ubx:n flt:y)', JSON.stringify phrase
         .pipe D.$on_end             => urge(); handler()
     #.......................................................................................................
     tasks.push ( handler ) =>
-      input = HOLLERITH.create_phrasestream db, unbox: yes, flatten: no
+      input = HOLLERITH.new_phrasestream db, unbox: yes, flatten: no
       input
         .pipe D.$observe ( phrase ) => urge '3 (ubx:y flt:n)', JSON.stringify phrase
         .pipe D.$on_end             => urge(); handler()
     #.......................................................................................................
     tasks.push ( handler ) =>
-      input = HOLLERITH.create_phrasestream db, unbox: yes, flatten: yes
+      input = HOLLERITH.new_phrasestream db, unbox: yes, flatten: yes
       input
         .pipe D.$observe ( phrase ) => urge '4 (ubx:y flt:y)', JSON.stringify phrase
         .pipe D.$on_end             => urge(); handler()
@@ -1945,7 +1945,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   show = ( handler ) ->
     #.......................................................................................................
-    input = HOLLERITH.create_phrasestream db#, flatten: yes
+    input = HOLLERITH.new_phrasestream db#, flatten: yes
     input
       .pipe D.$observe ( phrase ) =>
         ( if phrase[ 0 ] is 'pos' then urge else help ) JSON.stringify phrase
@@ -1995,7 +1995,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   show = ( handler ) ->
     #.......................................................................................................
-    input = HOLLERITH.create_phrasestream db, flatten: yes
+    input = HOLLERITH.new_phrasestream db, flatten: yes
     input
       .pipe D.$observe ( phrase ) =>
         ( if phrase[ 0 ] is 'pos' then urge else help ) JSON.stringify phrase
@@ -2047,7 +2047,7 @@ clear_leveldb = ( leveldb, handler ) ->
   show = ( handler ) ->
     query = { prefix: [ 'pos', ], star: '*', }
     # query = {}
-    input = HOLLERITH.create_phrasestream db, query
+    input = HOLLERITH.new_phrasestream db, query
     input
       .pipe D.$observe ( phrase ) => info '5543', JSON.stringify phrase
       .pipe do =>
@@ -2216,7 +2216,7 @@ clear_leveldb = ( leveldb, handler ) ->
     unboxed_has_ended = no
     #.......................................................................................................
     query = { prefix: [ 'pos', ], star: '*', }
-    input_boxed = HOLLERITH.create_phrasestream db, query
+    input_boxed = HOLLERITH.new_phrasestream db, query
     input_boxed
       .pipe D.$observe ( phrase ) => info rpr phrase # JSON.stringify phrase
       #.....................................................................................................
@@ -2233,7 +2233,7 @@ clear_leveldb = ( leveldb, handler ) ->
             return handler()# if unboxed_has_ended
     # #.......................................................................................................
     # query = { prefix: [ 'pos', ], star: '*', unbox: no, }
-    # input_unboxed = HOLLERITH.create_phrasestream db, query
+    # input_unboxed = HOLLERITH.new_phrasestream db, query
     # input_unboxed
     #   .pipe D.$observe ( phrase ) => info rpr phrase # JSON.stringify phrase
     #   #.....................................................................................................
@@ -2278,7 +2278,7 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   show = ( handler ) ->
     query = { prefix: [ 'pos', ], star: '*', }
-    input = HOLLERITH.create_phrasestream db, query
+    input = HOLLERITH.new_phrasestream db, query
     input
       .pipe D.$observe ( phrase ) => info JSON.stringify phrase
       .pipe do =>
@@ -2303,18 +2303,20 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
     input = D.new_stream()
+    # debug '3310', HOLLERITH.$write db, unique: no, batch: 1
     #.......................................................................................................
     input
-      .pipe HOLLERITH.$write db, unique: no
+      # .pipe $ ( data, send, end ) -> debug '8876-1', data?, end?; send data
+      .pipe D.$show()
+      .pipe HOLLERITH.$write db, unique: no, batch: 4
       # .pipe D.$on_finish handler
+      # .pipe $ ( data, send, end ) -> debug '8876-2', data?, end?; send data
       .pipe D.$on_finish =>
-        debug '0442', "finished writing"
         handler()
     #.......................................................................................................
     input.write [ [ '千', ], 'variant',     '仟',      ]
     input.write [ [ '千', ], 'variant',     '韆',      ]
     input.write [ [ '千', ], 'usagecode',   'CJKTHM',  ]
-    #.......................................................................................................
     input.end()
   #.........................................................................................................
   matchers = [
@@ -2325,17 +2327,17 @@ clear_leveldb = ( leveldb, handler ) ->
   #.........................................................................................................
   show = ( handler ) ->
     query = { prefix: [ 'pos', ], star: '*', }
-    input = HOLLERITH.create_phrasestream db, query
-    input
-      .pipe D.$observe ( phrase ) => info rpr phrase # JSON.stringify phrase
+    input = HOLLERITH.new_phrasestream db, query
+    pipeline = input
+      .pipe $ ( phrase ) => info rpr phrase if phrase?
       #.....................................................................................................
       .pipe do =>
         idx = -1
-        return D.$observe ( phrase, has_ended ) =>
+        return $ ( phrase ) =>
           if phrase?
             idx += +1
             T.eq phrase, matchers[ idx ]
-          if has_ended
+          else
             T.eq idx, matchers.length - 1
       #.....................................................................................................
       .pipe D.$on_finish handler
@@ -2392,8 +2394,8 @@ clear_leveldb = ( leveldb, handler ) ->
   matchers = []
   #.........................................................................................................
   show = ( handler ) ->
-    input = HOLLERITH.create_phrasestream db, { prefix: [], star: '*', }
-    # input = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', ], star: '*', }
+    input = HOLLERITH.new_phrasestream db, { prefix: [], star: '*', }
+    # input = HOLLERITH.new_phrasestream db, { prefix: [ 'pos', ], star: '*', }
     #.......................................................................................................
     input
       .pipe D.$observe ( phrase ) => info JSON.stringify phrase
@@ -2464,8 +2466,8 @@ clear_leveldb = ( leveldb, handler ) ->
   matchers = []
   #.........................................................................................................
   show = ( handler ) ->
-    # input = HOLLERITH.create_phrasestream db, { prefix: [], star: '*', }
-    input = HOLLERITH.create_phrasestream db, { prefix: [ 'pos', ], star: '*', }
+    # input = HOLLERITH.new_phrasestream db, { prefix: [], star: '*', }
+    input = HOLLERITH.new_phrasestream db, { prefix: [ 'pos', ], star: '*', }
     #.......................................................................................................
     input
       .pipe D.$observe ( phrase ) => info JSON.stringify phrase
@@ -2605,14 +2607,14 @@ unless module.parent?
     # "(v4) n-ary indexing (2)"
     # # # "Pinyin Unicode Sorting"
     # # # "ensure `Buffer.compare` gives same sorting as LevelDB"
-    # "(v4) values are `0x00` buffers"
-    # "(v4) store SPO, POS both as keys only"
-    # "(v4) store non-list subject as single-element list"
-    # "(v4) read POS phrases (sbj is a list)"
-    # "(v4) read POS phrases (sbj isn't a list)"
-    # "(v4) create_longphrasestream rejects illegal arguments"
-    # "(v4) create_longphrasestream accepts legal arguments"
-    # "(v4) read normalized phrases"
+    "(v4) values are `0x00` buffers"
+    "(v4) store SPO, POS both as keys only"
+    "(v4) store non-list subject as single-element list"
+    "(v4) read POS phrases (sbj is a list)"
+    "(v4) read POS phrases (sbj isn't a list)"
+    "(v4) create_longphrasestream rejects illegal arguments"
+    "(v4) create_longphrasestream accepts legal arguments"
+    "(v4) read normalized phrases"
     "(v4) read POS phrases (sbj is a singleton list)"
     # "dddddddddddddddddd"
     # "eeeeeeeeeeeeeeeeee"

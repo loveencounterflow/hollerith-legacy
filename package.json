@@ -14,7 +14,7 @@
     "leveldown": "^1.4.6",
     "mkdirp": "^0.5.1",
     "ncr": "^1.0.0",
-    "pipedreams": "^4.0.3"
+    "pipedreams": "^4.0.4"
   },
   "devDependencies": {
     "coffeenode-chr": "^1.0.3",
