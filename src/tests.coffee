@@ -86,7 +86,7 @@ show_db_entries = ( handler ) ->
       help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
       # buffer = new Buffer JSON.stringify [ '开', '彡' ]
       # debug '©GJfL6', HOLLERITH.CODEC.rpr_of_buffer null, buffer
-    .pipe D.$on_end => handler()
+    .pipe D.$on_finish handler
 
 #-----------------------------------------------------------------------------------------------------------
 get_new_db_name = ->
@@ -145,10 +145,9 @@ clear_leveldb = ( leveldb, handler ) ->
         input
           .pipe HOLLERITH.$write db, settings
           # .pipe D.$show()
-          .pipe D.$on_end ( end ) =>
+          .pipe D.$on_finish =>
             whisper "test data written"
             handler null
-            end()
         #...................................................................................................
         for n in [ 0 .. 1000 ]
           key = [ "number:#{n}", "square", n ** 2, ]
@@ -160,10 +159,9 @@ clear_leveldb = ( leveldb, handler ) ->
         input
           .pipe HOLLERITH.$write db, settings
           # .pipe D.$show()
-          .pipe D.$on_end ( end ) =>
+          .pipe D.$on_finish =>
             whisper "test data written"
             handler null
-            end()
         #...................................................................................................
         for probe in @_feed_test_data.probes[ probes_idx ]
           # key = HOLLERITH.new_so_key db, probe...
@@ -176,9 +174,8 @@ clear_leveldb = ( leveldb, handler ) ->
         input
           .pipe HOLLERITH.$write db, settings
           # .pipe D.$show()
-          .pipe D.$on_end ( end ) =>
+          .pipe D.$on_finish =>
             whisper "test data written"
-            end()
             handler null
         #...................................................................................................
         for url_key in @_feed_test_data.probes[ probes_idx ]
@@ -389,7 +386,7 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe $ ( [ key, value, ], send ) =>
         idx += +1
         # T.eq key, matchers[ idx ]
-      .pipe D.$on_end ( end ) => end; done()
+      .pipe D.$on_finish done
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "read keys without error (1)" ] = ( T, done ) ->
@@ -410,9 +407,8 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe $ ( { key, value, }, send ) =>
         count += 1
         T.eq ( HOLLERITH._decode_key db, key )[ 1 ], probe_idx
-      .pipe D.$on_end ( end ) =>
+      .pipe D.$on_finish =>
         T.eq count, 1
-        end()
         done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -433,9 +429,8 @@ clear_leveldb = ( leveldb, handler ) ->
         count += 1
         [ key, value, ] = facet
         T.eq key[ 1 ], probe_idx
-      .pipe D.$on_end ( end ) =>
+      .pipe D.$on_finish =>
         T.eq count, 1
-        end()
         done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -458,9 +453,8 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe $ ( { key, value, }, send ) =>
         count += 1
         T.eq ( HOLLERITH._decode_key db, key )[ 1 ], probe_idx + count - 1
-      .pipe D.$on_end ( end ) =>
+      .pipe D.$on_finish =>
         T.eq count, delta + 1
-        end()
         done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -480,9 +474,8 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe $ ( [ key, value, ], send ) =>
         count += 1
         T.eq key[ 1 ], probe_idx + count - 1
-      .pipe D.$on_end ( end ) =>
+      .pipe D.$on_finish ( end ) =>
         T.eq count, delta + 1
-        end()
         done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -508,7 +501,7 @@ clear_leveldb = ( leveldb, handler ) ->
         idx += +1
         phrase = HOLLERITH.as_phrase db, key, value
         T.eq key, key_matchers[ idx ]
-      .pipe D.$on_end ( end ) => end(); done()
+      .pipe D.$on_finish done
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "read POS phrases (1)" ] = ( T, done ) ->
@@ -530,7 +523,7 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe $ ( phrase, send ) =>
         idx += +1
         T.eq phrase, matchers[ idx ]
-      .pipe D.$on_end ( end ) => end(); done()
+      .pipe D.$on_finish done
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "read POS phrases (2)" ] = ( T, done ) ->
@@ -557,9 +550,8 @@ clear_leveldb = ( leveldb, handler ) ->
         count  += +1
         idx    += +1
         T.eq phrase, matchers[ idx ]
-      .pipe D.$on_end ( end ) =>
+      .pipe D.$on_finish =>
         T.eq count, matchers.length
-        end()
         done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -586,9 +578,8 @@ clear_leveldb = ( leveldb, handler ) ->
         count  += +1
         idx    += +1
         T.eq phrase, matchers[ idx ]
-      .pipe D.$on_end ( end ) =>
+      .pipe D.$on_finish =>
         T.eq count, matchers.length
-        end()
         done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -1020,7 +1011,7 @@ clear_leveldb = ( leveldb, handler ) ->
         help '\n' + HOLLERITH.DUMP.rpr_of_facets db, facets
         buffer = new Buffer JSON.stringify [ '开', '彡' ]
         debug '©GJfL6', HOLLERITH.CODEC.rpr_of_buffer buffer
-      .pipe D.$on_end => done()
+      .pipe D.$on_finish done
   #.........................................................................................................
   return null
 
@@ -1095,7 +1086,7 @@ clear_leveldb = ( leveldb, handler ) ->
         #   if prd is 'some-predicate' # always the case in this example
         #     obj
         .pipe HOLLERITH.$write db, solids: [ 'some-predicate', ]
-        .pipe D.$on_end =>
+        .pipe D.$on_finish =>
           urge "test data written"
           handler()
       #.....................................................................................................
@@ -1113,7 +1104,7 @@ clear_leveldb = ( leveldb, handler ) ->
         idx    += +1
         # debug '©Sc5FG', phrase
         # T.eq phrase, matchers[ idx ]
-      .pipe D.$on_end =>
+      .pipe D.$on_finish =>
         # T.eq count, matchers.length
         done()
 
@@ -1157,7 +1148,7 @@ clear_leveldb = ( leveldb, handler ) ->
         idx    += +1
         debug '©Sc5FG', phrase
         T.eq phrase, matchers[ idx ]
-      .pipe D.$on_end =>
+      .pipe D.$on_finish =>
         T.eq count, matchers.length
         done()
 
@@ -1242,7 +1233,7 @@ clear_leveldb = ( leveldb, handler ) ->
     input   = D.new_stream()
     input
       .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
+      .pipe D.$on_finish ->
         # T.fail "should throw error"
         later done
     input.write 'xxx'
@@ -1273,7 +1264,7 @@ clear_leveldb = ( leveldb, handler ) ->
     input   = D.new_stream()
     input
       .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
+      .pipe D.$on_finish ->
         later done
     input.write [ 'foo', 'bar', 'baz', ]
     input.end()
@@ -1289,7 +1280,7 @@ clear_leveldb = ( leveldb, handler ) ->
     input   = D.new_stream()
     input
       .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
+      .pipe D.$on_finish ->
         later done
     input.write [ 'foo', 'bar', 'baz', 'gnu', ]
     input.end()
@@ -1305,7 +1296,7 @@ clear_leveldb = ( leveldb, handler ) ->
     input   = D.new_stream()
     input
       .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
+      .pipe D.$on_finish ->
         T.succeed message
         later done
     input.write [ 'foo', 'bar', 'baz', ]
@@ -1371,7 +1362,7 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe $consolidate()
       .pipe D.$show()
       .pipe HOLLERITH.$write db
-      .pipe D.$on_end done
+      .pipe D.$on_finish done
 
 ###
 #-----------------------------------------------------------------------------------------------------------
@@ -1393,7 +1384,7 @@ clear_leveldb = ( leveldb, handler ) ->
         T.eq data, idx
         idx += +1
         send data
-      .pipe D.$on_end =>
+      .pipe D.$on_finish =>
         T_done()
     #.......................................................................................................
     write = ->
@@ -1419,7 +1410,7 @@ clear_leveldb = ( leveldb, handler ) ->
       .pipe D.$lockstep input_2, fallback: null
       .pipe D.$lockstep input_3, fallback: null
       .pipe $ ( data, send ) => help JSON.stringify data; send data
-      .pipe D.$on_end done
+      .pipe D.$on_finish done
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "has_any yields existence of key" ] = ( T, done ) ->
@@ -1457,7 +1448,7 @@ clear_leveldb = ( leveldb, handler ) ->
       input
         .pipe D.$show()
         .pipe HOLLERITH.$write db
-        .pipe D.$on_end ->
+        .pipe D.$on_finish ->
           T.fail "should never be called"
           done()
       #.....................................................................................................
@@ -1488,7 +1479,7 @@ clear_leveldb = ( leveldb, handler ) ->
       input
         # .pipe D.$show()
         .pipe HOLLERITH.$write db
-        .pipe D.$on_end ->
+        .pipe D.$on_finish ->
           T.eq 1, 1
           done()
       #.....................................................................................................
@@ -1524,7 +1515,7 @@ clear_leveldb = ( leveldb, handler ) ->
     input
       # .pipe D.$show()
       .pipe HOLLERITH.$write db
-      .pipe D.$on_end -> handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     for probe in @_feed_test_data.probes[ probes_idx ]
       input.write probe
@@ -1540,7 +1531,7 @@ clear_leveldb = ( leveldb, handler ) ->
         idx    += +1
         debug '©Sc5FG', JSON.stringify phrase
         T.eq phrase, matchers[ idx ]
-      .pipe D.$on_end -> handler()
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield HOLLERITH.clear db, resume
@@ -1583,7 +1574,7 @@ clear_leveldb = ( leveldb, handler ) ->
     input
       # .pipe D.$show()
       .pipe HOLLERITH.$write xdb
-      .pipe D.$on_end -> handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     for probe in @_feed_test_data.probes[ probes_idx ]
       input.write probe
@@ -1599,7 +1590,7 @@ clear_leveldb = ( leveldb, handler ) ->
         idx    += +1
         debug '©Sc5FG', JSON.stringify phrase
         T.eq phrase, matchers[ idx ]
-      .pipe D.$on_end -> handler()
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield HOLLERITH.clear xdb, resume
@@ -1649,7 +1640,7 @@ clear_leveldb = ( leveldb, handler ) ->
     input
       # .pipe D.$show()
       .pipe HOLLERITH.$write xdb
-      .pipe D.$on_end -> handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     for probe in @_feed_test_data.probes[ probes_idx ]
       input.write probe
@@ -1665,7 +1656,7 @@ clear_leveldb = ( leveldb, handler ) ->
         idx    += +1
         urge '©Sc5FG', JSON.stringify phrase
         T.eq phrase, matchers[ idx ]
-      .pipe D.$on_end -> handler()
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield HOLLERITH.clear xdb, resume
@@ -1695,8 +1686,7 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db
-      .pipe D.$on_end ->
-        handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ '01', 'reading', 'ā', ]
     input.write [ '02', 'reading', 'ɑ̄', ]
@@ -1781,10 +1771,9 @@ clear_leveldb = ( leveldb, handler ) ->
             urge collector = collector.join ''
             T.eq collector, 'AEIOUaeiouÀÁÈÉÌÍÒÓÙÚÜàáèéìíòóùúüĀāĒēĚěĪīŌōŪūǍǎǏǐǑǒǓǔǕǖǗǘǙǚǛǜɑɑ̀ɑ́ɑ̄ɑ̌Ɑ'
             end()
-      .pipe D.$observe ( phrase ) =>
+      .pipe $ ( phrase ) =>
         info JSON.stringify phrase
-      .pipe D.$on_end ->
-        handler()
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -1802,8 +1791,7 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end ->
-        handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ '千', 'kwic/sortcode', '34d###', ]
     input.write [ ( Symbol.for 'index' ), [ '千', 'reading',          'foo', ], 'kwic/sortcode', '34d###', ]
@@ -1815,8 +1803,8 @@ clear_leveldb = ( leveldb, handler ) ->
     Z = []
     input = HOLLERITH.new_phrasestream db, settings
     input
-      .pipe D.$observe ( phrase ) => Z.push phrase
-      .pipe D.$on_end             => handler null, Z
+      .pipe $ ( phrase ) => Z.push phrase
+      .pipe D.$on_finish => handler null, Z
   #.........................................................................................................
   show = ( handler ) ->
     tasks = []
@@ -1824,26 +1812,26 @@ clear_leveldb = ( leveldb, handler ) ->
     tasks.push ( handler ) =>
       input = HOLLERITH.new_phrasestream db, unbox: no, flatten: no
       input
-        .pipe D.$observe ( phrase ) => urge '1 (ubx:n flt:n)', JSON.stringify phrase
-        .pipe D.$on_end             => urge(); handler()
+        .pipe $ ( phrase ) => urge '1 (ubx:n flt:n)', JSON.stringify phrase
+        .pipe D.$on_finish => urge(); handler()
     #.......................................................................................................
     tasks.push ( handler ) =>
       input = HOLLERITH.new_phrasestream db, unbox: no, flatten: yes
       input
-        .pipe D.$observe ( phrase ) => urge '2 (ubx:n flt:y)', JSON.stringify phrase
-        .pipe D.$on_end             => urge(); handler()
+        .pipe $ ( phrase ) => urge '2 (ubx:n flt:y)', JSON.stringify phrase
+        .pipe D.$on_finish => urge(); handler()
     #.......................................................................................................
     tasks.push ( handler ) =>
       input = HOLLERITH.new_phrasestream db, unbox: yes, flatten: no
       input
-        .pipe D.$observe ( phrase ) => urge '3 (ubx:y flt:n)', JSON.stringify phrase
-        .pipe D.$on_end             => urge(); handler()
+        .pipe $ ( phrase ) => urge '3 (ubx:y flt:n)', JSON.stringify phrase
+        .pipe D.$on_finish => urge(); handler()
     #.......................................................................................................
     tasks.push ( handler ) =>
       input = HOLLERITH.new_phrasestream db, unbox: yes, flatten: yes
       input
-        .pipe D.$observe ( phrase ) => urge '4 (ubx:y flt:y)', JSON.stringify phrase
-        .pipe D.$on_end             => urge(); handler()
+        .pipe $ ( phrase ) => urge '4 (ubx:y flt:y)', JSON.stringify phrase
+        .pipe D.$on_finish => urge(); handler()
     #.......................................................................................................
     ASYNC.series tasks, => handler()
   #.........................................................................................................
@@ -1891,8 +1879,7 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end ->
-        handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ '千', 'reading',     'qian',       ]
     input.write [ '千', 'reading',     'foo',        ]
@@ -1947,9 +1934,9 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input = HOLLERITH.new_phrasestream db#, flatten: yes
     input
-      .pipe D.$observe ( phrase ) =>
+      .pipe $ ( phrase ) =>
         ( if phrase[ 0 ] is 'pos' then urge else help ) JSON.stringify phrase
-      .pipe D.$on_end             => info(); handler()
+      .pipe D.$on_finish => info(); handler()
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -1972,8 +1959,7 @@ clear_leveldb = ( leveldb, handler ) ->
     # .pipe HOLLERITH.$index_v4 db, 'reading', 'usagecode'
     .pipe HOLLERITH.$index_v4 db, 'reading', 'variant'
     .pipe HOLLERITH.$write db, unique: no
-    .pipe D.$on_end ->
-      handler()
+    .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ '國', 'reading',     'guo',        ]
     input.write [ '國', 'variant',     '国',        ]
@@ -1997,9 +1983,9 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input = HOLLERITH.new_phrasestream db, flatten: yes
     input
-      .pipe D.$observe ( phrase ) =>
+      .pipe $ ( phrase ) =>
         ( if phrase[ 0 ] is 'pos' then urge else help ) JSON.stringify phrase
-      .pipe D.$on_end             => info(); handler()
+      .pipe D.$on_finish => info(); handler()
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -2022,7 +2008,7 @@ clear_leveldb = ( leveldb, handler ) ->
       # .pipe HOLLERITH.$index 'strokeorder': 'singular', 'variant':     'plural'
       # .pipe HOLLERITH.$index 'strokeorder': 'singular', 'similarity':  'plural'
       .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end => handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ '千', 'variant',     '仟',                         ]
     input.write [ '千', 'variant',     '韆',                         ]
@@ -2049,10 +2035,10 @@ clear_leveldb = ( leveldb, handler ) ->
     # query = {}
     input = HOLLERITH.new_phrasestream db, query
     input
-      .pipe D.$observe ( phrase ) => info '5543', JSON.stringify phrase
+      .pipe $ ( phrase ) => info '5543', JSON.stringify phrase
       .pipe do =>
         idx = -1
-        return D.$observe ( phrase, has_ended ) =>
+        return $ ( phrase, has_ended ) =>
           # if phrase?
           #   idx += +1
           #   T.eq phrase, matchers[ idx ]
@@ -2076,7 +2062,7 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end => handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ [ '千', ], 'variant',     [ '仟', '韆',              ], ]
     input.write [ [ '千', ], 'usagecode',   'CJKTHM',                    ]
@@ -2085,10 +2071,10 @@ clear_leveldb = ( leveldb, handler ) ->
   show = ( handler ) ->
     input = db[ '%self' ].createValueStream()
     input
-      .pipe D.$observe ( value ) =>
+      .pipe $ ( value ) =>
         T.eq value, matcher
       #.....................................................................................................
-      .pipe D.$on_end -> handler()
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -2104,7 +2090,7 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end => handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ '千', 'variant', '仟', ]
     input.end()
@@ -2118,21 +2104,21 @@ clear_leveldb = ( leveldb, handler ) ->
     query = { prefix: [], star: '*', }
     input = db[ '%self' ].createReadStream()
     input
-      # .pipe D.$observe ( record ) => info rpr record
-      .pipe D.$observe ( record ) => info JSON.stringify record
+      # .pipe $ ( record ) => info rpr record
+      .pipe $ ( record ) => info JSON.stringify record
       .pipe do =>
         idx       = -1
         zero_bfr  = new Buffer [ 0x00, ]
-        return D.$observe ( record, has_ended ) =>
+        return $ 'null', ( record ) =>
           if record?
             idx += +1
             { key, value, } = record
             T.eq key,   new Buffer value_matchers[ idx ]
             T.eq value, zero_bfr
-          if has_ended
+          else
             T.eq idx, value_matchers.length - 1
       #.....................................................................................................
-      .pipe D.$on_end -> handler()
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -2148,7 +2134,7 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end => handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ '千', 'variant', '仟', ]
     input.end()
@@ -2162,20 +2148,20 @@ clear_leveldb = ( leveldb, handler ) ->
     query = { prefix: [], star: '*', }
     input = db[ '%self' ].createReadStream()
     input
-      .pipe D.$observe ( record ) => info rpr record
+      .pipe $ ( record ) => info rpr record
       .pipe do =>
         idx       = -1
         zero_bfr  = new Buffer [ 0x00, ]
-        return D.$observe ( record, has_ended ) =>
+        return $ 'null', ( record ) =>
           if record?
             idx += +1
             { key, value, } = record
             T.eq key,   new Buffer value_matchers[ idx ]
             T.eq value, zero_bfr
-          if has_ended
+          else
             T.eq idx, value_matchers.length - 1
       #.....................................................................................................
-      .pipe D.$on_end -> handler()
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -2191,7 +2177,7 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end => handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ [ 'glyph', '千', ], 'variant',     '仟',      ]
     input.write [ [ 'glyph', '千', ], 'variant',     '韆',      ]
@@ -2218,15 +2204,15 @@ clear_leveldb = ( leveldb, handler ) ->
     query = { prefix: [ 'pos', ], star: '*', }
     input_boxed = HOLLERITH.new_phrasestream db, query
     input_boxed
-      .pipe D.$observe ( phrase ) => info rpr phrase # JSON.stringify phrase
+      .pipe $ ( phrase ) => info rpr phrase # JSON.stringify phrase
       #.....................................................................................................
       .pipe do =>
         idx = -1
-        return D.$observe ( phrase, has_ended ) =>
+        return $ 'null', ( phrase ) =>
           if phrase?
             idx += +1
             T.eq phrase, matchers_boxed[ idx ]
-          if has_ended
+          else
             boxed_has_ended = yes
             T.eq idx, matchers_boxed.length - 1
             warn "part of test deactivated"
@@ -2235,15 +2221,15 @@ clear_leveldb = ( leveldb, handler ) ->
     # query = { prefix: [ 'pos', ], star: '*', unbox: no, }
     # input_unboxed = HOLLERITH.new_phrasestream db, query
     # input_unboxed
-    #   .pipe D.$observe ( phrase ) => info rpr phrase # JSON.stringify phrase
+    #   .pipe $ ( phrase ) => info rpr phrase # JSON.stringify phrase
     #   #.....................................................................................................
     #   .pipe do =>
     #     idx = -1
-    #     return D.$observe ( phrase, has_ended ) =>
+    #     return $ 'null', ( phrase ) =>
     #       if phrase?
     #         idx += +1
     #         T.eq phrase, matchers_unboxed[ idx ]
-    #       if has_ended
+    #       else
     #         unboxed_has_ended = yes
     #         T.eq idx, matchers_unboxed.length - 1
     #         return handler() if boxed_has_ended
@@ -2262,7 +2248,7 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end => handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ '千', 'variant',     '仟',      ]
     input.write [ '千', 'variant',     '韆',      ]
@@ -2280,17 +2266,17 @@ clear_leveldb = ( leveldb, handler ) ->
     query = { prefix: [ 'pos', ], star: '*', }
     input = HOLLERITH.new_phrasestream db, query
     input
-      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
+      .pipe $ ( phrase ) => info JSON.stringify phrase
       .pipe do =>
         idx = -1
-        return D.$observe ( phrase, has_ended ) =>
+        return $ 'null', ( phrase ) =>
           if phrase?
             idx += +1
             T.eq phrase, matchers[ idx ]
-          if has_ended
+          else
             T.eq idx, matchers.length - 1
       #.....................................................................................................
-      .pipe D.$on_end => handler()
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -2361,7 +2347,7 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end => handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     # input.write [ '千', 'variant',     [ '仟', '韆',              ], ]
     # input.write [ '千', 'variant',     '仟', ]
@@ -2398,16 +2384,16 @@ clear_leveldb = ( leveldb, handler ) ->
     # input = HOLLERITH.new_phrasestream db, { prefix: [ 'pos', ], star: '*', }
     #.......................................................................................................
     input
-      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
-      # .pipe D.$observe ( phrase ) => info rpr phrase
-      # .pipe D.$observe ( phrase ) => log ( require 'util' ).inspect phrase, { maxArrayLength: 1000, depth: null, colors: true, }
+      .pipe $ ( phrase ) => info JSON.stringify phrase
+      # .pipe $ ( phrase ) => info rpr phrase
+      # .pipe $ ( phrase ) => log ( require 'util' ).inspect phrase, { maxArrayLength: 1000, depth: null, colors: true, }
       # .pipe do =>
       #   idx = -1
-      #   return D.$observe ( phrase ) =>
+      #   return $ ( phrase ) =>
       #     idx += +1
       #     T.eq phrase, matchers[ idx ]
       #.....................................................................................................
-      .pipe D.$on_end -> handler()
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -2423,7 +2409,7 @@ clear_leveldb = ( leveldb, handler ) ->
     #.......................................................................................................
     input
       .pipe HOLLERITH.$write db, unique: no
-      .pipe D.$on_end => handler()
+      .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ 'A1', 'reading', null, [ 'a1', 'ā', ], ]
     input.write [ 'A2', 'reading', null, [ 'a2', 'á', ], ]
@@ -2470,14 +2456,14 @@ clear_leveldb = ( leveldb, handler ) ->
     input = HOLLERITH.new_phrasestream db, { prefix: [ 'pos', ], star: '*', }
     #.......................................................................................................
     input
-      .pipe D.$observe ( phrase ) => info JSON.stringify phrase
+      .pipe $ ( phrase ) => info JSON.stringify phrase
       # .pipe do =>
       #   idx = -1
-      #   return D.$observe ( phrase ) =>
+      #   return $ ( phrase ) =>
       #     idx += +1
       #     T.eq phrase, matchers[ idx ]
       #.....................................................................................................
-      .pipe D.$on_end -> handler()
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
