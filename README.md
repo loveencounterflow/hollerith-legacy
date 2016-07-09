@@ -25,11 +25,10 @@
   - [Indexing Data](#indexing-data)
   - [Deleting Data](#deleting-data)
   - [Reading Data](#reading-data)
-  - [Error Handling](#error-handling)
-    - [@create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->](#@create_phrasestream---db-lo_hint--null-hi_hint--null---)
-    - [@create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->](#@create_facetstream---db-lo_hint--null-hi_hint--null---)
+    - [@new_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->](#@new_phrasestream---db-lo_hint--null-hi_hint--null---)
+    - [@new_facetstream = ( db, lo_hint = null, hi_hint = null ) ->](#@new_facetstream---db-lo_hint--null-hi_hint--null---)
     - [@read_sub = ( db, settings, read ) ->](#@read_sub---db-settings-read---)
-  - [Secondary Indexes](#secondary-indexes)
+  - [Plans for v4](#plans-for-v4)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -976,7 +975,7 @@ Tspo∇Tå½¢∇Tstrokecount∇              ┊ 7
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     prefix    = [ 'pos', 'guide', ]
-    input     = HOLLERITH.create_phrasestream db, prefix, '*'
+    input     = HOLLERITH.new_phrasestream db, prefix, '*'
     debug '©FphJK', input[ '%meta' ]
     settings  = { indexed: no, }
     input
@@ -1062,10 +1061,10 @@ dictionary.
 > of US ASCII chose to encode these letters in the way they did; when you throw
 > in the accented letters needed to write tonal Pinyin (or words from any
 > language with letters outside of `[a-z]`), that property is, in general, lost:
-> the accented letters needed for Pinyin sort lexicographically as 
+> the accented letters needed for Pinyin sort lexicographically as
 > `aeiouàáèéìíòóùúüāēěīōūǎǐǒǔǖǘǚǜ`, which is probably not what you want.
 > Coming to think of it, it *might* be a good idea to implement locale- or
-> use-case specific encodings for strings to Hollerith. 
+> use-case specific encodings for strings to Hollerith.
 
 Now if we wanted to build a dictionary with characters ordered by Pinyin that
 cross-references similar characters, one approach would be to iterate over those
@@ -1108,7 +1107,7 @@ is interesting if you want to have those entries to appear in a specific order:
 ```
 
 **④** Now add the predicate and object that you want the OP to appear below when
-dumping POS (Predicate—Object—Subject) phrases: 
+dumping POS (Predicate—Object—Subject) phrases:
 
 ```coffee
 # Subject                                     Predicate           Object
@@ -1119,11 +1118,11 @@ dumping POS (Predicate—Object—Subject) phrases:
 
 Here's a complete dump of our small database so far; the SPO phrases are greyed
 out to highlight the part where the action is going on: When we iterate over
-all phrases that start with the prefix `[ 'pos', 'reading/py/base', ...`, we'll 
+all phrases that start with the prefix `[ 'pos', 'reading/py/base', ...`, we'll
 get to see the three head entries for our three characters *gan* 干, *qian* 千,
-*yu* 于, in the order of their readings; in between each character and the 
+*yu* 于, in the order of their readings; in between each character and the
 beginning of the next head entry are sandwiched secondary entries with additional
-data: 
+data:
 
 ```coffee
   [ 'pos', 'reading/py/base', 'gan',  [ '干',                           ], 0, ]
@@ -1154,14 +1153,14 @@ before any strings. Therefore, plain phrases  with strings as subjects like `[
 'so', ], 'p', 'o', ]`, which is not what we want.
 
 > As a side-effect, subjects-as-lists open up a straightforward avenue to putting
-> type information into the subject. We can now be more specific and write, say, 
-> `[ 'character', '干', ]` for the subject. 
+> type information into the subject. We can now be more specific and write, say,
+> `[ 'character', '干', ]` for the subject.
 
-<!-- 
+<!--
 > Observe that with this addition, the
 > phrase subject now looks like a predicate / object pair, i.e. we could
 > re-conceptualize phrases as `[ s, o, ]` pairs with `s = [ sp, so, ]` and
-> `o = [ op, oo, ]` 
+> `o = [ op, oo, ]`
  -->
 
 We are, alas, not quite yet ready at this point. Our DB contains three
@@ -1183,8 +1182,8 @@ characters and see what happens. This is the data we start with:
 ## Deleting Data
 ## Reading Data
 
-### @create_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->
-### @create_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
+### @new_phrasestream = ( db, lo_hint = null, hi_hint = null ) ->
+### @new_facetstream = ( db, lo_hint = null, hi_hint = null ) ->
 ### @read_sub = ( db, settings, read ) ->
 
 
@@ -1205,9 +1204,9 @@ checking whether a given fact exists or not. However, the Hollerith API still
 does have a `get` operation, albeit in a slightly different form: when you
 call `get` with a prefix (an incomplete phrase), it creates a phrasestream
 with all the phrases that match the prefix; in case exactly one phrase turns up,
-that is the result for the `get` operation; if it turns up more than one phrase, that 
+that is the result for the `get` operation; if it turns up more than one phrase, that
 is an unconditional error; if it does not turn up any phrase, either an error
-is thrown or a fallback value (if provided in the function call) is returned. 
+is thrown or a fallback value (if provided in the function call) is returned.
 
 ● **All phrase subjects, even those of non-index phrases, are stored as lists;
 this is called boxing / unboxing**.
@@ -1216,28 +1215,28 @@ For example, the v2 phrase `[ '重', 'reading', 'zhong', ]`
 becomes, in v4: `[ [ '重', ], 'reading', 'zhong', ]`. The semantics
 remain unchanged; if you want to store the fact that a number of subjects shares
 a given predicate / object pair, you will still have to enter one phrase for
-each subject concerned. 
+each subject concerned.
 
 Boxing is necessary to keep POS phrase ordering when using secondary indexes,
 as these use 'sub-phrases' as subjects.
 
 As a convenience, **any subject that isn't already a list will be transparently
 converted to a list with a single element; conversely, when reading from the
-database, any phrase with a subject that is a list with a single element will 
-be transformed into a phrase where the subject is simply that single element.**   
-Depending on your needs, you may not want boxed subjects to be unboxed for 
-you, so you may create a phrasestream with `unbox: false` to prevent that (see 
+database, any phrase with a subject that is a list with a single element will
+be transformed into a phrase where the subject is simply that single element.**
+Depending on your needs, you may not want boxed subjects to be unboxed for
+you, so you may create a phrasestream with `unbox: false` to prevent that (see
 below).
 
 ● Since all subjects are now lists, **it is a small step to use typed subjects
-and objects**, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`. 
+and objects**, as in `[ [ 'glyph', '月', ], 'reading', [ 'zh:py/bare', 'yue', ] ]`.
 This is, however, purely optional.
 
 ● With phrases-as-keys, **it becomes possible to store any number of facts about
 a given subject / predicate pair as long as objects are distinct**, even without having
-to use an index. Without an index, object values will be retrieved in lexicographic 
-order; to implement repeated objects and / or a specific ordering, an explicit 
-index—placed between predicate and object—has to be inserted: 
+to use an indexing counter. Without an index, object values will be retrieved in lexicographic
+order; to implement repeated objects and / or a specific ordering, an explicit
+index—placed between predicate and object—has to be inserted:
 
 ```coffee
 [ '重', 'reading/py/bare', 0, 'zhong', ] ]
@@ -1247,22 +1246,22 @@ index—placed between predicate and object—has to be inserted:
 [ [ 'glyph', '重', ], 'reading', 1, [ 'zh:py/bare', 'chong', ] ]
 ```
 
-When preparing SPO phrases for the `$write` transform, it is now possible 
+When preparing SPO phrases for the `$write` transform, it is now possible
 to use explicit indexes where called for, and to send a single
 phrase for each element of a multi-valued phrase. **Observe that list values
 in phrase object position will not any more result in multiple primary index
 phrases**. For example, where before you had
 
-``` 
+```
 send [ '千', 'variant', [ '仟', '韆', ], ]
-``` 
+```
 
 you'd now say
 
-``` 
+```
 send [ '千', 'variant', 0, '仟', ]
 send [ '千', 'variant', 1, '韆', ]
-``` 
+```
 
 i.e. you have to construct and send one SPO phrase with an explicit index for
 each element of a multi-valued relationship.
@@ -1276,7 +1275,7 @@ conflated; in other words, this step turns lists into sets.
 When writing to the DB, an index field may or may not be present; when
 present, it can take **any** value, including an explicit `null`.
 
-● Reading that an explicit index can take any value—not only integers as 
+● Reading that an explicit index can take any value—not only integers as
 classical indices are wont to be—one may find it tempting to use indexes as
 a device to impregnate an ordering unto object values that depends on object
 values. However, in the general case that is not advisable,  as it clearly
@@ -1285,7 +1284,7 @@ so you cannot both sort phrases intrinsically (by object value) and
 extrinsically (to indicate some property like importance or relevance);
 
 Instead, what you most likely want to do is extend the phrase object
-value to a list with one or more elements up front 
+value to a list with one or more elements up front
 
 > We earlier said that thePinyin accented letters won't lexicographically sort
 > the way you'd expected them to in a dictionary. There, you'd like to have
@@ -1297,7 +1296,7 @@ value to a list with one or more elements up front
 > 'láng', ], [ 'LA3NG', 'lǎng', ],[ 'LA4NG', 'làng', ], [ 'LA5NG', 'lang', ],
 > [ 'LE1NG', 'lēng', ], [ 'LE2NG', 'léng', ], [ 'LE3NG', 'lěng', ], [ 'LE4NG',
 > 'lèng', ], [ 'LE5NG', 'leng', ] etc. would do the trick), or to use
-> only those 'proxy values' and convert them back into renderable 
+> only those 'proxy values' and convert them back into renderable
 > representations before sending them to output (hint: you could use a database
 > for that).
 
@@ -1314,7 +1313,7 @@ send [ 'room-012', 'temperature',  ( new Date 2016, 3, 1, 13, 23,  2 ), 16.1, ]
 > the same timestamp may ever occur. The Hollerith Codec does properly encode
 > and decode  JS `Date` objects and, furthermore, does encode them in a way
 > that keeps chronological ordering within LevelDB; that said, you may find timestamps
-> expressed as milliseconds since epoch or [NodeJS' 
+> expressed as milliseconds since epoch or [NodeJS'
 > `process.hrtime`](https://nodejs.org/api/process.html#process_process_hrtime_time)
 > the better fit for a given application.
 
@@ -1346,18 +1345,18 @@ unbox flatten
   Y     N     ["pos","kwic/sortcode",null,"34d###",["千","reading","foo"]]
   Y     N     ["pos","kwic/sortcode",null,"34d###",["千","shape/similarity","于"]]
   Y     N     ["spo","千","kwic/sortcode",null,"34d###"]
-  
+
   Y     Y     ["pos","kwic/sortcode",null,"34d###","千"]
   Y     Y     ["pos","kwic/sortcode",null,"34d###","千","reading","foo"]
   Y     Y     ["pos","kwic/sortcode",null,"34d###","千","shape/similarity","于"]
   Y     Y     ["spo","千","kwic/sortcode",null,"34d###"]
 ```
 
-Observe that 
+Observe that
 
-Depending on how you process these 
+Depending on how you process these
 
-<!-- 
+<!--
 
 
 

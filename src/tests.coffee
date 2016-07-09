@@ -22,8 +22,6 @@ echo                      = CND.echo.bind CND
 suspend                   = require 'coffeenode-suspend'
 step                      = suspend.step
 after                     = suspend.after
-# eventually                = suspend.eventually
-### TAINT experimentally using `later` in place of `setImmediate` ###
 later                     = suspend.immediately
 #...........................................................................................................
 test                      = require 'guy-test'
@@ -380,7 +378,7 @@ clear_leveldb = ( leveldb, handler ) ->
   step ( resume ) =>
     yield @_feed_test_data db, probes_idx, resume
     # done()
-    input = HOLLERITH.create_facetstream db
+    input = HOLLERITH.new_facetstream db
     input
       # .pipe HOLLERITH.$url_from_key db
       .pipe $ ( [ key, value, ], send ) =>
@@ -423,7 +421,7 @@ clear_leveldb = ( leveldb, handler ) ->
     probe_idx = 4
     count     = 0
     prefix    = [ 'x', probe_idx, ]
-    input     = HOLLERITH.create_facetstream db, { prefix, }
+    input     = HOLLERITH.new_facetstream db, { prefix, }
     input
       .pipe $ ( facet, send ) =>
         count += 1
@@ -469,7 +467,7 @@ clear_leveldb = ( leveldb, handler ) ->
     delta     = 2
     lo        = [ 'x', probe_idx, ]
     hi        = [ 'x', probe_idx + delta, ]
-    input     = HOLLERITH.create_facetstream db, { lo, hi, }
+    input     = HOLLERITH.new_facetstream db, { lo, hi, }
     input
       .pipe $ ( [ key, value, ], send ) =>
         count += 1
@@ -493,8 +491,7 @@ clear_leveldb = ( leveldb, handler ) ->
     yield @_feed_test_data db, probes_idx, resume
     lo = [ 'pos', 'guide/lineup/length', 2, ]
     hi = [ 'pos', 'guide/lineup/length', 4, ]
-    # input   = HOLLERITH.create_keystream db, lo
-    input   = HOLLERITH.create_facetstream db, { lo, hi, }
+    input   = HOLLERITH.new_facetstream db, { lo, hi, }
     input
       # .pipe HOLLERITH.$url_from_key db
       .pipe $ ( [ key, value, ], send ) =>
@@ -1946,18 +1943,12 @@ clear_leveldb = ( leveldb, handler ) ->
     done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "(v4) secondary indexing, API" ] = ( T, done ) ->
+@[ "(v4) secondary async reads" ] = ( T, done ) ->
   #.........................................................................................................
   write_data = ( handler ) ->
-    IDX   = Symbol.for 'index'
     input = D.new_stream()
     #.......................................................................................................
     input
-    # .pipe HOLLERITH.$index_v4 db, 'reading', 'reading'
-    # .pipe HOLLERITH.$index_v4 db, 'reading', 'gloss'
-    # .pipe HOLLERITH.$index_v4 db, 'reading', 'similarity'
-    # .pipe HOLLERITH.$index_v4 db, 'reading', 'usagecode'
-    .pipe HOLLERITH.$index_v4 db, 'reading', 'variant'
     .pipe HOLLERITH.$write db, unique: no
     .pipe D.$on_finish handler
     #.......................................................................................................
@@ -1976,6 +1967,124 @@ clear_leveldb = ( leveldb, handler ) ->
     input.write [ '千', 'variant',     '韆',         ]
     input.write [ '千', 'gloss', 2,  'millenary',    ]
     input.write [ '千', 'reading',     'foo',        ]
+    #.......................................................................................................
+    input.end()
+  #.........................................................................................................
+  matchers = [
+    [ 'bar', '千' ]
+    [ 'bar', '千', [ 'gloss', 'thousand' ] ]
+    [ 'bar', '千', [ 'gloss', 'kilo' ] ]
+    [ 'bar', '千', [ 'gloss', 'millenary' ] ]
+    [ 'bar', '千', [ 'reading', 'foo' ] ]
+    [ 'bar', '千', [ 'reading', 'qian' ] ]
+    [ 'bar', '千', [ 'similarity', '于' ] ]
+    [ 'bar', '千', [ 'similarity', '干' ] ]
+    [ 'bar', '千', [ 'usagecode', 'CJKTHM' ] ]
+    [ 'bar', '千', [ 'variant', '仟' ] ]
+    [ 'bar', '千', [ 'variant', '韆' ] ]
+    [ 'foo', '千' ]
+    [ 'foo', '千', [ 'gloss', 'thousand' ] ]
+    [ 'foo', '千', [ 'gloss', 'kilo' ] ]
+    [ 'foo', '千', [ 'gloss', 'millenary' ] ]
+    [ 'foo', '千', [ 'reading', 'bar' ] ]
+    [ 'foo', '千', [ 'reading', 'qian' ] ]
+    [ 'foo', '千', [ 'similarity', '于' ] ]
+    [ 'foo', '千', [ 'similarity', '干' ] ]
+    [ 'foo', '千', [ 'usagecode', 'CJKTHM' ] ]
+    [ 'foo', '千', [ 'variant', '仟' ] ]
+    [ 'foo', '千', [ 'variant', '韆' ] ]
+    [ 'guo', '國' ]
+    [ 'guo', '國', [ 'variant', '囯' ] ]
+    [ 'guo', '國', [ 'variant', '国' ] ]
+    [ 'guo', '國', [ 'variant', '圀' ] ]
+    [ 'qian', '千' ]
+    [ 'qian', '千', [ 'gloss', 'thousand' ] ]
+    [ 'qian', '千', [ 'gloss', 'kilo' ] ]
+    [ 'qian', '千', [ 'gloss', 'millenary' ] ]
+    [ 'qian', '千', [ 'reading', 'bar' ] ]
+    [ 'qian', '千', [ 'reading', 'foo' ] ]
+    [ 'qian', '千', [ 'similarity', '于' ] ]
+    [ 'qian', '千', [ 'similarity', '干' ] ]
+    [ 'qian', '千', [ 'usagecode', 'CJKTHM' ] ]
+    [ 'qian', '千', [ 'variant', '仟' ] ]
+    [ 'qian', '千', [ 'variant', '韆' ] ]
+    ]
+  #.........................................................................................................
+  read_data = ( handler ) ->
+    #.......................................................................................................
+    input = HOLLERITH.new_phrasestream db #, unbox: no
+    input
+      # .pipe $ ( phrase ) => ( if phrase[ 0 ] is 'pos' then urge else help ) JSON.stringify phrase
+      #.....................................................................................................
+      .pipe $async ( phrase, send, end ) =>
+        selected = no
+        #...................................................................................................
+        if phrase?
+          if phrase[ 0 ] is 'pos'
+            [ _, prd, _, obj, sbj, ] = phrase
+            if prd is 'reading'
+              selected = yes
+              send [ obj, sbj, ]
+              sub_input = HOLLERITH.new_phrasestream db, { prefix: [ 'spo', [ sbj, ], ], star: '*', }
+              sub_input
+                .pipe $ ( sub_phrase ) =>
+                  [ _, sub_sbj, sub_prd, _, sub_obj, ] = sub_phrase
+                  # urge '8876', sub_phrase, sub_prd, sub_obj, sub_sbj
+                  unless CND.equals [ sub_sbj, sub_prd, sub_obj, ], [ sbj, prd, obj, ]
+                    send [ obj, sbj, [ sub_prd, sub_obj, ], ]
+                .pipe D.$on_finish => send.done()
+          send.done() unless selected
+        #...................................................................................................
+        end() if end?
+      #.....................................................................................................
+      .pipe D.$show()
+      .pipe do =>
+          idx = -1
+          return $ 'null', ( phrase ) =>
+            if phrase?
+              idx += +1
+              T.eq phrase, matchers[ idx ]
+            else
+              T.eq idx, matchers.length - 1
+      .pipe D.$on_finish handler
+  #.........................................................................................................
+  step ( resume ) =>
+    yield clear_leveldb db[ '%self' ], resume
+    yield write_data                   resume
+    yield read_data                    resume
+    done()
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "(v4) secondary indexing, API" ] = ( T, done ) ->
+  #.........................................................................................................
+  write_data = ( handler ) ->
+    IDX   = Symbol.for 'index'
+    input = D.new_stream()
+    #.......................................................................................................
+    input
+    # .pipe HOLLERITH.$index_v4 'reading', 'reading'
+    # .pipe HOLLERITH.$index_v4 'reading', 'gloss'
+    # .pipe HOLLERITH.$index_v4 'reading', 'similarity'
+    # .pipe HOLLERITH.$index_v4 'reading', 'usagecode'
+    .pipe HOLLERITH.$index_v4 'reading', 'variant'
+    .pipe HOLLERITH.$write db, unique: no
+    .pipe D.$on_finish handler
+    #.......................................................................................................
+    input.write [ '國', 'reading',     'guo',        ]
+    input.write [ '國', 'variant',     '国',        ]
+    # input.write [ '國', 'variant',     '圀',        ]
+    # input.write [ '國', 'variant',     '囯',        ]
+    # input.write [ '千', 'reading',     'qian',       ]
+    # input.write [ '千', 'reading',     'bar',        ]
+    # input.write [ '千', 'variant',     '仟',         ]
+    # input.write [ '千', 'similarity',  '于',         ]
+    # input.write [ '千', 'similarity',  '干',         ]
+    # input.write [ '千', 'usagecode',   'CJKTHM',     ]
+    # input.write [ '千', 'gloss', 0,  'thousand',     ]
+    # input.write [ '千', 'gloss', 1,  'kilo',         ]
+    # input.write [ '千', 'variant',     '韆',         ]
+    # input.write [ '千', 'gloss', 2,  'millenary',    ]
+    # input.write [ '千', 'reading',     'foo',        ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................
@@ -2031,26 +2140,27 @@ clear_leveldb = ( leveldb, handler ) ->
   matchers = []
   #.........................................................................................................
   show = ( handler ) ->
-    query = { prefix: [ 'pos', ], star: '*', }
-    # query = {}
+    # query = { prefix: [ 'pos', ], star: '*', }
+    query = {}
     input = HOLLERITH.new_phrasestream db, query
     input
       .pipe $ ( phrase ) => info '5543', JSON.stringify phrase
       .pipe do =>
         idx = -1
-        return $ ( phrase, has_ended ) =>
-          # if phrase?
-          #   idx += +1
-          #   T.eq phrase, matchers[ idx ]
-          if has_ended
-          #   T.eq idx, matchers.length - 1
-            handler()
+        return $ 'null', ( phrase ) =>
+          if phrase?
+            idx += +1
+            # T.eq phrase, matchers[ idx ]
+          else
+            warn "stream end"
+            T.eq idx, matchers.length - 1
           return null
+      .pipe D.$on_finish handler
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
-    yield write_data resume
-    yield show resume
+    yield write_data                   resume
+    yield show                         resume
     done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -2215,24 +2325,23 @@ clear_leveldb = ( leveldb, handler ) ->
           else
             boxed_has_ended = yes
             T.eq idx, matchers_boxed.length - 1
-            warn "part of test deactivated"
-            return handler()# if unboxed_has_ended
-    # #.......................................................................................................
-    # query = { prefix: [ 'pos', ], star: '*', unbox: no, }
-    # input_unboxed = HOLLERITH.new_phrasestream db, query
-    # input_unboxed
-    #   .pipe $ ( phrase ) => info rpr phrase # JSON.stringify phrase
-    #   #.....................................................................................................
-    #   .pipe do =>
-    #     idx = -1
-    #     return $ 'null', ( phrase ) =>
-    #       if phrase?
-    #         idx += +1
-    #         T.eq phrase, matchers_unboxed[ idx ]
-    #       else
-    #         unboxed_has_ended = yes
-    #         T.eq idx, matchers_unboxed.length - 1
-    #         return handler() if boxed_has_ended
+            return handler() if unboxed_has_ended
+    #.......................................................................................................
+    query = { prefix: [ 'pos', ], star: '*', unbox: no, }
+    input_unboxed = HOLLERITH.new_phrasestream db, query
+    input_unboxed
+      .pipe $ ( phrase ) => info rpr phrase # JSON.stringify phrase
+      #.....................................................................................................
+      .pipe do =>
+        idx = -1
+        return $ 'null', ( phrase ) =>
+          if phrase?
+            idx += +1
+            T.eq phrase, matchers_unboxed[ idx ]
+          else
+            unboxed_has_ended = yes
+            T.eq idx, matchers_unboxed.length - 1
+            return handler() if boxed_has_ended
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
@@ -2472,14 +2581,14 @@ clear_leveldb = ( leveldb, handler ) ->
     done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "(v4) create_longphrasestream rejects illegal arguments" ] = ( T, done ) ->
+@[ "(v4) new_longphrasestream rejects illegal arguments" ] = ( T, done ) ->
   probes = [
-    ( -> HOLLERITH.create_longphrasestream db, hi: [ 'xxx', ] )
-    ( -> HOLLERITH.create_longphrasestream db, lo: [ 'xxx', ] )
-    ( -> HOLLERITH.create_longphrasestream db, hi: [ 'xxx', ], prefix: [ 'xxx' ] )
-    ( -> HOLLERITH.create_longphrasestream db, foobar: [ 'xxx', ] )
-    ( -> HOLLERITH.create_longphrasestream db, prefix: [ 'xxx' ], star: '?' )
-    ( -> HOLLERITH.create_longphrasestream db, lo: [ 'xxx' ], star: '?' )
+    ( -> HOLLERITH.new_longphrasestream db, hi: [ 'xxx', ] )
+    ( -> HOLLERITH.new_longphrasestream db, lo: [ 'xxx', ] )
+    ( -> HOLLERITH.new_longphrasestream db, hi: [ 'xxx', ], prefix: [ 'xxx' ] )
+    ( -> HOLLERITH.new_longphrasestream db, foobar: [ 'xxx', ] )
+    ( -> HOLLERITH.new_longphrasestream db, prefix: [ 'xxx' ], star: '?' )
+    ( -> HOLLERITH.new_longphrasestream db, lo: [ 'xxx' ], star: '?' )
     ]
   matchers = [
     "must use either 'prefix' or 'hi' and 'lo', got 'hi'"
@@ -2501,7 +2610,7 @@ clear_leveldb = ( leveldb, handler ) ->
   done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "(v4) create_longphrasestream accepts legal arguments" ] = ( T, done ) ->
+@[ "(v4) new_longphrasestream accepts legal arguments" ] = ( T, done ) ->
   probes = [
     { lo: [ 'xxx', ], hi: [ 'xxx', ],                         }
     { prefix: [ 'xxx', ],                                     }
@@ -2516,7 +2625,7 @@ clear_leveldb = ( leveldb, handler ) ->
   for probe, probe_idx in probes
     ### thx to German Attanasio http://stackoverflow.com/a/28564000/256361 ###
     try
-      T.ok isa_stream HOLLERITH.create_longphrasestream db, probe
+      T.ok isa_stream HOLLERITH.new_longphrasestream db, probe
     catch error
       T.fail "#{rpr probe} fails with '#{error[ 'message' ]}'"
   done()
@@ -2587,21 +2696,24 @@ unless module.parent?
     # "write private types (1)"
     # "(v4) use non-string subjects in phrases (1)"
     # "(v4) secondary indexing, manual"
-    # "(v4) secondary indexing, API"
     # # "binary indexing"
-    # # "n-ary indexing (1)"
     # "(v4) n-ary indexing (2)"
     # # # "Pinyin Unicode Sorting"
     # # # "ensure `Buffer.compare` gives same sorting as LevelDB"
-    "(v4) values are `0x00` buffers"
-    "(v4) store SPO, POS both as keys only"
-    "(v4) store non-list subject as single-element list"
-    "(v4) read POS phrases (sbj is a list)"
-    "(v4) read POS phrases (sbj isn't a list)"
-    "(v4) create_longphrasestream rejects illegal arguments"
-    "(v4) create_longphrasestream accepts legal arguments"
-    "(v4) read normalized phrases"
-    "(v4) read POS phrases (sbj is a singleton list)"
+
+    # "(v4) values are `0x00` buffers"
+    # "(v4) store SPO, POS both as keys only"
+    # "(v4) store non-list subject as single-element list"
+    # "(v4) read POS phrases (sbj is a list)"
+    # "(v4) read POS phrases (sbj isn't a list)"
+    # "(v4) new_longphrasestream rejects illegal arguments"
+    # "(v4) new_longphrasestream accepts legal arguments"
+    # "(v4) read POS phrases (sbj is a singleton list)"
+
+    "(v4) secondary async reads"
+    # "(v4) secondary indexing, API"
+
+    # "(v4) read normalized phrases"
     # "dddddddddddddddddd"
     # "eeeeeeeeeeeeeeeeee"
     ]

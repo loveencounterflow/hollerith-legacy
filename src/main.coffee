@@ -80,15 +80,6 @@ step                      = ( require 'coffeenode-suspend' ).step
   #.........................................................................................................
   return R
 
-# #-----------------------------------------------------------------------------------------------------------
-# @_reopen = ( db, handler ) ->
-#   step ( resume ) =>
-#     route = db[ '%self' ][ 'location' ]
-#     yield db[ '%self' ].close resume
-#     yield db[ '%self' ].open resume
-#     whisper "re-opened LevelDB at #{route}"
-#     handler null
-
 #-----------------------------------------------------------------------------------------------------------
 @clear = ( db, handler ) ->
   step ( resume ) =>
@@ -101,35 +92,6 @@ step                      = ( require 'coffeenode-suspend' ).step
     yield db[ '%self' ].open resume
     whisper "erased and re-opened LevelDB at #{route}"
     handler null
-
-# #-----------------------------------------------------------------------------------------------------------
-# @clear = ( db, handler ) ->
-#   ASYNC = require 'async'
-#   route = db[ '%self' ][ 'location' ]
-#   tasks = []
-#   #.........................................................................................................
-#   tasks.push ( handler ) =>
-#     whisper "closing DB..."
-#     db[ '%self' ].close =>
-#       whisper "ok"
-#       handler()
-#   #.........................................................................................................
-#   tasks.push ( handler ) =>
-#     whisper "erasing DB..."
-#     leveldown.destroy route, =>
-#       whisper "ok"
-#       handler()
-#   #.........................................................................................................
-#   tasks.push ( handler ) =>
-#     whisper "re-opening DB..."
-#     db[ '%self' ].open =>
-#       whisper "ok"
-#       handler()
-#   #.........................................................................................................
-#   ASYNC.series tasks, ( error ) =>
-#     return handler error if error?
-#     whisper "erased and re-opened LevelDB at #{route}"
-#     handler()
 
 
 #===========================================================================================================
@@ -187,12 +149,14 @@ step                      = ( require 'coffeenode-suspend' ).step
   $add_secondary_index = =>
     cache = []
     return $async ( phrase, send, end ) =>
-      debug '7765-1', phrase
+      # debug '7765-1', phrase
       if phrase?
         return send.done phrase unless phrase[ 0 ] is Symbol.for 'make-secondary-index'
-        [ _, db, predicates, ] = phrase
-        cache.push { db, predicates, }
+        [ _, predicates, ] = phrase
+        debug '7765-A', "indexing predicates #{rpr predicates}"
+        cache.push { predicates, }
       if end?
+        debug '7765-B', "indexing predicates #{rpr cache}"
         @_add_secondary_index entry... for entry in cache
         end()
         send.done()
@@ -256,168 +220,89 @@ step                      = ( require 'coffeenode-suspend' ).step
       # throw error
     send spo
 
-### TAINT under revision
-#-----------------------------------------------------------------------------------------------------------
-@_get_bloom_methods = ( db ) ->
-  #---------------------------------------------------------------------------------------------------------
-  bloom_settings        = size: db[ 'size' ] ? 1e5
-  seen                  = {}
-  #---------------------------------------------------------------------------------------------------------
-  batch_written = ->
-    seen = {}
-  #---------------------------------------------------------------------------------------------------------
-  show_bloom_info = =>
-    CND.BLOOM.report db[ '%bloom' ]
-  #---------------------------------------------------------------------------------------------------------
-  $ensure_unique_sp = =>
-    #.......................................................................................................
-    return $async ( spo, done ) =>
-      [ sbj, prd, _, ]      = spo
-      key                   = [ sbj, prd, ]
-      key_bfr               = CODEC.encode key
-      key_txt               = key_bfr.toString 'hex'
-      bloom                 = db[ '%bloom' ]
-      seen_has_key          = seen[ key_txt ]?
-      bloom_has_key         = CND.BLOOM.has bloom, key_bfr
-      #.....................................................................................................
-      if seen_has_key
-        warn key
-        return done.error new Error "S/P pair already in DB: #{rpr key}"
-      #.....................................................................................................
-      seen[ key_txt ] = 1
-      CND.BLOOM.add bloom, key_bfr
-      #.....................................................................................................
-      return done spo unless bloom_has_key
-      #.....................................................................................................
-      @has_any db, { prefix: [ 'spo', sbj, prd, ], }, ( error, db_has_key ) =>
-        return done.error error if error?
-        if db_has_key
-          return done.error new Error "S/P pair already in DB: #{rpr key}"
-        done spo
-  #---------------------------------------------------------------------------------------------------------
-  $load_bloom = =>
-    is_first = yes
-    return $async ( data, done ) =>
-      unless is_first
-        return if data? then done data else done()
-      #.....................................................................................................
-      is_first = no
-      whisper "loading Bloom filter..."
-      #.....................................................................................................
-      @_get_meta db, 'bloom', null, ( error, bloom_bfr ) =>
-        return done.error error if error?
-        if bloom_bfr is null
-          warn 'no bloom filter found'
-          bloom = CND.BLOOM.new_filter bloom_settings
-        else
-          bloom = CND.BLOOM.from_buffer bloom_bfr
-        db[ '%bloom' ] = bloom
-        whisper "...ok"
-        show_bloom_info()
-        return if data? then done data else done()
-  #---------------------------------------------------------------------------------------------------------
-  $save_bloom = =>
-    return $ ( data, send, end ) =>
-      send data if data?
-      if end?
-        if db[ '%bloom' ]?
-          whisper "saving Bloom filter..."
-          bloom_bfr = CND.BLOOM.as_buffer db[ '%bloom' ]
-          whisper "serialized bloom filter to #{ƒ bloom_bfr.length} bytes"
-          show_bloom_info()
-          #.................................................................................................
-          @_put_meta db, 'bloom', bloom_bfr, ( error ) =>
-            return send.error error if error?
-            whisper "...ok"
-            end()
-        else
-          whisper "no data written, no Bloom filter to save"
-  #---------------------------------------------------------------------------------------------------------
-  return { batch_written, $ensure_unique_sp, $load_bloom, $save_bloom, }
-###
 
 #===========================================================================================================
 # HIGHER-ORDER INDEXING
 #-----------------------------------------------------------------------------------------------------------
 @$index = ( descriptions ) =>
   throw new Error "deprecated"
-  ### TAINT For the time being, we only support secondary indexes, and the implementation is not at all
-  written in a generic fashion. A future version will likely support tertiary indexes, but that will
-  necessitate waiting for the end of the write stream and re-reading all the records. ###
-  predicates      = []
-  predicate_count = 0
-  arities         = []
-  phrases         = []
-  phrase_counts   = {}
-  #.........................................................................................................
-  for predicate, arity of descriptions
-    predicate_count += +1
-    unless arity in [ 'singular', 'plural', ]
-      throw new Error "expected 'singular' or 'plural' for arity, got #{rpr arity}"
-    predicates.push   predicate
-    phrases.push      {}
-    arities.push      arity
-  #.........................................................................................................
-  if predicate_count.length < 2
-    throw new Error "expected at least two predicate descriptions, got #{predicates.length}"
-  if predicate_count.length > 2
-    throw new Error "indexes with more than 2 steps not supported yet"
-  #.........................................................................................................
-  new_index_phrase = ( tsbj, tprd, tobj, fprd, fobj, tsbj_is_list, idx = 0 ) =>
-    return [ [ tsbj..., tprd, idx, tobj, ], fprd, fobj, ] if tsbj_is_list
-    return [ [ tsbj,    tprd, idx, tobj, ], fprd, fobj, ]
-  #.........................................................................................................
-  link = ( phrases ) =>
-    throw new Error "indexes with anything but 2 steps not supported yet" if phrases.length != 2
-    [ from_phrase, to_phrase, ] = phrases
-    [ fsbj, fprd, fobj, ]       = from_phrase
-    [ tsbj, tprd, tobj, ]       =   to_phrase
-    tsbj_is_list                = CND.isa_list tsbj
-    from_is_plural              = arities[ 0 ] is 'plural'
-    to_is_plural                = arities[ 1 ] is 'plural'
-    #.......................................................................................................
-    unless from_is_plural or to_is_plural
-      return [ new_index_phrase tsbj, tprd, tobj, fprd, fobj, tsbj_is_list ]
-    #.......................................................................................................
-    idx = -1
-    R   = []
-    if from_is_plural
-      if to_is_plural
-        for sub_fobj in fobj
-          for sub_tobj in tobj
-            idx += +1
-            R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
-      else
-        for sub_fobj in fobj
-          idx += +1
-          R.push new_index_phrase tsbj, tprd, tobj, fprd, sub_fobj, tsbj_is_list, idx
-    else
-      for sub_tobj in tobj
-        idx += +1
-        R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, fobj, tsbj_is_list, idx
-    #.......................................................................................................
-    return R
-  #.........................................................................................................
-  return $ ( phrase, send ) =>
-    send phrase
-    [ sbj, prd, obj, ] = phrase
-    return unless ( prd_idx = predicates.indexOf prd ) >= 0
-    sbj_txt                       = JSON.stringify sbj
-    phrase_target                 = phrases[ sbj_txt]?= []
-    phrase_target[ prd_idx ]      = phrase
-    phrase_counts[ sbj_txt ]      = ( phrase_counts[ sbj_txt ] ? 0 ) + 1
-    return null if phrase_counts[ sbj_txt ] < predicate_count
-    #.......................................................................................................
-    send index_phrase for index_phrase in link phrases[ sbj_txt ]
-    return null
+  # ### TAINT For the time being, we only support secondary indexes, and the implementation is not at all
+  # written in a generic fashion. A future version will likely support tertiary indexes, but that will
+  # necessitate waiting for the end of the write stream and re-reading all the records. ###
+  # predicates      = []
+  # predicate_count = 0
+  # arities         = []
+  # phrases         = []
+  # phrase_counts   = {}
+  # #.........................................................................................................
+  # for predicate, arity of descriptions
+  #   predicate_count += +1
+  #   unless arity in [ 'singular', 'plural', ]
+  #     throw new Error "expected 'singular' or 'plural' for arity, got #{rpr arity}"
+  #   predicates.push   predicate
+  #   phrases.push      {}
+  #   arities.push      arity
+  # #.........................................................................................................
+  # if predicate_count.length < 2
+  #   throw new Error "expected at least two predicate descriptions, got #{predicates.length}"
+  # if predicate_count.length > 2
+  #   throw new Error "indexes with more than 2 steps not supported yet"
+  # #.........................................................................................................
+  # new_index_phrase = ( tsbj, tprd, tobj, fprd, fobj, tsbj_is_list, idx = 0 ) =>
+  #   return [ [ tsbj..., tprd, idx, tobj, ], fprd, fobj, ] if tsbj_is_list
+  #   return [ [ tsbj,    tprd, idx, tobj, ], fprd, fobj, ]
+  # #.........................................................................................................
+  # link = ( phrases ) =>
+  #   throw new Error "indexes with anything but 2 steps not supported yet" if phrases.length != 2
+  #   [ from_phrase, to_phrase, ] = phrases
+  #   [ fsbj, fprd, fobj, ]       = from_phrase
+  #   [ tsbj, tprd, tobj, ]       =   to_phrase
+  #   tsbj_is_list                = CND.isa_list tsbj
+  #   from_is_plural              = arities[ 0 ] is 'plural'
+  #   to_is_plural                = arities[ 1 ] is 'plural'
+  #   #.......................................................................................................
+  #   unless from_is_plural or to_is_plural
+  #     return [ new_index_phrase tsbj, tprd, tobj, fprd, fobj, tsbj_is_list ]
+  #   #.......................................................................................................
+  #   idx = -1
+  #   R   = []
+  #   if from_is_plural
+  #     if to_is_plural
+  #       for sub_fobj in fobj
+  #         for sub_tobj in tobj
+  #           idx += +1
+  #           R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
+  #     else
+  #       for sub_fobj in fobj
+  #         idx += +1
+  #         R.push new_index_phrase tsbj, tprd, tobj, fprd, sub_fobj, tsbj_is_list, idx
+  #   else
+  #     for sub_tobj in tobj
+  #       idx += +1
+  #       R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, fobj, tsbj_is_list, idx
+  #   #.......................................................................................................
+  #   return R
+  # #.........................................................................................................
+  # return $ ( phrase, send ) =>
+  #   send phrase
+  #   [ sbj, prd, obj, ] = phrase
+  #   return unless ( prd_idx = predicates.indexOf prd ) >= 0
+  #   sbj_txt                       = JSON.stringify sbj
+  #   phrase_target                 = phrases[ sbj_txt]?= []
+  #   phrase_target[ prd_idx ]      = phrase
+  #   phrase_counts[ sbj_txt ]      = ( phrase_counts[ sbj_txt ] ? 0 ) + 1
+  #   return null if phrase_counts[ sbj_txt ] < predicate_count
+  #   #.......................................................................................................
+  #   send index_phrase for index_phrase in link phrases[ sbj_txt ]
+  #   return null
 
 #-----------------------------------------------------------------------------------------------------------
-@$index_v4 = ( db, predicates... ) =>
-  ### TAINT For the time being, we only support secondary indexes, and the implementation is not at all
-  written in a generic fashion. A future version will likely support tertiary indexes, but that will
-  necessitate waiting for the end of the write stream and re-reading all the records. ###
+@$index_v4 = ( predicates... ) =>
+  ### TAINT For the time being, we only support secondary indexes. A future version will likely support
+  tertiary indexes, but that will necessitate waiting for the end of the write stream and re-reading all the
+  records. ###
   return D.$on_start ( send ) =>
-    send [ ( Symbol.for 'make-secondary-index' ), db, predicates, ]
+    send [ ( Symbol.for 'make-secondary-index' ), predicates, ]
 
 #-----------------------------------------------------------------------------------------------------------
 @_add_secondary_index = ( description, handler ) =>
@@ -541,7 +426,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   #       settings  = null
   #   when 4 then null
   #   else throw new Error "expected 3 or 4 arguments, got #{arity}"
-  input = @create_longphrasestream db, query
+  input = @new_longphrasestream db, query
   R = input.pipe @$longphrase_as_phrase db, query
   if handler?
     R = R
@@ -553,7 +438,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@create_longphrasestream = ( db, query ) ->
+@new_longphrasestream = ( db, query ) ->
   ###
   * If none of `lo`, `hi` or 'prefix' are given, the stream will iterate over all entries.
   * If both `lo` and `hi` are given, a query with lower and upper, inclusive boundaries (in LevelDB these
@@ -617,10 +502,10 @@ step                      = ( require 'coffeenode-suspend' ).step
       lo_hint = query[ 'lo' ]
       hi_hint = query[ 'hi' ]
   #.........................................................................................................
-  return @_create_longphrasestream db, lo_hint, hi_hint
+  return @_new_longphrasestream db, lo_hint, hi_hint
 
 #-----------------------------------------------------------------------------------------------------------
-@_create_longphrasestream = ( db, lo_hint = null, hi_hint = null ) ->
+@_new_longphrasestream = ( db, lo_hint = null, hi_hint = null ) ->
   ### TAINT `lo_hint` and `hi_hint` should be called `first` and `second` ###
   #.........................................................................................................
   if hi_hint? and not lo_hint?
@@ -661,7 +546,7 @@ step                      = ( require 'coffeenode-suspend' ).step
 
 #-----------------------------------------------------------------------------------------------------------
 @has_any = ( db, query, handler ) ->
-  input   = @create_longphrasestream db, query
+  input   = @new_longphrasestream db, query
   active  = yes
   #.........................................................................................................
   input
@@ -724,59 +609,6 @@ step                      = ( require 'coffeenode-suspend' ).step
 #       return [ 'spo', phrase[ 3 ], phrase[ 1 ], phrase[ 2 ], phrase[ 4 ], ] if phrase[ 4 ]?
 #       return [ 'spo', phrase[ 3 ], phrase[ 1 ], phrase[ 2 ],           ]
 #   throw new Error "unknown phrasetype #{rpr phrasetype}"
-
-# #-----------------------------------------------------------------------------------------------------------
-# @key_from_url = ( db, url ) ->
-#   ### TAINT does not unescape as yet ###
-#   ### TAINT does not cast values as yet ###
-#   ### TAINT does not support multiple indexes as yet ###
-#   [ phrasetype, first, second, idx, ] = url.split '|'
-#   unless phrasetype? and phrasetype.length > 0 and phrasetype in [ 'so', 'os', ]
-#     throw new Error "illegal URL key #{rpr url}"
-#   unless first? and first.length > 0 and second? and second.length > 0
-#     throw new Error "illegal URL key #{rpr url}"
-#   idx = if ( idx? and idx.length > 0 ) then ( parseInt idx, 10 ) else 0
-#   [ sk, sv, ] =  first.split ':'
-#   [ ok, ov, ] = second.split ':'
-#   unless sk? and sk.length > 0 and ok? and ok.length > 0
-#     throw new Error "illegal URL key #{rpr url}"
-#   [ sk, sv, ok, ov, ] = [ ok, ov, sk, sv, ] if phrasetype is 'os'
-#   return [ phrasetype, sk, sv, ok, ov, idx, ]
-
-# #-----------------------------------------------------------------------------------------------------------
-# @as_url = ( db, key, value, settings ) ->
-#   key         = @_decode_key    db, key   if CND.isa_jsbuffer key
-#   value       = @_decode_value  db, value if CND.isa_jsbuffer value
-#   colors      = settings?[ 'colors' ] ? no
-#   I           = if colors then CND.darkgrey '|' else '|'
-#   E           = if colors then CND.darkgrey ':' else ':'
-#   [ phrasetype, tail..., ]  = key
-#   if phrasetype is 'spo'
-#     [ sbj, prd, ] = tail
-#     obj           = rpr value
-#     if colors
-#       phrasetype  = CND.grey      phrasetype
-#       sbj         = CND.RED       sbj
-#       prd         = CND.YELLOW    prd
-#       obj         = CND.GREEN     obj
-#     return phrasetype + I + sbj + I + prd + E + obj
-#     # else
-#     #   return "spo|#{sbj}|#{prd}|"
-#   else
-#     [ prd, obj, sbj, idx, ] = tail
-#     idx_rpr = if idx? then rpr idx else ''
-#     if colors
-#       phrasetype  = CND.grey      phrasetype
-#       sbj         = CND.RED       sbj
-#       prd         = CND.YELLOW    prd
-#       obj         = CND.GREEN     obj
-#       return phrasetype + I + prd + E + obj + I + sbj
-#     else
-#       return "pos|#{prd}:#{obj}|#{sbj}|#{idx_rpr}"
-
-# #-----------------------------------------------------------------------------------------------------------
-# @$url_from_key = ( db ) -> $ ( key, send ) => send @url_from_key db, key
-# @$key_from_url = ( db ) -> $ ( url, send ) => send @key_from_url db, key
 
 #-----------------------------------------------------------------------------------------------------------
 @_type_from_key = ( db, key ) ->
