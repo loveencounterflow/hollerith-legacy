@@ -2054,6 +2054,12 @@ clear_leveldb = ( leveldb, handler ) ->
     yield read_data                    resume
     done()
 
+# #-----------------------------------------------------------------------------------------------------------
+# # doesn't work as expected; skipping for the time being
+# @[ "(v4) secondary indexing fails where not two predicates" ] = ( T ) ->
+#   T.throws "only indexes with exactly 2 steps supported at this time", ( -> HOLLERITH.$index 'reading', 'usagecode', 'foo' )
+#   # done()
+
 #-----------------------------------------------------------------------------------------------------------
 @[ "(v4) secondary indexing, API" ] = ( T, done ) ->
   #.........................................................................................................
@@ -2062,31 +2068,35 @@ clear_leveldb = ( leveldb, handler ) ->
     input = D.new_stream()
     #.......................................................................................................
     input
-    # .pipe HOLLERITH.$index_v4 'reading', 'reading'
-    # .pipe HOLLERITH.$index_v4 'reading', 'gloss'
-    # .pipe HOLLERITH.$index_v4 'reading', 'similarity'
-    .pipe HOLLERITH.$index_v4 'reading', 'usagecode'
-    .pipe HOLLERITH.$index_v4 'reading', 'variant'
+    # .pipe HOLLERITH.$index 'reading', 'reading'
+    # .pipe HOLLERITH.$index 'reading', 'gloss'
+    # .pipe HOLLERITH.$index 'reading', 'similarity'
+    .pipe HOLLERITH.$index 'reading', 'usagecode'
+    # .pipe HOLLERITH.$index 'reading', 'variant'
     .pipe HOLLERITH.$write db, unique: no, batch: 4
     .pipe D.$on_finish handler
     #.......................................................................................................
-    input.write [ '國', 'reading',     'guo',        ]
-    input.write [ '國', 'variant',     '国',        ]
-    input.write [ '國', 'variant',     '圀',        ]
-    input.write [ '國', 'variant',     '囯',        ]
-    input.write [ '千', 'reading',     'qian',       ]
-    input.write [ '千', 'reading',     'bar',        ]
-    input.write [ '千', 'variant',     '仟',         ]
-    input.write [ '千', 'similarity',  '于',         ]
-    input.write [ '千', 'similarity',  '干',         ]
-    input.write [ '千', 'usagecode',   'CJKTHM',     ]
-    input.write [ '千', 'gloss', 0,  'thousand',     ]
-    input.write [ '千', 'gloss', 1,  'kilo',         ]
-    input.write [ '千', 'variant',     '韆',         ]
-    input.write [ '千', 'gloss', 2,  'millenary',    ]
-    input.write [ '千', 'reading',     'foo',        ]
+    probes = CND.shuffle [
+      [ '國', 'reading',     'guo',        ]
+      # [ '國', 'variant',     '国',        ]
+      # [ '國', 'variant',     '圀',        ]
+      # [ '國', 'variant',     '囯',        ]
+      # [ '國', 'usagecode',   'JKTHM',     ]
+      [ '千', 'reading',     'qian',       ]
+      [ '千', 'reading',     'bar',        ]
+      [ '千', 'reading',     'foo',        ]
+      [ '千', 'variant',     '仟',         ]
+      # [ '千', 'similarity',  '于',         ]
+      # [ '千', 'similarity',  '干',         ]
+      [ '千', 'usagecode',   'CJKTHM',     ]
+      [ '千', 'gloss', 0,  'thousand',     ]
+      # [ '千', 'gloss', 1,  'kilo',         ]
+      # [ '千', 'variant',     '韆',         ]
+      # [ '千', 'gloss', 2,  'millenary',    ]
+      ]
     #.......................................................................................................
-    input.end()
+    D.send  input, probe for probe in probes
+    D.end   input
   #.........................................................................................................
   show = ( handler ) ->
     #.......................................................................................................
@@ -2110,12 +2120,12 @@ clear_leveldb = ( leveldb, handler ) ->
     input = D.new_stream()
     #.......................................................................................................
     input
-      # .pipe HOLLERITH.$index 'reading':     'plural',   'similarity':  'plural'
-      # .pipe HOLLERITH.$index 'reading':     'plural',   'variant':     'plural'
-      # .pipe HOLLERITH.$index 'reading':     'plural',   'strokeorder': 'singular'
-      # .pipe HOLLERITH.$index 'strokeorder': 'singular', 'reading':     'plural'
-      # .pipe HOLLERITH.$index 'strokeorder': 'singular', 'variant':     'plural'
-      # .pipe HOLLERITH.$index 'strokeorder': 'singular', 'similarity':  'plural'
+      # .pipe HOLLERITH.$index_OLD 'reading':     'plural',   'similarity':  'plural'
+      # .pipe HOLLERITH.$index_OLD 'reading':     'plural',   'variant':     'plural'
+      # .pipe HOLLERITH.$index_OLD 'reading':     'plural',   'strokeorder': 'singular'
+      # .pipe HOLLERITH.$index_OLD 'strokeorder': 'singular', 'reading':     'plural'
+      # .pipe HOLLERITH.$index_OLD 'strokeorder': 'singular', 'variant':     'plural'
+      # .pipe HOLLERITH.$index_OLD 'strokeorder': 'singular', 'similarity':  'plural'
       .pipe HOLLERITH.$write db, unique: no
       .pipe D.$on_finish handler
     #.......................................................................................................
@@ -2695,7 +2705,6 @@ unless module.parent?
     # "codec accepts long keys"
     # "write private types (1)"
     # "(v4) use non-string subjects in phrases (1)"
-    # "(v4) secondary indexing, manual"
     # # "binary indexing"
     # "(v4) n-ary indexing (2)"
     # # # "Pinyin Unicode Sorting"
@@ -2711,8 +2720,10 @@ unless module.parent?
     # "(v4) read POS phrases (sbj is a singleton list)"
     # "(v4) secondary async reads"
 
+    "(v4) secondary indexing, manual"
     "(v4) secondary indexing, API"
 
+    # "(v4) secondary indexing fails where not two predicates"
     # "(v4) read normalized phrases"
     # "dddddddddddddddddd"
     # "eeeeeeeeeeeeeeeeee"

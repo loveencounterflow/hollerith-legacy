@@ -10,6 +10,7 @@ rpr                       = CND.rpr
 badge                     = 'HOLLERITH/main'
 log                       = CND.get_logger 'plain',     badge
 debug                     = CND.get_logger 'debug',     badge
+info                      = CND.get_logger 'info',      badge
 warn                      = CND.get_logger 'warn',      badge
 help                      = CND.get_logger 'help',      badge
 urge                      = CND.get_logger 'urge',      badge
@@ -125,6 +126,7 @@ step                      = ( require 'coffeenode-suspend' ).step
 #-----------------------------------------------------------------------------------------------------------
 @_is_meta = ( db, key_bfr ) -> ( ( key_bfr.slice 0, @_meta_prefix.length ).compare @_meta_prefix ) is 0
 
+#-----------------------------------------------------------------------------------------------------------
 ### TAINT must derive meta key prefix from result of `_put_meta` ###
 @_meta_prefix = new Buffer [ 0x54, 0x6d, 0x65, 0x74, 0x61, 0x00, ]
 
@@ -147,38 +149,14 @@ step                      = ( require 'coffeenode-suspend' ).step
   #.........................................................................................................
   is_integer = ( x ) -> ( x? ) and ( x is parseInt x )
   #.........................................................................................................
-  $add_secondary_index = =>
-    cache = []
-    return $async ( phrase, send, end ) =>
-      # debug '7765-1', phrase
-      if phrase?
-        return send.done phrase unless phrase[ 0 ] is Symbol.for 'make-secondary-index'
-        [ _, index_settings, ] = phrase
-        debug '7765-A', "indexing for #{rpr index_settings}"
-        cache.push index_settings
-        send.done()
-      if end?
-        ASYNC = require 'async'
-        tasks = []
-        for index_settings in cache
-          do ( index_settings ) =>
-            tasks.push ( handler ) =>
-              debug '7765-B', "indexing for #{rpr index_settings}"
-              ### TAINT `handler` as last argument would suffice ###
-              @_add_secondary_index db, index_settings, ( error ) =>
-                return handler error if error?
-                handler()
-        ### TAINT arbitrary magic number for limit ###
-        ASYNC.parallelLimit tasks, 10, ( error ) =>
-          return send.error error if error?
-          send.done()
-          end()
-      return null
-  #.........................................................................................................
   $add_primary_index = => $ ( spo, send ) =>
-    # debug '7765-2', spo
+    #.......................................................................................................
+    ### Skip signals sor secondary indexes: ###
+    return send spo if spo[ 0 ] is Symbol.for 'add-secondary-index'
+    #.......................................................................................................
     index_only = no
     if spo[ 0 ] is Symbol.for 'index'
+      ### TAINT modifying original object, should make copy ###
       spo.shift()
       index_only = yes
     [ sbj, prd, idx, obj, ]   = spo
@@ -199,18 +177,14 @@ step                      = ( require 'coffeenode-suspend' ).step
     send { type: 'put', key: ( @_encode_key db, longphrase ), value: @_zero_value_bfr, }
   #.........................................................................................................
   $write_batch = => $async ( batch, send, end ) =>
-    if batch?
-      substrate.batch batch, ->
-        send batch
-        warn "write batch of #{batch.length}"
-        send.done()
-    end() if end?
+    if batch? then substrate.batch batch, => send.done batch
+    if end?   then end()
     return null
   #.........................................................................................................
   pipeline = []
   # pipeline.push @$validate_spo()
-  pipeline.push $add_secondary_index()
   pipeline.push $add_primary_index()
+  pipeline.push @_$add_secondary_index db
   pipeline.push $encode()
   pipeline.push D.$batch batch_size
   pipeline.push $write_batch()
@@ -221,157 +195,73 @@ step                      = ( require 'coffeenode-suspend' ).step
 #===========================================================================================================
 # HIGHER-ORDER INDEXING
 #-----------------------------------------------------------------------------------------------------------
-@$index = ( descriptions ) =>
-  throw new Error "deprecated"
-  # ### TAINT For the time being, we only support secondary indexes, and the implementation is not at all
-  # written in a generic fashion. A future version will likely support tertiary indexes, but that will
-  # necessitate waiting for the end of the write stream and re-reading all the records. ###
-  # predicates      = []
-  # predicate_count = 0
-  # arities         = []
-  # phrases         = []
-  # phrase_counts   = {}
-  # #.........................................................................................................
-  # for predicate, arity of descriptions
-  #   predicate_count += +1
-  #   unless arity in [ 'singular', 'plural', ]
-  #     throw new Error "expected 'singular' or 'plural' for arity, got #{rpr arity}"
-  #   predicates.push   predicate
-  #   phrases.push      {}
-  #   arities.push      arity
-  # #.........................................................................................................
-  # if predicate_count.length < 2
-  #   throw new Error "expected at least two predicate descriptions, got #{predicates.length}"
-  # if predicate_count.length > 2
-  #   throw new Error "indexes with more than 2 steps not supported yet"
-  # #.........................................................................................................
-  # new_index_phrase = ( tsbj, tprd, tobj, fprd, fobj, tsbj_is_list, idx = 0 ) =>
-  #   return [ [ tsbj..., tprd, idx, tobj, ], fprd, fobj, ] if tsbj_is_list
-  #   return [ [ tsbj,    tprd, idx, tobj, ], fprd, fobj, ]
-  # #.........................................................................................................
-  # link = ( phrases ) =>
-  #   throw new Error "indexes with anything but 2 steps not supported yet" if phrases.length != 2
-  #   [ from_phrase, to_phrase, ] = phrases
-  #   [ fsbj, fprd, fobj, ]       = from_phrase
-  #   [ tsbj, tprd, tobj, ]       =   to_phrase
-  #   tsbj_is_list                = CND.isa_list tsbj
-  #   from_is_plural              = arities[ 0 ] is 'plural'
-  #   to_is_plural                = arities[ 1 ] is 'plural'
-  #   #.......................................................................................................
-  #   unless from_is_plural or to_is_plural
-  #     return [ new_index_phrase tsbj, tprd, tobj, fprd, fobj, tsbj_is_list ]
-  #   #.......................................................................................................
-  #   idx = -1
-  #   R   = []
-  #   if from_is_plural
-  #     if to_is_plural
-  #       for sub_fobj in fobj
-  #         for sub_tobj in tobj
-  #           idx += +1
-  #           R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
-  #     else
-  #       for sub_fobj in fobj
-  #         idx += +1
-  #         R.push new_index_phrase tsbj, tprd, tobj, fprd, sub_fobj, tsbj_is_list, idx
-  #   else
-  #     for sub_tobj in tobj
-  #       idx += +1
-  #       R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, fobj, tsbj_is_list, idx
-  #   #.......................................................................................................
-  #   return R
-  # #.........................................................................................................
-  # return $ ( phrase, send ) =>
-  #   send phrase
-  #   [ sbj, prd, obj, ] = phrase
-  #   return unless ( prd_idx = predicates.indexOf prd ) >= 0
-  #   sbj_txt                       = JSON.stringify sbj
-  #   phrase_target                 = phrases[ sbj_txt]?= []
-  #   phrase_target[ prd_idx ]      = phrase
-  #   phrase_counts[ sbj_txt ]      = ( phrase_counts[ sbj_txt ] ? 0 ) + 1
-  #   return null if phrase_counts[ sbj_txt ] < predicate_count
-  #   #.......................................................................................................
-  #   send index_phrase for index_phrase in link phrases[ sbj_txt ]
-  #   return null
-
-#-----------------------------------------------------------------------------------------------------------
-@$index_v4 = ( predicates... ) =>
+@$index = ( predicates... ) =>
   ### TAINT For the time being, we only support secondary indexes. A future version will likely support
   tertiary indexes, but that will necessitate waiting for the end of the write stream and re-reading all the
   records. ###
+  throw new Error "only indexes with exactly 2 steps supported at this time" unless predicates.length is 2
+  #.........................................................................................................
   return D.$on_start ( send ) =>
     index_settings = { predicates, }
-    send [ ( Symbol.for 'make-secondary-index' ), index_settings, ]
+    send [ ( Symbol.for 'add-secondary-index' ), index_settings, ]
 
 #-----------------------------------------------------------------------------------------------------------
-@_add_secondary_index = ( db, index_settings, handler ) =>
-  { predicates, }       = index_settings
-  [ from_prd, to_prd, ] = predicates
-  # query   = { prefix: [ from_prd, ], star: '*', flatten: yes }
-  query   = { prefix: [], star: '*', flatten: yes }
-  input   = @new_phrasestream db, query
-  input
-    .pipe $ ( phrase ) => log CND.steel predicates, JSON.stringify phrase
-    .pipe $on_finish => debug "finished: #{predicates}"; handler()
-  # #.........................................................................................................
-  # query   = { prefix: [ 'reading', ], star: '*', flatten: yes }
-  # input   = @new_phrasestream db, query
-  # input
-  #   .pipe $ ( phrase ) => whisper '_add_secondary_index', phrase if phrase
-  # #.........................................................................................................
-  # if predicates.length isnt 2
-  #   throw new Error "only indexes with exactly 2 steps supported at this time"
+@_$add_secondary_index = ( db ) =>
+  index_settings_cache            = []
+  phrase_cache                    = []
+  lead_phrases_cache              = {}
+  tail_phrases_cache              = {}
+  symbol_for_add_secondary_index  = Symbol.for 'add-secondary-index'
   #.........................................................................................................
-  # #.........................................................................................................
-  # phrases         = []
-  # phrase_counts   = {}
-  # #.........................................................................................................
-  # if is_retro_index = predicates[ 0 ] is predicates[ 1 ]
-  #   predicates.pop()
-  #   phrases.push {}
-  #   predicate_count = 2
-  # else
-  #   phrases.push {} for predicate in predicates
-  # #.........................................................................................................
-  # new_index_phrase = ( fphrase, tphrase ) =>
-  #   [ fsubj, fprd, fidx, fobj, ]  = fphrase
-  #   [ tsubj, tprd, tidx, tobj, ]  = tphrase
-  #   return [ [ tsbj, tprd, tidx, tobj, ], fprd, fidx, fobj, ]
-  # #.........................................................................................................
-  # link = ( phrases ) =>
-  #   [ from_phrase, to_phrase, ] = phrases
-  #   [ fsbj, fprd, fobj, ]       = from_phrase
-  #   [ tsbj, tprd, tobj, ]       =   to_phrase
-  #   tsbj_is_list                = CND.isa_list tsbj
-  #   #.......................................................................................................
-  #   for sub_fobj in fobj
-  #     for sub_tobj in tobj
-  #       idx += +1
-  #       R.push new_index_phrase tsbj, tprd, sub_tobj, fprd, sub_fobj, tsbj_is_list, idx
-  #   #.......................................................................................................
-  #   return R
-  # #.........................................................................................................
-  # return $ ( phrase, send ) =>
-  #   if phrase?
-  #     send phrase
-  #     [ sbj, prd, idx, obj, ] = phrase
-  #     return unless ( prd_idx = predicates.indexOf prd ) >= 0
-  #     # if is_retro_index
-  #     sbj_txt                       = JSON.stringify sbj
-  #     phrase_target                 = phrases[ sbj_txt]?= []
-  #     phrase_target[ prd_idx ]      = phrase
-  #     phrase_counts[ sbj_txt ]      = ( phrase_counts[ sbj_txt ] ? 0 ) + 1
-  #     return null if phrase_counts[ sbj_txt ] < predicate_count
-  #   #.......................................................................................................
-  #   debug '5543', phrases#[ sbj_txt ]
-  #   # send index_phrase for index_phrase in link phrases[ sbj_txt ]
-  #   #.......................................................................................................
-  #   if end?
-  #     # if is_retro_index
-  #       # send index_phrase for index_phrase in link phrases[ sbj_txt ]
-  #     end()
-  #   #.......................................................................................................
-  #   return null
-
+  return $ ( phrase, send, end ) =>
+    sbj_txt = null
+    #.......................................................................................................
+    if phrase?
+      #.....................................................................................................
+      if phrase[ 0 ] is symbol_for_add_secondary_index
+        [ _, index_settings, ]    = phrase
+        { predicates, }           = index_settings
+        [ lead_prd, tail_prd, ]   = predicates
+        lead_phrases_cache[ lead_prd ] ?= {}
+        tail_phrases_cache[ tail_prd ] ?= {}
+        index_settings_cache.push index_settings
+      #.....................................................................................................
+      else
+        #...................................................................................................
+        ### TAINT code duplication ###
+        if phrase[ 0 ] is 'pos'
+          [ _, prd, _..., obj, sbj, ] = phrase
+          #.................................................................................................
+          if ( target = lead_phrases_cache[ prd ] )?
+            sbj_txt ?= JSON.stringify sbj
+            ( target[ sbj_txt ] ?= [] ).push phrase
+          #.................................................................................................
+          if ( target = tail_phrases_cache[ prd ] )?
+            sbj_txt ?= JSON.stringify sbj
+            ( target[ sbj_txt ] ?= [] ).push phrase
+        #...................................................................................................
+        send phrase
+    #.......................................................................................................
+    if end?
+      #.....................................................................................................
+      for index_settings in index_settings_cache
+        { predicates, }           = index_settings
+        [ lead_prd, tail_prd, ]   = predicates
+        lead_phrases_by_sbj_txts  = lead_phrases_cache[ lead_prd ]
+        tail_phrases_by_sbj_txts  = tail_phrases_cache[ tail_prd ]
+        for sbj_txt, lead_phrases of lead_phrases_by_sbj_txts
+          continue unless ( tail_phrases = tail_phrases_by_sbj_txts[ sbj_txt ] )?
+          for lead_phrase in lead_phrases
+            [ _, lead_prd, lead_idx, lead_obj, lead_sbj, ] = lead_phrase
+            for tail_phrase in tail_phrases
+              ### TAINT second clause necessary? ###
+              continue if ( lead_phrase is tail_phrase ) or ( CND.equals lead_phrase, tail_phrase )
+              [ _, tail_prd, tail_idx, tail_obj, tail_sbj, ] = tail_phrase
+              send [ 'pos', lead_prd, lead_idx, lead_obj, [ tail_sbj, tail_prd, tail_idx, tail_obj, ], ]
+      #.....................................................................................................
+      end()
+    #.......................................................................................................
+    return null
 
 
 #===========================================================================================================
