@@ -258,6 +258,13 @@ step                      = ( require 'coffeenode-suspend' ).step
               continue if ( lead_phrase is tail_phrase ) or ( CND.equals lead_phrase, tail_phrase )
               [ _, tail_prd, tail_idx, tail_obj, tail_sbj, ] = tail_phrase
               send [ 'pos', lead_prd, lead_idx, lead_obj, [ tail_sbj, tail_prd, tail_idx, tail_obj, ], ]
+              ### From the README: "For each phrase that has an integer ('classical') index, we store a
+              second phrase with the index field set to null to enable queries for phrase object values at
+              any index. Note that as a matter of course, phrases with duplicate object values (which would
+              differ solely by index) will thereby be conflated; in other words, this step turns lists into
+              sets." ###
+              if ( lead_idx isnt null ) or ( tail_idx isnt null )
+                send [ 'pos', lead_prd, null, lead_obj, [ tail_sbj, tail_prd, null, tail_obj, ], ]
       #.....................................................................................................
       end()
     #.......................................................................................................
