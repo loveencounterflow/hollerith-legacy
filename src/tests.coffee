@@ -2065,26 +2065,26 @@ clear_leveldb = ( leveldb, handler ) ->
     # .pipe HOLLERITH.$index_v4 'reading', 'reading'
     # .pipe HOLLERITH.$index_v4 'reading', 'gloss'
     # .pipe HOLLERITH.$index_v4 'reading', 'similarity'
-    # .pipe HOLLERITH.$index_v4 'reading', 'usagecode'
+    .pipe HOLLERITH.$index_v4 'reading', 'usagecode'
     .pipe HOLLERITH.$index_v4 'reading', 'variant'
-    .pipe HOLLERITH.$write db, unique: no
+    .pipe HOLLERITH.$write db, unique: no, batch: 4
     .pipe D.$on_finish handler
     #.......................................................................................................
     input.write [ '國', 'reading',     'guo',        ]
     input.write [ '國', 'variant',     '国',        ]
-    # input.write [ '國', 'variant',     '圀',        ]
-    # input.write [ '國', 'variant',     '囯',        ]
-    # input.write [ '千', 'reading',     'qian',       ]
-    # input.write [ '千', 'reading',     'bar',        ]
-    # input.write [ '千', 'variant',     '仟',         ]
-    # input.write [ '千', 'similarity',  '于',         ]
-    # input.write [ '千', 'similarity',  '干',         ]
-    # input.write [ '千', 'usagecode',   'CJKTHM',     ]
-    # input.write [ '千', 'gloss', 0,  'thousand',     ]
-    # input.write [ '千', 'gloss', 1,  'kilo',         ]
-    # input.write [ '千', 'variant',     '韆',         ]
-    # input.write [ '千', 'gloss', 2,  'millenary',    ]
-    # input.write [ '千', 'reading',     'foo',        ]
+    input.write [ '國', 'variant',     '圀',        ]
+    input.write [ '國', 'variant',     '囯',        ]
+    input.write [ '千', 'reading',     'qian',       ]
+    input.write [ '千', 'reading',     'bar',        ]
+    input.write [ '千', 'variant',     '仟',         ]
+    input.write [ '千', 'similarity',  '于',         ]
+    input.write [ '千', 'similarity',  '干',         ]
+    input.write [ '千', 'usagecode',   'CJKTHM',     ]
+    input.write [ '千', 'gloss', 0,  'thousand',     ]
+    input.write [ '千', 'gloss', 1,  'kilo',         ]
+    input.write [ '千', 'variant',     '韆',         ]
+    input.write [ '千', 'gloss', 2,  'millenary',    ]
+    input.write [ '千', 'reading',     'foo',        ]
     #.......................................................................................................
     input.end()
   #.........................................................................................................

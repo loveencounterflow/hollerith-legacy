@@ -27,8 +27,9 @@ _codec_encode_plus_tm_hi  = CODEC.encode_plus_hi.bind CODEC
 _codec_decode             = CODEC.decode.bind CODEC
 #...........................................................................................................
 D                         = require 'pipedreams'
-$                         = D.remit.bind D
-$async                    = D.remit_async.bind D
+{ $
+  $async
+  $on_finish            } = D
 _new_level_db             = require 'level'
 leveldown                 = require 'leveldown'
 #...........................................................................................................
@@ -152,17 +153,26 @@ step                      = ( require 'coffeenode-suspend' ).step
       # debug '7765-1', phrase
       if phrase?
         return send.done phrase unless phrase[ 0 ] is Symbol.for 'make-secondary-index'
-        [ _, predicates, ] = phrase
-        debug '7765-A', "indexing predicates #{rpr predicates}"
-        cache.push { predicates, }
+        [ _, index_settings, ] = phrase
+        debug '7765-A', "indexing for #{rpr index_settings}"
+        cache.push index_settings
         send.done()
       if end?
         ASYNC = require 'async'
         tasks = []
-        for entry in cache
-        debug '7765-B', "indexing predicates #{rpr cache}"
-        @_add_secondary_index db, entry...
-        end()
+        for index_settings in cache
+          do ( index_settings ) =>
+            tasks.push ( handler ) =>
+              debug '7765-B', "indexing for #{rpr index_settings}"
+              ### TAINT `handler` as last argument would suffice ###
+              @_add_secondary_index db, index_settings, ( error ) =>
+                return handler error if error?
+                handler()
+        ### TAINT arbitrary magic number for limit ###
+        ASYNC.parallelLimit tasks, 10, ( error ) =>
+          return send.error error if error?
+          send.done()
+          end()
       return null
   #.........................................................................................................
   $add_primary_index = => $ ( spo, send ) =>
@@ -188,10 +198,11 @@ step                      = ( require 'coffeenode-suspend' ).step
   $encode = => $ ( longphrase, send ) =>
     send { type: 'put', key: ( @_encode_key db, longphrase ), value: @_zero_value_bfr, }
   #.........................................................................................................
-  $write = => $async ( batch, send, end ) =>
+  $write_batch = => $async ( batch, send, end ) =>
     if batch?
       substrate.batch batch, ->
         send batch
+        warn "write batch of #{batch.length}"
         send.done()
     end() if end?
     return null
@@ -202,28 +213,9 @@ step                      = ( require 'coffeenode-suspend' ).step
   pipeline.push $add_primary_index()
   pipeline.push $encode()
   pipeline.push D.$batch batch_size
-  pipeline.push $write()
+  pipeline.push $write_batch()
   #.........................................................................................................
   return D.new_stream { pipeline, }
-
-#-----------------------------------------------------------------------------------------------------------
-@validate_spo = ( spo ) ->
-  ### Do a shallow sanity check to see whether `spo` is a triplet. ###
-  throw new Error "invalid SPO key, must be list: #{rpr spo}"             unless CND.isa_list spo
-  throw new Error "invalid SPO key, must be of length 3 or 4: #{rpr spo}" unless 3 <= spo.length <= 4
-  return null
-
-#-----------------------------------------------------------------------------------------------------------
-@$validate_spo = ->
-  ### Do a shallow sanity check to see whether all incoming data are triplets. ###
-  return $ ( spo, send ) =>
-    ### Analyze SPO key and send all necessary POS facets: ###
-    try
-      @validate_spo spo
-    catch error
-      return send.error error
-      # throw error
-    send spo
 
 
 #===========================================================================================================
@@ -307,15 +299,24 @@ step                      = ( require 'coffeenode-suspend' ).step
   tertiary indexes, but that will necessitate waiting for the end of the write stream and re-reading all the
   records. ###
   return D.$on_start ( send ) =>
-    send [ ( Symbol.for 'make-secondary-index' ), predicates, ]
+    index_settings = { predicates, }
+    send [ ( Symbol.for 'make-secondary-index' ), index_settings, ]
 
 #-----------------------------------------------------------------------------------------------------------
-@_add_secondary_index = ( db, description, handler ) =>
-  #.........................................................................................................
-  query   = { prefix: [ 'reading', ], star: '*', flatten: yes }
+@_add_secondary_index = ( db, index_settings, handler ) =>
+  { predicates, }       = index_settings
+  [ from_prd, to_prd, ] = predicates
+  # query   = { prefix: [ from_prd, ], star: '*', flatten: yes }
+  query   = { prefix: [], star: '*', flatten: yes }
   input   = @new_phrasestream db, query
   input
-    .pipe $ ( phrase ) => whisper '_add_secondary_index', phrase if phrase
+    .pipe $ ( phrase ) => log CND.steel predicates, JSON.stringify phrase
+    .pipe $on_finish => debug "finished: #{predicates}"; handler()
+  # #.........................................................................................................
+  # query   = { prefix: [ 'reading', ], star: '*', flatten: yes }
+  # input   = @new_phrasestream db, query
+  # input
+  #   .pipe $ ( phrase ) => whisper '_add_secondary_index', phrase if phrase
   # #.........................................................................................................
   # if predicates.length isnt 2
   #   throw new Error "only indexes with exactly 2 steps supported at this time"
@@ -370,6 +371,29 @@ step                      = ( require 'coffeenode-suspend' ).step
   #     end()
   #   #.......................................................................................................
   #   return null
+
+
+
+#===========================================================================================================
+# VALIDATION
+#-----------------------------------------------------------------------------------------------------------
+@validate_spo = ( spo ) ->
+  ### Do a shallow sanity check to see whether `spo` is a triplet. ###
+  throw new Error "invalid SPO key, must be list: #{rpr spo}"             unless CND.isa_list spo
+  throw new Error "invalid SPO key, must be of length 3 or 4: #{rpr spo}" unless 3 <= spo.length <= 4
+  return null
+
+#-----------------------------------------------------------------------------------------------------------
+@$validate_spo = ->
+  ### Do a shallow sanity check to see whether all incoming data are triplets. ###
+  return $ ( spo, send ) =>
+    ### Analyze SPO key and send all necessary POS facets: ###
+    try
+      @validate_spo spo
+    catch error
+      return send.error error
+      # throw error
+    send spo
 
 
 #===========================================================================================================
