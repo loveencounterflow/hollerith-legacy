@@ -157,8 +157,11 @@ step                      = ( require 'coffeenode-suspend' ).step
         cache.push { predicates, }
         send.done()
       if end?
+        ASYNC = require 'async'
+        tasks = []
+        for entry in cache
         debug '7765-B', "indexing predicates #{rpr cache}"
-        @_add_secondary_index entry... for entry in cache
+        @_add_secondary_index db, entry...
         end()
       return null
   #.........................................................................................................
@@ -307,10 +310,7 @@ step                      = ( require 'coffeenode-suspend' ).step
     send [ ( Symbol.for 'make-secondary-index' ), predicates, ]
 
 #-----------------------------------------------------------------------------------------------------------
-@_add_secondary_index = ( description, handler ) =>
-  #.........................................................................................................
-  if predicates.length isnt 2
-    throw new Error "only indexes with exactly 2 steps supported at this time"
+@_add_secondary_index = ( db, description, handler ) =>
   #.........................................................................................................
   query   = { prefix: [ 'reading', ], star: '*', flatten: yes }
   input   = @new_phrasestream db, query
