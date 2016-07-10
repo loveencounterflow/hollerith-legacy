@@ -2063,54 +2063,143 @@ clear_leveldb = ( leveldb, handler ) ->
 #-----------------------------------------------------------------------------------------------------------
 @[ "(v4) secondary indexing, API" ] = ( T, done ) ->
   #.........................................................................................................
+  probes = CND.shuffle [
+    [ '國', 'reading',     'guo',        ]
+    [ '國', 'variant',     '国',        ]
+    [ '國', 'variant',     '圀',        ]
+    [ '國', 'variant',     '囯',        ]
+    [ '國', 'usagecode',   'JKTHM',     ]
+    [ '千', 'reading',     'qian',       ]
+    [ '千', 'reading',     'bar',        ]
+    [ '千', 'reading',     'foo',        ]
+    [ '千', 'variant',     '仟',         ]
+    [ '千', 'variant',     '韆',         ]
+    [ '千', 'similarity',  '于',         ]
+    [ '千', 'similarity',  '干',         ]
+    [ '千', 'usagecode',   'CJKTHM',     ]
+    [ '千', 'gloss', 0,  'thousand',     ]
+    [ '千', 'gloss', 1,  'kilo',         ]
+    [ '千', 'gloss', 2,  'millenary',    ]
+    ]
+  #.........................................................................................................
+  matchers = [
+    ["pos","gloss",null,"kilo",["千"]]
+    ["pos","gloss",null,"millenary",["千"]]
+    ["pos","gloss",null,"thousand",["千"]]
+    ["pos","gloss",0,"thousand",["千"]]
+    ["pos","gloss",1,"kilo",["千"]]
+    ["pos","gloss",2,"millenary",["千"]]
+    ["pos","reading",null,"bar",["千"]]
+    ["pos","reading",null,"bar",["千","gloss",null,"kilo"]]
+    ["pos","reading",null,"bar",["千","gloss",null,"millenary"]]
+    ["pos","reading",null,"bar",["千","gloss",null,"thousand"]]
+    ["pos","reading",null,"bar",["千","gloss",0,"thousand"]]
+    ["pos","reading",null,"bar",["千","gloss",1,"kilo"]]
+    ["pos","reading",null,"bar",["千","gloss",2,"millenary"]]
+    ["pos","reading",null,"bar",["千","reading",null,"foo"]]
+    ["pos","reading",null,"bar",["千","reading",null,"qian"]]
+    ["pos","reading",null,"bar",["千","similarity",null,"于"]]
+    ["pos","reading",null,"bar",["千","similarity",null,"干"]]
+    ["pos","reading",null,"bar",["千","usagecode",null,"CJKTHM"]]
+    ["pos","reading",null,"bar",["千","variant",null,"仟"]]
+    ["pos","reading",null,"bar",["千","variant",null,"韆"]]
+    ["pos","reading",null,"foo",["千"]]
+    ["pos","reading",null,"foo",["千","gloss",null,"kilo"]]
+    ["pos","reading",null,"foo",["千","gloss",null,"millenary"]]
+    ["pos","reading",null,"foo",["千","gloss",null,"thousand"]]
+    ["pos","reading",null,"foo",["千","gloss",0,"thousand"]]
+    ["pos","reading",null,"foo",["千","gloss",1,"kilo"]]
+    ["pos","reading",null,"foo",["千","gloss",2,"millenary"]]
+    ["pos","reading",null,"foo",["千","reading",null,"bar"]]
+    ["pos","reading",null,"foo",["千","reading",null,"qian"]]
+    ["pos","reading",null,"foo",["千","similarity",null,"于"]]
+    ["pos","reading",null,"foo",["千","similarity",null,"干"]]
+    ["pos","reading",null,"foo",["千","usagecode",null,"CJKTHM"]]
+    ["pos","reading",null,"foo",["千","variant",null,"仟"]]
+    ["pos","reading",null,"foo",["千","variant",null,"韆"]]
+    ["pos","reading",null,"guo",["國"]]
+    ["pos","reading",null,"guo",["國","usagecode",null,"JKTHM"]]
+    ["pos","reading",null,"guo",["國","variant",null,"囯"]]
+    ["pos","reading",null,"guo",["國","variant",null,"国"]]
+    ["pos","reading",null,"guo",["國","variant",null,"圀"]]
+    ["pos","reading",null,"qian",["千"]]
+    ["pos","reading",null,"qian",["千","gloss",null,"kilo"]]
+    ["pos","reading",null,"qian",["千","gloss",null,"millenary"]]
+    ["pos","reading",null,"qian",["千","gloss",null,"thousand"]]
+    ["pos","reading",null,"qian",["千","gloss",0,"thousand"]]
+    ["pos","reading",null,"qian",["千","gloss",1,"kilo"]]
+    ["pos","reading",null,"qian",["千","gloss",2,"millenary"]]
+    ["pos","reading",null,"qian",["千","reading",null,"bar"]]
+    ["pos","reading",null,"qian",["千","reading",null,"foo"]]
+    ["pos","reading",null,"qian",["千","similarity",null,"于"]]
+    ["pos","reading",null,"qian",["千","similarity",null,"干"]]
+    ["pos","reading",null,"qian",["千","usagecode",null,"CJKTHM"]]
+    ["pos","reading",null,"qian",["千","variant",null,"仟"]]
+    ["pos","reading",null,"qian",["千","variant",null,"韆"]]
+    ["pos","similarity",null,"于",["千"]]
+    ["pos","similarity",null,"干",["千"]]
+    ["pos","usagecode",null,"CJKTHM",["千"]]
+    ["pos","usagecode",null,"JKTHM",["國"]]
+    ["pos","variant",null,"仟",["千"]]
+    ["pos","variant",null,"囯",["國"]]
+    ["pos","variant",null,"国",["國"]]
+    ["pos","variant",null,"圀",["國"]]
+    ["pos","variant",null,"韆",["千"]]
+    ["spo",["千"],"gloss",0,"thousand"]
+    ["spo",["千"],"gloss",1,"kilo"]
+    ["spo",["千"],"gloss",2,"millenary"]
+    ["spo",["千"],"reading",null,"bar"]
+    ["spo",["千"],"reading",null,"foo"]
+    ["spo",["千"],"reading",null,"qian"]
+    ["spo",["千"],"similarity",null,"于"]
+    ["spo",["千"],"similarity",null,"干"]
+    ["spo",["千"],"usagecode",null,"CJKTHM"]
+    ["spo",["千"],"variant",null,"仟"]
+    ["spo",["千"],"variant",null,"韆"]
+    ["spo",["國"],"reading",null,"guo"]
+    ["spo",["國"],"usagecode",null,"JKTHM"]
+    ["spo",["國"],"variant",null,"囯"]
+    ["spo",["國"],"variant",null,"国"]
+    ["spo",["國"],"variant",null,"圀"]
+    ]
+  #.........................................................................................................
   write_data = ( handler ) ->
     IDX   = Symbol.for 'index'
     input = D.new_stream()
     #.......................................................................................................
     input
-    # .pipe HOLLERITH.$index 'reading', 'reading'
-    # .pipe HOLLERITH.$index 'reading', 'gloss'
-    # .pipe HOLLERITH.$index 'reading', 'similarity'
+    .pipe HOLLERITH.$index 'reading', 'reading'
+    .pipe HOLLERITH.$index 'reading', 'gloss'
+    .pipe HOLLERITH.$index 'reading', 'similarity'
     .pipe HOLLERITH.$index 'reading', 'usagecode'
-    # .pipe HOLLERITH.$index 'reading', 'variant'
+    .pipe HOLLERITH.$index 'reading', 'variant'
     .pipe HOLLERITH.$write db, unique: no, batch: 4
     .pipe D.$on_finish handler
-    #.......................................................................................................
-    probes = CND.shuffle [
-      [ '國', 'reading',     'guo',        ]
-      # [ '國', 'variant',     '国',        ]
-      # [ '國', 'variant',     '圀',        ]
-      # [ '國', 'variant',     '囯',        ]
-      # [ '國', 'usagecode',   'JKTHM',     ]
-      [ '千', 'reading',     'qian',       ]
-      [ '千', 'reading',     'bar',        ]
-      [ '千', 'reading',     'foo',        ]
-      [ '千', 'variant',     '仟',         ]
-      # [ '千', 'similarity',  '于',         ]
-      # [ '千', 'similarity',  '干',         ]
-      [ '千', 'usagecode',   'CJKTHM',     ]
-      [ '千', 'gloss', 0,  'thousand',     ]
-      # [ '千', 'gloss', 1,  'kilo',         ]
-      # [ '千', 'variant',     '韆',         ]
-      # [ '千', 'gloss', 2,  'millenary',    ]
-      ]
     #.......................................................................................................
     D.send  input, probe for probe in probes
     D.end   input
   #.........................................................................................................
-  show = ( handler ) ->
+  verify = ( handler ) ->
     #.......................................................................................................
-    input = HOLLERITH.new_phrasestream db, flatten: yes
+    input = HOLLERITH.new_phrasestream db, unbox: no, flatten: no
     input
-      .pipe $ ( phrase ) =>
-        ( if phrase[ 0 ] is 'pos' then urge else help ) JSON.stringify phrase
+      # .pipe $ ( phrase ) => ( if phrase[ 0 ] is 'pos' then urge else help ) JSON.stringify phrase
+      #.....................................................................................................
+      .pipe do =>
+        idx = -1
+        return $ 'null', ( phrase ) =>
+          if phrase?
+            idx += +1
+            T.eq phrase, matchers[ idx ]
+          else
+            T.eq idx, matchers.length - 1
+      #.....................................................................................................
       .pipe D.$on_finish => info(); handler()
   #.........................................................................................................
   step ( resume ) =>
     yield clear_leveldb db[ '%self' ], resume
-    # yield feed_test_data db, probes_idx, resume
-    yield write_data resume
-    yield show resume
+    yield write_data                   resume
+    yield verify                       resume
     done()
 
 #-----------------------------------------------------------------------------------------------------------
@@ -2710,15 +2799,15 @@ unless module.parent?
     # # # "Pinyin Unicode Sorting"
     # # # "ensure `Buffer.compare` gives same sorting as LevelDB"
 
-    # "(v4) values are `0x00` buffers"
-    # "(v4) store SPO, POS both as keys only"
-    # "(v4) store non-list subject as single-element list"
-    # "(v4) read POS phrases (sbj is a list)"
-    # "(v4) read POS phrases (sbj isn't a list)"
-    # "(v4) new_longphrasestream rejects illegal arguments"
-    # "(v4) new_longphrasestream accepts legal arguments"
-    # "(v4) read POS phrases (sbj is a singleton list)"
-    # "(v4) secondary async reads"
+    "(v4) values are `0x00` buffers"
+    "(v4) store SPO, POS both as keys only"
+    "(v4) store non-list subject as single-element list"
+    "(v4) read POS phrases (sbj is a list)"
+    "(v4) read POS phrases (sbj isn't a list)"
+    "(v4) new_longphrasestream rejects illegal arguments"
+    "(v4) new_longphrasestream accepts legal arguments"
+    "(v4) read POS phrases (sbj is a singleton list)"
+    "(v4) secondary async reads"
 
     "(v4) secondary indexing, manual"
     "(v4) secondary indexing, API"
