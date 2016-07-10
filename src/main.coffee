@@ -155,12 +155,12 @@ step                      = ( require 'coffeenode-suspend' ).step
         [ _, predicates, ] = phrase
         debug '7765-A', "indexing predicates #{rpr predicates}"
         cache.push { predicates, }
+        send.done()
       if end?
         debug '7765-B', "indexing predicates #{rpr cache}"
         @_add_secondary_index entry... for entry in cache
         end()
-        send.done()
-    return null
+      return null
   #.........................................................................................................
   $add_primary_index = => $ ( spo, send ) =>
     # debug '7765-2', spo
@@ -185,15 +185,17 @@ step                      = ( require 'coffeenode-suspend' ).step
   $encode = => $ ( longphrase, send ) =>
     send { type: 'put', key: ( @_encode_key db, longphrase ), value: @_zero_value_bfr, }
   #.........................................................................................................
-  $write = => $async ( batch, send ) =>
-    substrate.batch batch, ->
-      send batch
-      send.done()
+  $write = => $async ( batch, send, end ) =>
+    if batch?
+      substrate.batch batch, ->
+        send batch
+        send.done()
+    end() if end?
     return null
   #.........................................................................................................
   pipeline = []
   # pipeline.push @$validate_spo()
-  # pipeline.push $add_secondary_index()
+  pipeline.push $add_secondary_index()
   pipeline.push $add_primary_index()
   pipeline.push $encode()
   pipeline.push D.$batch batch_size
@@ -331,7 +333,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   # #.........................................................................................................
   # new_index_phrase = ( fphrase, tphrase ) =>
   #   [ fsubj, fprd, fidx, fobj, ]  = fphrase
-  #   [ tsubj, tprd, tidx,  tobj, ]  = tphrase
+  #   [ tsubj, tprd, tidx, tobj, ]  = tphrase
   #   return [ [ tsbj, tprd, tidx, tobj, ], fprd, fidx, fobj, ]
   # #.........................................................................................................
   # link = ( phrases ) =>

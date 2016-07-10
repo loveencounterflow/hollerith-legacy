@@ -2037,7 +2037,7 @@ clear_leveldb = ( leveldb, handler ) ->
         #...................................................................................................
         end() if end?
       #.....................................................................................................
-      .pipe D.$show()
+      # .pipe D.$show()
       .pipe do =>
           idx = -1
           return $ 'null', ( phrase ) =>
@@ -2709,9 +2709,9 @@ unless module.parent?
     # "(v4) new_longphrasestream rejects illegal arguments"
     # "(v4) new_longphrasestream accepts legal arguments"
     # "(v4) read POS phrases (sbj is a singleton list)"
+    # "(v4) secondary async reads"
 
-    "(v4) secondary async reads"
-    # "(v4) secondary indexing, API"
+    "(v4) secondary indexing, API"
 
     # "(v4) read normalized phrases"
     # "dddddddddddddddddd"
