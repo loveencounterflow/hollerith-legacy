@@ -51,6 +51,7 @@ step                      = ( require 'coffeenode-suspend' ).step
 #-----------------------------------------------------------------------------------------------------------
 @new_db = ( route, settings ) ->
   ### TAINT we should force this operation to be asynchronous; otherwise, DB may not be writeable ###
+  ### TAINT keep global reference to DB at route and return that if it exists? ###
   create_if_missing = settings?[ 'create'   ] ? yes
   size              = settings?[ 'size'     ] ? 1e5
   encoder           = settings?[ 'encoder'  ] ? null
@@ -69,8 +70,10 @@ step                      = ( require 'coffeenode-suspend' ).step
   substrate = _new_level_db route, level_settings, ( error ) ->
     if error?
       if error[ 'name' ] is 'OpenError'
-        ### TAINT error also thrown with misleading message if route doesn't exist up the penultimate term ###
-        throw new Error "No database found at #{route} and no `create` setting given"
+        throw new Error """
+          Unable to open DB at #{route};
+          make sure folder exists and / or pass `{ create: true, }` in settings
+          and that no other process has opened DB (if it exists)."""
       throw error
   #.........................................................................................................
   R =
@@ -298,14 +301,9 @@ step                      = ( require 'coffeenode-suspend' ).step
 #===========================================================================================================
 # READING
 #-----------------------------------------------------------------------------------------------------------
-@new_phrasestream = ( db, query, settings ) ->
-  R = @_new_phrasestream db, query, settings
-  # if query[ 'spo' ]
-  #   R = R.pipe $ ( phrase, send ) =>
-  #     [ phrasetype, tail..., ] = phrase
-  #     return send tail if phrasetype is 'spo'
-  #     [ prd, obj, sbj, idx, ] = tail
-  return R
+@new_phrasestream = ( db, query ) ->
+  throw new Error "expected up to 2 arguments, got #{arity}" unless ( arity = arguments.length ) <= 2
+  return @_new_phrasestream db, query
 
 #-----------------------------------------------------------------------------------------------------------
 @read_phrases = ( db, query, handler ) ->
@@ -344,15 +342,8 @@ step                      = ( require 'coffeenode-suspend' ).step
 
 #-----------------------------------------------------------------------------------------------------------
 @_new_phrasestream = ( db, query, handler ) ->
-  # switch arity = arguments.length
-  #   when 3
-  #     if CND.isa_function settings
-  #       handler   = settings
-  #       settings  = null
-  #   when 4 then null
-  #   else throw new Error "expected 3 or 4 arguments, got #{arity}"
   input = @new_longphrasestream db, query
-  R = input.pipe @$longphrase_as_phrase db, query
+  R     = input.pipe @$longphrase_as_phrase db, query
   if handler?
     R = R
       .pipe D.$collect()
