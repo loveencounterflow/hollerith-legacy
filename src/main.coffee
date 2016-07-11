@@ -142,7 +142,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   batch_size        = settings[ 'batch'  ] ? 1000
   solid_predicates  = settings[ 'solids' ] ? []
   loner_predicates  = settings[ 'loners' ] ? []
-  ensure_unique     = settings[ 'unique' ] ? true
+  ensure_unique     = settings[ 'unique' ] ? no
   substrate         = db[ '%self' ]
   batch_written     = null
   throw new Error "`unique` setting currently not supported" if ensure_unique
