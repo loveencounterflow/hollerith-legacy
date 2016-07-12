@@ -2727,6 +2727,18 @@ clear_leveldb = ( leveldb, handler ) ->
       T.fail "#{rpr probe} fails with '#{error[ 'message' ]}'"
   done()
 
+#-----------------------------------------------------------------------------------------------------------
+@[ "(v4) opening DB 2nd time returns reference to same object" ] = ( T, done ) ->
+  try
+    db_1 = HOLLERITH.new_db '/tmp/hollerith-multiple-open'
+    db_2 = HOLLERITH.new_db '/tmp/hollerith-multiple-open'
+  catch error
+    T.fail error[ 'message' ]
+    return done()
+  if db_1 is db_2 then  T.succeed "DBs are identical"
+  else                  T.fail "DBs are different"
+  done()
+
 
 #===========================================================================================================
 #
@@ -2809,6 +2821,8 @@ unless module.parent?
 
     "(v4) secondary indexing, manual"
     "(v4) secondary indexing, API"
+
+    "(v4) opening DB 2nd time returns reference to same object"
 
     # "(v4) secondary indexing fails where not two predicates"
     # "(v4) read normalized phrases"

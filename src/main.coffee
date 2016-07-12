@@ -55,7 +55,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   ### TAINT rename to `open_db` and make calls asynchronous? ###
   path            = ( require 'path' ).resolve process.cwd(), path
   hollerith_sym   = Symbol.for 'HOLLERITH'
-  registry        = global[ hollerith_sym ] = {}
+  registry        = global[ hollerith_sym ] ?= {}
   return R if ( R = registry[ path ] )?
   return registry[ path ] = @_new_db path, settings
 
@@ -87,9 +87,11 @@ step                      = ( require 'coffeenode-suspend' ).step
     if error?
       if error[ 'name' ] is 'OpenError'
         throw new Error """
+          #{error[ 'message' ]}
           Unable to open DB at #{route};
-          make sure folder exists and / or pass `{ create: true, }` in settings
-          and that no other process has opened DB (if it exists)."""
+          * make sure folder exists
+          * pass `{ create: true, }` in settings
+          * make sure no other process has opened DB"""
       throw error
   #.........................................................................................................
   R =
