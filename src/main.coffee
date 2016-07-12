@@ -61,12 +61,13 @@ step                      = ( require 'coffeenode-suspend' ).step
 
 
 #-----------------------------------------------------------------------------------------------------------
-@_new_db = ( route, settings ) ->
+@_new_db = ( route, settings = {} ) ->
   ### TAINT we should force this operation to be asynchronous; otherwise, DB may not be writeable ###
   ### TAINT keep global reference to DB at route and return that if it exists? ###
   #.........................................................................................................
-  unless ( not settings? ) or not CND.is_subset ( keys = Object.keys settings ), @_new_db.keys
-    throw new Error "unknown settings in #{rpr keys}"
+  unless CND.is_subset ( keys = Object.keys settings ), @_new_db.keys
+    unknown_keys = ( key for key in keys when key not in @_new_db.keys ).join ', '
+    throw new Error "unknown settings keys: #{keys}"
   #.........................................................................................................
   create_if_missing = settings?[ 'create'   ] ? yes
   encoder           = settings?[ 'encoder'  ] ? null

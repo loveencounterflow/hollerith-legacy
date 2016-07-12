@@ -116,7 +116,7 @@ clear_leveldb = ( leveldb, handler ) ->
 #-----------------------------------------------------------------------------------------------------------
 @_main = ( handler ) ->
   db_route    = join __dirname, '..', 'dbs/tests'
-  db_settings = size: 500
+  db_settings = {}
   db = HOLLERITH.new_db db_route, db_settings
   test @, 'timeout': 2500
 
@@ -1550,7 +1550,6 @@ clear_leveldb = ( leveldb, handler ) ->
   xdb_route     = join __dirname, '..', 'dbs/tests-with-private-types'
   #.........................................................................................................
   xdb_settings  =
-    size:           500
     encoder:        encoder
   #.........................................................................................................
   xdb           = HOLLERITH.new_db xdb_route, xdb_settings
@@ -1615,7 +1614,6 @@ clear_leveldb = ( leveldb, handler ) ->
   xdb_route     = join __dirname, '..', 'dbs/tests-with-private-types'
   #.........................................................................................................
   xdb_settings  =
-    size:           500
     encoder:        encoder
     decoder:        decoder
   #.........................................................................................................
