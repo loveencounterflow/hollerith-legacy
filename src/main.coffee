@@ -48,12 +48,27 @@ step                      = ( require 'coffeenode-suspend' ).step
 # @_hi_enc          = _codec_encode [ CODEC., ]
 # @_last_octet      = new Buffer [ 0xff, ]
 
+
 #-----------------------------------------------------------------------------------------------------------
-@new_db = ( route, settings ) ->
+@new_db = ( path, settings ) ->
+  ### TAINT which reference should be used for path resolution? ###
+  ### TAINT rename to `open_db` and make calls asynchronous? ###
+  path            = ( require 'path' ).resolve process.cwd(), path
+  hollerith_sym   = Symbol.for 'HOLLERITH'
+  registry        = global[ hollerith_sym ] = {}
+  return R if ( R = registry[ path ] )?
+  return registry[ path ] = @_new_db path, settings
+
+
+#-----------------------------------------------------------------------------------------------------------
+@_new_db = ( route, settings ) ->
   ### TAINT we should force this operation to be asynchronous; otherwise, DB may not be writeable ###
   ### TAINT keep global reference to DB at route and return that if it exists? ###
+  #.........................................................................................................
+  unless ( not settings? ) or not CND.is_subset ( keys = Object.keys settings ), @_new_db.keys
+    throw new Error "unknown settings in #{rpr keys}"
+  #.........................................................................................................
   create_if_missing = settings?[ 'create'   ] ? yes
-  size              = settings?[ 'size'     ] ? 1e5
   encoder           = settings?[ 'encoder'  ] ? null
   decoder           = settings?[ 'decoder'  ] ? null
   #.........................................................................................................
@@ -79,11 +94,13 @@ step                      = ( require 'coffeenode-suspend' ).step
   R =
     '~isa':           'HOLLERITH/db'
     '%self':          substrate
-    'size':           size
     'encoder':        encoder
     'decoder':        decoder
   #.........................................................................................................
   return R
+
+#-----------------------------------------------------------------------------------------------------------
+@_new_db.keys = [ 'create', 'encoder', 'decoder', ]
 
 #-----------------------------------------------------------------------------------------------------------
 @clear = ( db, handler ) ->
