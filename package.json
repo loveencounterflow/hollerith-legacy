@@ -4,7 +4,7 @@
   "description": "Next version of hollerith, the Binary Phrase DB",
   "main": "lib/main.js",
   "dependencies": {
-    "async": "^1.5.2",
+    "async": "^2.0.0",
     "cnd": "^4.1.1",
     "coffeenode-suspend": "^0.1.11",
     "commander": "^2.9.0",
@@ -14,7 +14,7 @@
     "leveldown": "^1.4.6",
     "mkdirp": "^0.5.1",
     "ncr": "^1.0.0",
-    "pipedreams": "^4.0.5-alpha"
+    "pipedreams": "^4.2.0"
   },
   "devDependencies": {
     "coffeenode-chr": "^1.0.3",

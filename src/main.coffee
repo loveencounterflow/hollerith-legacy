@@ -29,8 +29,7 @@ _codec_decode             = CODEC.decode.bind CODEC
 #...........................................................................................................
 D                         = require 'pipedreams'
 { $
-  $async
-  $on_finish            } = D
+  $async }                = D
 _new_level_db             = require 'level'
 leveldown                 = require 'leveldown'
 #...........................................................................................................
@@ -224,7 +223,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   records. ###
   throw new Error "only indexes with exactly 2 steps supported at this time" unless predicates.length is 2
   #.........................................................................................................
-  return D.$on_start ( send ) =>
+  return $ 'start', ( send ) =>
     index_settings = { predicates, }
     send [ ( Symbol.for 'add-secondary-index' ), index_settings, ]
 
