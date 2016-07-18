@@ -8,5 +8,5 @@ node_js:
   # - "iojs"
   # - "iojs-v1.0.4"
 
-script: gulp --harmony test
+script: npm run test-travis
 
