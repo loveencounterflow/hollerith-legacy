@@ -515,7 +515,7 @@ step                      = ( require 'coffeenode-suspend' ).step
   try
     [ phrasetype, tail..., ]  = longphrase
     unless ( tail_length = tail.length ) is 4
-      throw new Error "illegal phrase #{rpr phrase} of length #{tail_length + 1}"
+      throw new Error "illegal phrase #{rpr longphrase} of length #{tail_length + 1}"
     switch phrasetype
       when 'spo' then [ sbj, prd, idx, obj,      ] = tail
       when 'pos' then [      prd, idx, obj, sbj, ] = tail
