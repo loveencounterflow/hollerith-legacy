@@ -153,12 +153,12 @@ HOLLERITH                 = require './main'
   if prefix[ 2 ] is '-'                                   then prefix[ 2 ] = null
   else if CND.isa_number ( n = parseInt prefix[ 2 ], 10 ) then prefix[ 2 ] = n
   query             = if star? then { prefix, star, } else { prefix, }
-  input             = HOLLERITH.create_phrasestream db, query
+  input             = HOLLERITH.new_phrasestream db, query
   urge "query: #{rpr query}"
   #...........................................................................................................
   input
     .pipe D.$count ( count ) => help "read #{count} keys"
-    .pipe D.$observe ( data ) =>
+    .pipe $ ( data ) =>
       echo JSON.stringify data
   #...........................................................................................................
   return null
