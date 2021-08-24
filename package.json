@@ -1,5 +1,5 @@
 {
-  "name": "hollerith",
+  "name": "hollerith-legacy",
   "version": "1.2.5",
   "description": "Next version of hollerith, the Binary Phrase DB",
   "main": "lib/main.js",
@@ -28,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/loveencounterflow/hollerith.git"
+    "url": "git+https://github.com/loveencounterflow/hollerith-legacy.git"
   },
   "keywords": [
     "level",
@@ -39,7 +39,7 @@
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/loveencounterflow/hollerith/issues"
+    "url": "https://github.com/loveencounterflow/hollerith-legacy/issues"
   },
-  "homepage": "https://github.com/loveencounterflow/hollerith#readme"
+  "homepage": "https://github.com/loveencounterflow/hollerith-legacy#readme"
 }
